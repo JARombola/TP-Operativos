@@ -15,7 +15,7 @@
 
 #define PUERTO_SERVIDOR 8080
 
-int main(void){
+int main2(void){
 	struct sockaddr_in direccServ;
 	direccServ.sin_family = AF_INET;
 	//direccServ.sin_addr.s_addr = inet_addr("127.0.0.1");INADDR_ANY
