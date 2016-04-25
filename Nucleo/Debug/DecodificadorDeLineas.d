@@ -1,0 +1,1 @@
+DecodificadorDeLineas.d: ../DecodificadorDeLineas.c

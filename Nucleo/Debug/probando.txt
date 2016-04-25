@@ -1,0 +1,10 @@
+#!./Nucleo
+begin           
+	variables a, b, c
+	//ak hay cosas
+	c = 0
+	a = 3
+	b = 4
+	b = c + a - c
+	imprimir b
+end
