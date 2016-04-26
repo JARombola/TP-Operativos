@@ -18,11 +18,12 @@
 #define PUERTO_CONSOLA 8080
 
 int main(void){
-	struct sockaddr_in direccionParaConsola; //creo la direccion
 
-	direccionParaConsola.sin_family = AF_INET;
-	direccionParaConsola.sin_addr.s_addr = INADDR_ANY;
-	direccionParaConsola.sin_port = htons(PUERTO_CONSOLA); //datos de la direccion
+	struct sockaddr_in direccionServidor; //creo la direccion
+
+	direccionServidor.sin_family = AF_INET;
+	direccionServidor.sin_addr.s_addr = INADDR_ANY;
+	direccionServidor.sin_port = htons(PUERTO_CONSOLA); //datos de la direccion
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
 	printf("se creo el servidor %d\n",servidor);
@@ -30,7 +31,7 @@ int main(void){
 	int activado = 1;
 	setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
 
-	if (bind(servidor, (void *)&direccionParaConsola, sizeof(direccionParaConsola)) != 0){
+	if (bind(servidor, (void *)&direccionServidor, sizeof(direccionServidor)) != 0){
 		perror("Fallo el bind");
 		return 1;
 	}
@@ -38,31 +39,29 @@ int main(void){
 	printf("Estoy escuchando\n");
 	listen(servidor,100);
 
-	//--------creo cliente/s
+	//----------------------------creo cliente/s
 
 	struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
 	int sin_size = sizeof(struct sockaddr_in);
-	int cliente = accept(servidor, (void *) &direccionCliente, (void *)&sin_size);
-	//acepto el cliente en un descriptor
-
+	int cliente = accept(servidor, (void *) &direccionCliente, (void *)&sin_size); //acepto el cliente en un descriptor
+	if (cliente == -1){
+		perror("Fallo el accept");
+	}
 	printf("Recibi una conexion en %d!!\n", cliente);
-	/*int bytes_sent;
-	bytes_sent = send(cliente, "Hola NetCat!", 13, 0); //handshake?
-	printf("se le enviaron %d bytes\n",bytes_sent);
-	era para probar coneccion, pero el cliente lo recibia como handshake
-	*/
 
-	//handshake
+	//---------------------------------handshake
+
 	char* bufferHandshake = malloc(20);
-	int bytesRecibidos = recv(cliente, bufferHandshake, 20, 0);
-			if(bytesRecibidos != 20){ //sizeof(bufferHandshake)
+	int bytesRecibidos1 = recv(cliente, bufferHandshake, 20, 0);
+	bufferHandshake[bytesRecibidos1] = '\0'; //lo paso a string para comparar
+			if(strcmp("Hola_soy_una_consola",bufferHandshake) != 0){
 				perror("No lo tengo que aceptar");
-				return 1;//aca tiene que seguir el programa, borrar la direccion del cliente trucho?
+				return 1; //aca tiene que seguir el programa, borrar la direccion del cliente trucho?
 			}else{
-				send(cliente, "Hola consola",12,0);//handshake para consola
+				send(cliente, "Hola consola",12,0); //handshake para consola
 			}
 
-	//----------------aceptar datos de cliente
+	//----------------prueba de textos del cliente
 
 	char* buffer = malloc(1000); //donde quiero recibir y cantidad que puedo recibir
 
@@ -78,6 +77,8 @@ int main(void){
 	}
 
 	free(buffer);
+	close(cliente);
+	close(servidor);
 
 	return 0;
 

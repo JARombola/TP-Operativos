@@ -15,10 +15,9 @@
 
 #define PUERTO_SERVIDOR 8080
 
-int main2(void){
+int main(void){
 	struct sockaddr_in direccServ;
 	direccServ.sin_family = AF_INET;
-	//direccServ.sin_addr.s_addr = inet_addr("127.0.0.1");INADDR_ANY
 	direccServ.sin_addr.s_addr = INADDR_ANY;
 	direccServ.sin_port = htons(PUERTO_SERVIDOR);
 
@@ -29,6 +28,7 @@ int main2(void){
 		perror("No se pudo conectar");
 		return 1;
 	}
+
 	//hanshake
 	send(cliente, "Hola_soy_una_consola", 20, 0);//si no envio 20 bytes, falla el handshake
 	char* bufferHandshake = malloc(12);
