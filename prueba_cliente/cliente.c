@@ -41,12 +41,12 @@ int main(void){
 		}
 
 	while(1){
-		char mensaje[1000];
+		char mensaje[10];
 		scanf("%s",mensaje);
 
 		send(cliente, mensaje, strlen(mensaje),0);//envia datos por teclado
 		//probar si llego lo que se envio, sin serv no tengo que andar
 	}
-
 	return 0;
 }
+
