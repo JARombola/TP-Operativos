@@ -72,24 +72,23 @@ int main(void){
 			//ver los clientes que recibieron informacion
 			int cli = list_get(clientes,i);
 			if(FD_ISSET(cli , &descriptores)){
-					printf("se activo un cliente\n");
+					printf("se activo el cliente %d\n",cli);
 				char* buffer = malloc(10); //donde quiero recibir y cantidad que puedo recibir
 				int bytesRecibidos = recv(cli, buffer, 10, 0);
 						if(bytesRecibidos <= 0){
-							perror("se desconecto o algo.");
-							void* data = list_remove(clientes, i); //no entendi la funcion de commons
-							free(data); //free o close?
-							//todo se cierra nos se porque
-						}
+							perror("el cliente se desconecto o algo. Se lo elimino\n");
+							list_remove(clientes, i); //todo no entendi de la funcion de commons: list_remove_and_destroy_element, el parametro: void(*element_destroyer)(void*)
+						}else{
 						buffer[bytesRecibidos] = '\0'; //para pasarlo a string (era un stream)
 						printf("cliente: %d, me llegaron %d bytes con %s\n", cli, bytesRecibidos, buffer);
+						}
 						free(buffer);
 			}
 		}
 
 		if(FD_ISSET(servidor,&descriptores)){ //aceptar cliente
 
-					nuevo_cliente = accept(servidor, (void *) &direccionCliente, (void *)&sin_size); //acepto el cliente en un descriptor, la direccion del cliente choca con uno nuevo?
+					nuevo_cliente = accept(servidor, (void *) &direccionCliente, (void *)&sin_size); //acepto el cliente en un descriptor
 						if (nuevo_cliente == -1){
 							perror("Fallo el accept");
 						}
@@ -99,7 +98,7 @@ int main(void){
 						int bytesRecibidos1 = recv(nuevo_cliente, bufferHandshake, 20, 0);
 						bufferHandshake[bytesRecibidos1] = '\0'; //lo paso a string para comparar
 								if(strcmp("Hola_soy_una_consola",bufferHandshake) != 0){
-									perror("No lo tengo que aceptar, fallo el handshake");
+									perror("No lo tengo que aceptar, fallo el handshake\n");
 									close(nuevo_cliente);
 								}else{
 									send(nuevo_cliente, "Hola consola",12,0); //handshake para consola
