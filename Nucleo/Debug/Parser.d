@@ -1,1 +1,0 @@
-Parser.d: ../Parser.c
