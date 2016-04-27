@@ -51,10 +51,16 @@ int main(void){
 	int sin_size = sizeof(struct sockaddr_in);
 	int i;
 
-	FD_ZERO (&descriptores);
-	FD_SET(servidor,&descriptores); //agrego el server primero
-
 	while(1){
+
+		FD_ZERO (&descriptores);
+		FD_SET(servidor,&descriptores);	//agrego el server primero
+			for(i=0; i<list_size(clientes);i++){ //despues los clientes nuevos y ya conectados
+				int cli = list_get(clientes,i);
+				FD_SET(cli,&descriptores);
+			}
+
+
 		if (select (max_desc+1, &descriptores, NULL, NULL, NULL) < 0){
 		 	perror ("Error en el select");
 		    exit (EXIT_FAILURE);
@@ -93,7 +99,6 @@ int main(void){
 									return 1; //todo aca tiene que seguir el programa, borrar la direccion del cliente trucho?
 								}else{
 									send(nuevo_cliente, "Hola consola",12,0); //handshake para consola
-									FD_SET(nuevo_cliente,&descriptores);
 									list_add(clientes, (void *)nuevo_cliente);
 									if(nuevo_cliente > max_desc){ max_desc = nuevo_cliente; }
 									printf("y lo acepte\n");
