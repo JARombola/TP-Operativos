@@ -1,1 +1,0 @@
-servidor.d: ../servidor.c

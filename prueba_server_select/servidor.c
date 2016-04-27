@@ -55,9 +55,11 @@ int main(void){
 
 		FD_ZERO (&descriptores);
 		FD_SET(servidor,&descriptores);	//agrego el server primero
+		max_desc = servidor;
 			for(i=0; i<list_size(clientes);i++){ //despues los clientes nuevos y ya conectados
 				int cli = list_get(clientes,i);
 				FD_SET(cli,&descriptores);
+				if(cli > max_desc){ max_desc = cli; }
 			}
 
 
@@ -69,13 +71,15 @@ int main(void){
 		for(i=0; i<list_size(clientes);i++){
 			//ver los clientes que recibieron informacion
 			int cli = list_get(clientes,i);
-			if(FD_ISSET(cli , &descriptores)){ //if(FD_ISSET( clientes[i](?) , &descriptores))
-					printf("se estan activo un cliente\n");
+			if(FD_ISSET(cli , &descriptores)){
+					printf("se activo un cliente\n");
 				char* buffer = malloc(10); //donde quiero recibir y cantidad que puedo recibir
 				int bytesRecibidos = recv(cli, buffer, 10, 0);
 						if(bytesRecibidos <= 0){
 							perror("se desconecto o algo.");
-							return 1; //todo eliminar cliente y seguir
+							void* data = list_remove(clientes, i); //no entendi la funcion de commons
+							free(data); //free o close?
+							//todo se cierra nos se porque
 						}
 						buffer[bytesRecibidos] = '\0'; //para pasarlo a string (era un stream)
 						printf("cliente: %d, me llegaron %d bytes con %s\n", cli, bytesRecibidos, buffer);
@@ -95,13 +99,13 @@ int main(void){
 						int bytesRecibidos1 = recv(nuevo_cliente, bufferHandshake, 20, 0);
 						bufferHandshake[bytesRecibidos1] = '\0'; //lo paso a string para comparar
 								if(strcmp("Hola_soy_una_consola",bufferHandshake) != 0){
-									perror("No lo tengo que aceptar");
-									return 1; //todo aca tiene que seguir el programa, borrar la direccion del cliente trucho?
+									perror("No lo tengo que aceptar, fallo el handshake");
+									close(nuevo_cliente);
 								}else{
 									send(nuevo_cliente, "Hola consola",12,0); //handshake para consola
 									list_add(clientes, (void *)nuevo_cliente);
-									if(nuevo_cliente > max_desc){ max_desc = nuevo_cliente; }
 									printf("y lo acepte\n");
+									//aca iria un close y un free mejor?
 								}
 				}
 
