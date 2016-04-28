@@ -118,23 +118,12 @@ int main(int argc, char* argv[]){
 	while (!feof(ansisop2)) {
 //		linea=malloc(20);
 		fgets(linea,200,ansisop2);
-		if (linea[0] != '#') {
+		if ( _string_trim(linea)[0] != "#") {
 					printf("!!!!!!!!!!!!!!!!!!!!LINEAAAA:%s\n", _string_trim(linea));
 					analizarParser(linea);}
 	}
-	/*
- 	printf("Lineas: %d\n",programa->instruccion_inicio);
-	char linea[200];
-	fgets(linea, 200, ansisop);		//Afuera del while Para Saltear el #!
-	fgets(linea, 200, ansisop);		//Afuera para saltear el begin
-	while (!feof(ansisop)) {
-		fgets(linea, 200, ansisop);
-		int i = posicionPrimerCaracter(linea);
-		if (linea[0] != '#') {
-			printf("!!!!!!!!!!!!!!!!!!!!LINEAAAA:%s\n", _string_trim(linea));
-			analizarParser(linea);}
-	}*/
 	fclose(ansisop);
+	fclose(ansisop2);
 	printf("Archivo cerrado\n");
 	return 0;
 }

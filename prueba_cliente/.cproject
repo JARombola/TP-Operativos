@@ -30,7 +30,7 @@
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1806352979" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.761661830" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug">
-								<option id="gnu.c.link.option.libs.512492088" superClass="gnu.c.link.option.libs" valueType="libs">
+								<option id="gnu.c.link.option.libs.512492088" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="commons"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.258016952" superClass="cdt.managedbuild.tool.gnu.c.linker.input">

@@ -73,16 +73,21 @@ int main(void){
 			int cli = list_get(clientes,i);
 			if(FD_ISSET(cli , &descriptores)){
 					printf("se activo el cliente %d\n",cli);
-				char* buffer = malloc(10); //donde quiero recibir y cantidad que puedo recibir
-				int bytesRecibidos = recv(cli, buffer, 10, 0);
+					int protocolo=0; //donde quiero recibir y cantidad que puedo recibir
+					int bytesRecibidos = recv(cli, &protocolo, sizeof(int32_t), 0);
+					protocolo=ntohl(protocolo);
 						if(bytesRecibidos <= 0){
 							perror("el cliente se desconecto o algo. Se lo elimino\n");
 							list_remove(clientes, i); //todo no entendi de la funcion de commons: list_remove_and_destroy_element, el parametro: void(*element_destroyer)(void*)
-						}else{
-						buffer[bytesRecibidos] = '\0'; //para pasarlo a string (era un stream)
-						printf("cliente: %d, me llegaron %d bytes con %s\n", cli, bytesRecibidos, buffer);
+				} else {
+					char* buffer = malloc(protocolo * sizeof(char) + 1);
+					bytesRecibidos = recv(cli, buffer, protocolo, 0);
+					buffer[protocolo + 1] = '\0';
+					; //para pasarlo a string (era un stream)
+					printf("cliente: %d, me llegaron %d bytes con %s\n", cli,
+					bytesRecibidos, buffer);
+					free(buffer);
 						}
-						free(buffer);
 			}
 		}
 
