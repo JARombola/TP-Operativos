@@ -75,10 +75,10 @@ void analizarParser(char* instruccion){
 	analizadorLinea(strdup(instruccion), &functions, &kernel_functions);
 }
 
-int main(){ // int parsear(char* archivo){ // porque el main del nucleo seria otro
+int main(int argc,char* argv[]){ // int parsear(char* archivo){ // porque el main del nucleo seria otro
 
 	printf("Abriendo archivo \n");
-	FILE *ansisop =	fopen("/home/utnso/tp-2016-1c-CodeBreakers/Nucleo/ansisop.txt", "r");
+	FILE *ansisop =	fopen(argv[1], "r");
 
 	if (ansisop == NULL){
 		printf("Error al abrir el archivo, verifique la existencia del mismo \n");

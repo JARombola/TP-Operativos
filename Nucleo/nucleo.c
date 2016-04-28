@@ -20,7 +20,7 @@
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
 
-int main(void){
+int asd(void){
 
 	struct sockaddr_in direccionNucleo; //creo la direccion cliente y servidor
 	direccionNucleo.sin_family = AF_INET;
