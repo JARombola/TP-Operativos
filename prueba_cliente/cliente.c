@@ -30,14 +30,14 @@ int main(void) {
 	}
 
 	//hanshake
-	send(cliente, "Hola_soy_una_consola", 20, 0); //si no envio 20 bytes, falla el handshake
+	send(cliente, "soy_una_consola", 15, 0); //si no envio 20 bytes, falla el handshake
 	char* bufferHandshake = malloc(12);
 	int bytesRecibidos = recv(cliente, bufferHandshake, 12, 0); //se tienen que recibir 12 bytes, estoy probando que pasa con mas
 	if (bytesRecibidos <= 0) {
-		printf("se recibieron %d bytes, no estamos aceptados", bytesRecibidos);
+		printf("se recibieron %d bytes, no estamos aceptados\n", bytesRecibidos);
 		return 1;
 	} else {
-		printf("se recibieron %d bytes, estamos aceptados!", bytesRecibidos);
+		printf("se recibieron %d bytes, estamos aceptados!\n", bytesRecibidos);
 	}
 
 	while (1) {
