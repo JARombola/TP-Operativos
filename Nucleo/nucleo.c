@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <commons/string.h>
+#include <commons/config.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -19,8 +21,25 @@
 
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
+#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra) 	//MACRO
+
+typedef struct{
+	int puerto_prog;
+	int puerto_cpu;
+	int quantum;
+	int quantum_sleep;
+	char** sem_ids;
+	char** sem_init;		//TRANSFORMAR CON (atoi)
+	char** io_ids;
+	char** io_sleep;		//LO MISMO
+	char** shared_vars;
+}datosConfiguracion;
+
+void leerConfiguracion(char*, datosConfiguracion*);
 
 int main(int argc, char* argv[]){
+//	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
+//	leerConfiguracion(argv[0], &datosMemoria);
 	struct sockaddr_in direccionNucleo; //creo la direccion cliente y servidor
 	direccionNucleo.sin_family = AF_INET;
 	direccionNucleo.sin_addr.s_addr = INADDR_ANY;
@@ -176,7 +195,33 @@ int main(int argc, char* argv[]){
 		}
 
 	}
-
+	//free(datosMemoria);
 	return 0;
-
 }
+
+//--------------------------------------LECTURA CONFIGURACION
+
+void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
+	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
+	if (archivoConfiguracion == NULL) {
+		perror("Faltó Ruta CONFIGURACION");
+		exit(0);
+	} else {
+		int cantidadKeys = config_keys_amount(archivoConfiguracion);
+		if (cantidadKeys != 9) {
+			perror("ERROR CANTIDAD DATOS DE CONFIGURACION");
+		} else {
+			datos->puerto_prog = buscarInt(archivoConfiguracion, "PUERTO_PROG");
+			datos->puerto_cpu = buscarInt(archivoConfiguracion, "PUERTO_CPU");
+			datos->quantum = buscarInt(archivoConfiguracion, "QUANTUM");
+			datos->quantum_sleep = buscarInt(archivoConfiguracion, "QUANTUM_SLEEP");
+			datos->sem_ids = config_get_array_value(archivoConfiguracion, "SEM_ID");
+			datos->sem_init = config_get_array_value(archivoConfiguracion, "SEM_INIT");
+			datos->io_ids = config_get_array_value(archivoConfiguracion, "IO_ID");
+			datos->io_sleep = config_get_array_value(archivoConfiguracion,"IO_SLEEP");
+			datos->shared_vars= config_get_array_value(archivoConfiguracion, "SHARED_VARS");
+			config_destroy(archivoConfiguracion);
+		}
+	}
+}
+

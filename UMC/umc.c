@@ -36,7 +36,7 @@ void leerConfiguracion(char*, datosConfiguracion*);
 
 int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 	//lector de comandos
-	datosConfiguracion datosMemoria;
+	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
 	char* comando;
 	int velocidad;
 //	leerConfiguracion(argv[1], &datosMemoria);
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 		}
 	}*/
 
-
+	free(datosConfiguracion);
 	return 0;
 }
 

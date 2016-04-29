@@ -14,11 +14,24 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <unistd.h>
+#include <commons/string.h>
+#include <commons/config.h>
 
 #define PUERTO_SWAP 6660
 
-int main(void){
+typedef struct{
+	int puerto;
+	char* nombre_swap;
+	int cantidadPaginas;
+	int tamañoPagina;
+	int retardoCompactacion;
+}datosConfiguracion;
 
+void leerConfiguracion(char*, datosConfiguracion*);
+
+int main(int argc, char* argv[]){
+//	datosConfiguracion datosSwap;
+//	leerConfiguracion(ruta,datosConfiguracion);
 	struct sockaddr_in direccionSwap;
 
 	direccionSwap.sin_family = AF_INET;
@@ -78,7 +91,27 @@ int main(void){
 					free(bufferUMC);
 				}
 	}
-
+	//free(datosSwap);
 	return 0;
+}
 
+
+void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
+	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
+	if (archivoConfiguracion == NULL) {
+		perror("FIN PROGRAMA");
+		exit(0);
+	} else {
+		int cantidadKeys = config_keys_amount(archivoConfiguracion);
+		if (cantidadKeys != 5) {
+			perror("ERROR CANTIDAD DATOS DE CONFIGURACION");
+		} else {
+			datos->puerto = buscarInt(archivoConfiguracion, "PUERTO");
+			datos->nombre_swap = config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP");
+			datos->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
+			datos->tamañoPagina = buscarInt(archivoConfiguracion, "TAMAÑO_PAGINA");
+			datos->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
+			config_destroy(archivoConfiguracion);
+		}
+	}
 }
