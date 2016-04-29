@@ -42,13 +42,13 @@ int asd(void){
 		}
 		//hanshake para UMC
 		send(nucleo_cliente, "soy_el_nucleo", 13, 0);
-		char* bufferHandshake = malloc(12);
-		int bytesRecibidos = recv(nucleo_cliente, bufferHandshake, 12, 0);
-		if (bytesRecibidos <= 0) {
-			printf("se recibieron %d bytes, no estamos aceptados\n", bytesRecibidos);
+		char* bufferHandshakeCli = malloc(12);
+		int bytesRecibidosH = recv(nucleo_cliente, bufferHandshakeCli, 12, 0);
+		if (bytesRecibidosH <= 0) {
+			printf("se recibieron %d bytes, no se pudo conectar con la UMC\n", bytesRecibidosH);
 			return 1;
 		} else {
-			printf("se recibieron %d bytes, estamos conectados con la UMC!\n", bytesRecibidos);
+			printf("se recibieron %d bytes, estamos conectados con la UMC!\n", bytesRecibidosH);
 		}
 
 	//despues bindeo el nucleo y lo pongo a escuchar
@@ -104,14 +104,14 @@ int asd(void){
 					int bytesRecibidosC = recv(unaConsola, &protocoloC, sizeof(int32_t), 0);
 					protocoloC=ntohl(protocoloC);
 						if(bytesRecibidosC <= 0){
-							perror("el cliente se desconecto o algo. Se lo elimino\n");
+							perror("la consola se desconecto o algo. Se la elimino\n");
 							list_remove(consolas, i);
 						} else {
-							char* buffer = malloc(protocoloC * sizeof(char) + 1);
-							bytesRecibidosC = recv(unaConsola, buffer, protocoloC, 0);
-							buffer[protocoloC + 1] = '\0'; //para pasarlo a string (era un stream)
-							printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidos, buffer);
-							free(buffer);
+							char* bufferC = malloc(protocoloC * sizeof(char) + 1);
+							bytesRecibidosC = recv(unaConsola, bufferC, protocoloC, 0);
+							bufferC[protocoloC + 1] = '\0'; //para pasarlo a string (era un stream)
+							printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidosC, bufferC);
+							free(bufferC);
 						}
 			}
 		 }
@@ -119,19 +119,19 @@ int asd(void){
 			//ver los clientes que recibieron informacion
 			int unCPU = list_get(cpus,i);
 			if(FD_ISSET(unCPU , &descriptores)){
-					printf("se activo el cliente %d\n",unCPU);
+					printf("se activo el cpu %d\n",unCPU);
 					int protocoloCPU=0; //donde quiero recibir y cantidad que puedo recibir
-					int bytesRecibidos = recv(unCPU, &protocoloCPU, sizeof(int32_t), 0);
+					int bytesRecibidosCpu = recv(unCPU, &protocoloCPU, sizeof(int32_t), 0);
 					protocoloCPU=ntohl(protocoloCPU);
-						if(bytesRecibidos <= 0){
-							perror("el cliente se desconecto o algo. Se lo elimino\n");
+						if(bytesRecibidosCpu <= 0){
+							perror("el cpu se desconecto o algo. Se lo elimino\n");
 							list_remove(cpus, i); //todo no entendi de la funcion de commons: list_remove_and_destroy_element, el parametro: void(*element_destroyer)(void*)
 					} else {
-							char* buffer = malloc(protocoloCPU * sizeof(char) + 1);
-							bytesRecibidos = recv(unCPU, buffer, protocoloCPU, 0);
-							buffer[protocoloCPU + 1] = '\0'; //para pasarlo a string (era un stream)
-							printf("cliente: %d, me llegaron %d bytes con %s\n", unCPU,bytesRecibidos, buffer);
-							free(buffer);
+							char* bufferCpu = malloc(protocoloCPU * sizeof(char) + 1);
+							bytesRecibidosCpu = recv(unCPU, bufferCpu, protocoloCPU, 0);
+							bufferCpu[protocoloCPU + 1] = '\0'; //para pasarlo a string (era un stream)
+							printf("cliente: %d, me llegaron %d bytes con %s\n", unCPU,bytesRecibidosCpu, bufferCpu);
+							free(bufferCpu);
 					}
 			 }
 		  }
@@ -151,8 +151,8 @@ int asd(void){
 				printf("Recibi una conexion en %d!!\n", nuevo_cliente);
 
 				char* bufferHandshake = malloc(15);
-				int bytesRecibidosH = recv(nuevo_cliente, bufferHandshake, 15, 0);
-				bufferHandshake[bytesRecibidosH] = '\0'; //lo paso a string para comparar
+				int bytesRecibidosHs = recv(nuevo_cliente, bufferHandshake, 15, 0);
+				bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 						if (strcmp("soy_un_cpu",bufferHandshake) == 0){
 							send(nuevo_cliente, "Hola_cpu",12,0);
 							list_add(cpus, (void *)nuevo_cliente);
