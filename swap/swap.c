@@ -15,7 +15,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-#define PUERTO_SWAP 8080
+#define PUERTO_SWAP 6660
 
 int main(void){
 
@@ -26,6 +26,7 @@ int main(void){
 	direccionSwap.sin_port = htons(PUERTO_SWAP);
 
 	int swap_servidor = socket(AF_INET, SOCK_STREAM, 0);
+	int umc_cliente;
 	printf("se creo la swap en %d\n",swap_servidor);
 
 	int activado = 1;
@@ -41,16 +42,15 @@ int main(void){
 
 	struct sockaddr_in direccionUMC; //direccion donde guarde el cliente
 	int sin_size = sizeof(struct sockaddr_in);
-	int umc_cliente = accept(swap_servidor, (void *) &direccionUMC, (void *)&sin_size); //acepto el cliente en un descriptor
-	if (umc_cliente == -1){
-		perror("Fallo el accept");
-	}
-	printf("Recibi una conexion en %d!!\n", umc_cliente);
-
-	//---------------------------------handshake
 
 	int seConecto=1;
 	while(seConecto){
+		umc_cliente = accept(swap_servidor, (void *) &direccionUMC, (void *)&sin_size);
+		if (umc_cliente == -1){
+			perror("Fallo el accept");
+		}
+		printf("Recibi una conexion en %d!!\n", umc_cliente);
+	//---------------------------------handshake
 		char* bufferHandshake = malloc(10);
 		int bytesRecibidosH = recv(umc_cliente, bufferHandshake, 10, 0);
 		bufferHandshake[bytesRecibidosH] = '\0'; //lo paso a string para comparar
@@ -68,7 +68,8 @@ int main(void){
 			int bytesRecibidosUMC = recv(umc_cliente, &protocoloUMC, sizeof(int32_t), 0);
 			protocoloUMC=ntohl(protocoloUMC);
 				if(bytesRecibidosUMC <= 0){
-					perror("la consola se desconecto o algo. Se la elimino\n");
+					perror("la UMC se desconecto o algo. Se la elimino\n");
+					return 0; //todo que vuelva al while anterior y espera a la consola devuelta
 				} else {
 					char* bufferUMC = malloc(protocoloUMC * sizeof(char) + 1);
 					bytesRecibidosUMC = recv(umc_cliente, bufferUMC, protocoloUMC, 0);

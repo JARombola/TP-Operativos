@@ -14,8 +14,8 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <unistd.h>
-#include<commons/collections/node.h>
-#include<commons/collections/list.h>
+#include <commons/collections/node.h>
+#include <commons/collections/list.h>
 
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
