@@ -14,14 +14,13 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <unistd.h>
-#include<commons/collections/node.h>
-#include<commons/collections/list.h>
+#include <commons/collections/node.h>
+#include <commons/collections/list.h>
 
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
 
-int asd(void){
-
+int main(int argc, char* argv[]){
 	struct sockaddr_in direccionNucleo; //creo la direccion cliente y servidor
 	direccionNucleo.sin_family = AF_INET;
 	direccionNucleo.sin_addr.s_addr = INADDR_ANY;

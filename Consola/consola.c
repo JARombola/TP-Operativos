@@ -15,7 +15,9 @@
 
 #define PUERTO_NUCLEO 6662
 
-int main(void) {
+int main(int argc, char* argv[]) {					//Se le envia por parametro el archivo a ejecutar (#!, ver "Nuevo")
+//	if (argc<2) {printf("No se envio el archivo ANSISOP\n");return 1;}
+//	system(argv[1]);
 	struct sockaddr_in direccNucleo;
 	direccNucleo.sin_family = AF_INET;
 	direccNucleo.sin_addr.s_addr = INADDR_ANY;

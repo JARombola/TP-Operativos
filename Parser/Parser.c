@@ -75,7 +75,7 @@ void analizarParser(char* instruccion){
 	analizadorLinea(strdup(instruccion), &functions, &kernel_functions);
 }
 
-int main(int argc,char* argv[]){ // int parsear(char* archivo){ // porque el main del nucleo seria otro
+int main(int argc,char* argv[]){
 
 	printf("Abriendo archivo \n");
 	FILE *ansisop =	fopen(argv[1], "r");
