@@ -41,8 +41,8 @@ int main(int argc, char* argv[]){
 		}
 		//hanshake para UMC
 		send(nucleo_cliente, "soy_el_nucleo", 13, 0);
-		char* bufferHandshakeCli = malloc(12);
-		int bytesRecibidosH = recv(nucleo_cliente, bufferHandshakeCli, 12, 0);
+		char* bufferHandshakeCli = malloc(8);
+		int bytesRecibidosH = recv(nucleo_cliente, bufferHandshakeCli, 8, 0);
 		if (bytesRecibidosH <= 0) {
 			printf("se recibieron %d bytes, no se pudo conectar con la UMC\n", bytesRecibidosH);
 			return 1;
@@ -153,11 +153,11 @@ int main(int argc, char* argv[]){
 				int bytesRecibidosHs = recv(nuevo_cliente, bufferHandshake, 15, 0);
 				bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 						if (strcmp("soy_un_cpu",bufferHandshake) == 0){
-							send(nuevo_cliente, "Hola_cpu",12,0);
+							send(nuevo_cliente, "Hola_cpu",8,0);
 							list_add(cpus, (void *)nuevo_cliente);
 							printf("acepte un nuevo cpu\n");
 						}else if(strcmp("soy_una_consola",bufferHandshake) == 0){
-							send(nuevo_cliente, "Hola consola",12,0); //handshake para consola
+							send(nuevo_cliente, "Hola_consola",12,0); //handshake para consola
 							list_add(consolas, (void *)nuevo_cliente);
 							printf("acepte una nueva consola\n");
 							//aca iria un close y un free mejor?

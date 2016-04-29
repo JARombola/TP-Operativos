@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 				int bytesRecibidosHs = recv(nuevo_cliente, bufferHandshake, 15, 0);
 				bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 						if (strcmp("soy_un_cpu",bufferHandshake) == 0){
-							send(nuevo_cliente, "Hola_cpu",12,0);
+							send(nuevo_cliente, "Hola_cpu",8,0);
 							list_add(cpus, (void *)nuevo_cliente);
 							printf("acepte un nuevo cpu\n");
 						}else{
