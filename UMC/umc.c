@@ -144,6 +144,11 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 							bytesRecibidosCpu = recv(unCPU, bufferCpu, protocoloCPU, 0);
 							bufferCpu[protocoloCPU + 1] = '\0'; //para pasarlo a string (era un stream)
 							printf("cliente: %d, me llegaron %d bytes con %s\n", unCPU,bytesRecibidosCpu, bufferCpu);
+						//mando el mensaje a la swap
+							int longitud = htonl(string_length(bufferCpu));
+							send(umc_cliente, &longitud, sizeof(int32_t), 0);
+							send(umc_cliente, bufferCpu, strlen(bufferCpu), 0);
+
 							free(bufferCpu);
 					}
 			 }

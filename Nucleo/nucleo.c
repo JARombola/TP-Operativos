@@ -110,7 +110,16 @@ int main(int argc, char* argv[]){
 							bytesRecibidosC = recv(unaConsola, bufferC, protocoloC, 0);
 							bufferC[protocoloC + 1] = '\0'; //para pasarlo a string (era un stream)
 							printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidosC, bufferC);
+						//mando mensaje a los CPUs
+							for(i=0; i<list_size(cpus);i++){
+							//ver los clientes que recibieron informacion
+							int unCPU = list_get(cpus,i);
+							int longitud = htonl(string_length(bufferC));
+							send(unCPU, &longitud, sizeof(int32_t), 0);
+							send(unCPU, bufferC, strlen(bufferC), 0);
+
 							free(bufferC);
+							}
 						}
 			}
 		 }

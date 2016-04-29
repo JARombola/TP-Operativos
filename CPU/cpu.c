@@ -23,6 +23,25 @@ int main() {   // int main(int argc, char* argv[]) -> argv[1] = puerto Nucleo
 	esperarRespuesta(nucleo_cliente);
 
 
+	//me llega mensaje de Nucleo y lo envio a la UMC
+		int protocoloNucleo=0; //donde quiero recibir y cantidad que puedo recibir
+			int bytesRecibidosCpu = recv(nucleo_cliente, &protocoloNucleo, sizeof(int32_t), 0);
+			protocoloNucleo=ntohl(protocoloNucleo);
+				if(bytesRecibidosCpu <= 0){
+					perror("el nucleo se desconecto y/o no mando el mensaje. Se lo elimino\n");
+			} else {
+					char* bufferNucleo = malloc(protocoloNucleo * sizeof(char) + 1);
+					bytesRecibidosCpu = recv(nucleo_cliente, bufferNucleo, protocoloNucleo, 0);
+					bufferNucleo[protocoloNucleo + 1] = '\0'; //para pasarlo a string (era un stream)
+					printf("Nucleo en: %d, me llegaron %d bytes con %s\n", nucleo_cliente,bytesRecibidosCpu, bufferNucleo);
+
+				//y lo mando a la UMC
+					int longitud = htonl(string_length(bufferNucleo));
+					send(umc_cliente, &longitud, sizeof(int32_t), 0);
+					send(umc_cliente, bufferNucleo, strlen(bufferNucleo), 0);
+					free(bufferNucleo);
+			}
+
 	while (1) {
 			char *mensaje;
 			mensaje = string_new();
