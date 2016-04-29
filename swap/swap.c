@@ -5,4 +5,79 @@
  *      Author: utnso
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <unistd.h>
 
+#define PUERTO_SWAP 8080
+
+int main(void){
+
+	struct sockaddr_in direccionSwap;
+
+	direccionSwap.sin_family = AF_INET;
+	direccionSwap.sin_addr.s_addr = INADDR_ANY;
+	direccionSwap.sin_port = htons(PUERTO_SWAP);
+
+	int swap_servidor = socket(AF_INET, SOCK_STREAM, 0);
+	printf("se creo la swap en %d\n",swap_servidor);
+
+	int activado = 1;
+	setsockopt(swap_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
+	if (bind(swap_servidor, (void *)&direccionSwap, sizeof(direccionSwap)) != 0){
+		perror("Fallo el bind");
+		return 1;
+	}
+	printf("Estoy escuchando\n");
+	listen(swap_servidor,100);
+
+	//----------------------------creo cliente para umc
+
+	struct sockaddr_in direccionUMC; //direccion donde guarde el cliente
+	int sin_size = sizeof(struct sockaddr_in);
+	int umc_cliente = accept(swap_servidor, (void *) &direccionUMC, (void *)&sin_size); //acepto el cliente en un descriptor
+	if (umc_cliente == -1){
+		perror("Fallo el accept");
+	}
+	printf("Recibi una conexion en %d!!\n", umc_cliente);
+
+	//---------------------------------handshake
+
+	int seConecto=1;
+	while(seConecto){
+		char* bufferHandshake = malloc(10);
+		int bytesRecibidosH = recv(umc_cliente, bufferHandshake, 10, 0);
+		bufferHandshake[bytesRecibidosH] = '\0'; //lo paso a string para comparar
+			if(strcmp("soy_la_umc",bufferHandshake) != 0){
+				perror("No lo tengo que aceptar, no es la UMC");
+			}else{
+				send(umc_cliente, "Hola consola",12,0); //handshake para consola
+				seConecto = 0;
+			}
+	}
+	//----------------recibo datos de la UMC
+
+	while (1){
+		int protocoloUMC=0; //donde quiero recibir y cantidad que puedo recibir
+			int bytesRecibidosUMC = recv(umc_cliente, &protocoloUMC, sizeof(int32_t), 0);
+			protocoloUMC=ntohl(protocoloUMC);
+				if(bytesRecibidosUMC <= 0){
+					perror("la consola se desconecto o algo. Se la elimino\n");
+				} else {
+					char* bufferUMC = malloc(protocoloUMC * sizeof(char) + 1);
+					bytesRecibidosUMC = recv(umc_cliente, bufferUMC, protocoloUMC, 0);
+					bufferUMC[protocoloUMC + 1] = '\0'; //para pasarlo a string (era un stream)
+					printf("UMC: %d, me llegaron %d bytes con %s\n", umc_cliente,bytesRecibidosUMC, bufferUMC);
+					free(bufferUMC);
+				}
+	}
+
+	return 0;
+
+}
