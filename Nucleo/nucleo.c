@@ -117,9 +117,8 @@ int main(int argc, char* argv[]){
 							int longitud = htonl(string_length(bufferC));
 							send(unCPU, &longitud, sizeof(int32_t), 0);
 							send(unCPU, bufferC, strlen(bufferC), 0);
-
-							free(bufferC);
 							}
+							free(bufferC);
 						}
 			}
 		 }
