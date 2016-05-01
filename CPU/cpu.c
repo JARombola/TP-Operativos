@@ -10,54 +10,72 @@ const int PUERTO_UMC = 6661;
 const int PUERTO_NUCLEO = 6662;
 
 int conectar(int puerto);
-int esperarRespuesta(int cliente);
+int autentificar(int conexion);
+int esperarPeticion(int nucleo);
+int procesarPeticion(int pcb, int nucleo, int umc);
+int esperarConfirmacion(int conexion);
+int esperarRespuesta(int conexion);
 
-int main() {   // int main(int argc, char* argv[]) -> argv[1] = puerto Nucleo
+/*Precondiciones:
+ * 				El nucleo debe confirmar al CPU
+ * 				El nucleo debe enviar el puerto de la UMC una vez confirmado
+ * 				La UMC debe confirmar al CPU
+ * 				El nucleo solo envia el PBC (esto igual es temporal)
+ *
+ *Se autentifica con un "soy_un_cpu"
+ *
+ *La logica se encuentra en "pocesarPeticion"
+ */
+int main() {
 
-	int umc_cliente = conectar(PUERTO_UMC);
-	int nucleo_cliente = conectar(PUERTO_NUCLEO);
-
-	send(umc_cliente, "soy_un_cpu", 10, 0);
-	esperarRespuesta(umc_cliente);
-	send(nucleo_cliente, "soy_un_cpu", 10, 0);
-	esperarRespuesta(nucleo_cliente);
+	printf("CPU Estable\n");
+	printf("Intentando conectarse al Nucleo ... \n");
 
 
-	//me llega mensaje de Nucleo y lo envio a la UMC
-		int protocoloNucleo=0; //donde quiero recibir y cantidad que puedo recibir
-			int bytesRecibidosCpu = recv(nucleo_cliente, &protocoloNucleo, sizeof(int32_t), 0);
-			protocoloNucleo=ntohl(protocoloNucleo);
-				if(bytesRecibidosCpu <= 0){
-					perror("el nucleo se desconecto y/o no mando el mensaje. Se lo elimino\n");
-			} else {
-					char* bufferNucleo = malloc(protocoloNucleo * sizeof(char) + 1);
-					bytesRecibidosCpu = recv(nucleo_cliente, bufferNucleo, protocoloNucleo, 0);
-					bufferNucleo[protocoloNucleo + 1] = '\0'; //para pasarlo a string (era un stream)
-					printf("Nucleo en: %d, me llegaron %d bytes con %s\n", nucleo_cliente,bytesRecibidosCpu, bufferNucleo);
+	int nucleo= conectar(PUERTO_NUCLEO);
 
-				//y lo mando a la UMC
-					int longitud = htonl(string_length(bufferNucleo));
-					send(umc_cliente, &longitud, sizeof(int32_t), 0);
-					send(umc_cliente, bufferNucleo, strlen(bufferNucleo), 0);
-					free(bufferNucleo);
-			}
+	if (autentificar(nucleo)){
+		printf("Fui rechazado por el Nucleo \n");
+		printf("Conexion al Nucleo Fail \n");
+		return -1;
+	}
+	printf("Conexion al Nucleo OK \n");
+	int puertoUMC = esperarRespuesta(nucleo);
 
-	while (1) {
-			char *mensaje;
-			mensaje = string_new();
-			scanf("%s", mensaje);
-			int longitud = htonl(string_length(mensaje));
-			if(mensaje[0]=='u'){
-				send(umc_cliente, &longitud, sizeof(int32_t), 0);
-				send(umc_cliente, mensaje, strlen(mensaje), 0);
-			}else if(mensaje[0]=='n'){
-				send(nucleo_cliente, &longitud, sizeof(int32_t), 0);
-				send(nucleo_cliente, mensaje, strlen(mensaje), 0);
-			}
+	if (puertoUMC<0){
+		printf("Error de conexion con el nucleo \n");
+		return -2;
+	}
+
+	printf("Intentando conectarse a la UML ... \n");
+	int umc = 0;
+	int umc = conectar(puertoUMC);
+	if (autentificar(umc)< 0){
+		printf("Fue rechazado por la UMC \n");
+		printf("Conexion a la UMC Fail \n");
+		return -3;
+	}
+	printf("Conexion a la UMC OK \n");
+
+	int pcb;
+	int statusPeticion;
+
+	while (1){
+		pcb = esperarPeticion(nucleo);
+
+		if (pcb < 0){
+			perror("Error en la conexion con el Nucleo");
+			return -4;
 		}
-
+		statusPeticion  = procesarPeticion(pcb,nucleo,umc);
+		if (statusPeticion < 0){
+			perror("Error en el proceso de peticion \n");
+			return -5;
+		}
+	}
 	return 0;
 }
+
 
 int conectar(int puerto){
 
@@ -66,30 +84,61 @@ int conectar(int puerto){
 	direccServ.sin_addr.s_addr = INADDR_ANY;
 	direccServ.sin_port = htons(puerto);
 
-	int cliente = socket(AF_INET, SOCK_STREAM, 0);
-	printf("me cree, estoy en el %d\n", cliente);
+	int conexion = socket(AF_INET, SOCK_STREAM, 0);
 
-	if (connect(cliente, (void*) &direccServ, sizeof(direccServ)) != 0) {
-		perror("No se pudo conectar");
+	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
+
+	return conexion;
+}
+
+int autentificar(int conexion){
+	send(conexion, "soy_un_cpu", 10, 0);
+
+	if (esperarConfirmacion(conexion) < 0){
 		return -1;
 	}
 
-	return cliente;
+	return 0;
 }
 
-int esperarRespuesta(int cliente){
+int esperarConfirmacion(int conexion){
 
 	char* bufferHandshake = malloc(8);
-	int bytesRecibidos = recv(cliente, bufferHandshake, 11, 0);
+	int bytesRecibidos = recv(conexion, bufferHandshake, 11, 0);
 
 	if (bytesRecibidos <= 0) {
-		printf("se recibieron %d bytes, no estamos aceptados\n", bytesRecibidos);
-		return 1;
+		printf("Rechazado\n");
+		return -1;
 	} else {
-		printf("se recibieron %d bytes, estamos aceptados!\n", bytesRecibidos);
+		printf("Aceptado\n");
 		return 0;
 	}
 }
 
+int esperarRespuesta(int conexion){
+	int protocolo = 0;
+	int buffer = recv(conexion, &protocolo, sizeof(int32_t), 0);
+	protocolo = ntohl(protocolo);
 
+	if (buffer < 1){
+		printf("Error de Conexion \n");
+		return -1;
+	}
 
+	char* mensaje = malloc(protocolo* sizeof(char) + 1);
+	buffer = recv(conexion, mensaje, protocolo, 0);
+	mensaje[protocolo + 1] = '\0';
+	printf("1: %s \n", mensaje);
+	return 0;
+}
+
+int esperarPeticion(int conexion){
+	return esperarRespuesta(conexion);
+}
+
+int procesarPeticion(int pcb, int nucleo, int umc){
+//	char* linea = solicitarLinea(pcb,umc);
+//	char * instrucciones = parsear(linea);
+//	ejecutar(instrucciones);
+	return 0;
+}
