@@ -36,38 +36,19 @@ typedef struct{
 }datosConfiguracion;
 
 void leerConfiguracion(char*, datosConfiguracion*);
+struct sockaddr_in crearDireccion(int puerto);
+int conectarUmc(int, struct sockaddr_in);
 
 int main(int argc, char* argv[]){
 //	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
 //	leerConfiguracion(argv[0], &datosMemoria);
-	struct sockaddr_in direccionNucleo; //creo la direccion cliente y servidor
-	direccionNucleo.sin_family = AF_INET;
-	direccionNucleo.sin_addr.s_addr = INADDR_ANY;
-	direccionNucleo.sin_port = htons(PUERTO_NUCLEO);
-	struct sockaddr_in direccionUMC;
-	direccionUMC.sin_family = AF_INET;
-	direccionUMC.sin_addr.s_addr = INADDR_ANY;
-	direccionUMC.sin_port = htons(PUERTO_UMC);
+	struct sockaddr_in direccionNucleo=crearDireccion(PUERTO_NUCLEO); //creo la direccion cliente y servidor
+	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);
 
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
 	int nucleo_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	printf("se creo el nucleo servidor: %d y cliente: %d\n",nucleo_servidor,nucleo_cliente);
 
-	//primero me conecto a la UMC
-	if (connect(nucleo_cliente, (void*) &direccionUMC, sizeof(direccionUMC)) != 0) {
-			perror("No se pudo conectar con la UMC");
-			return 1;
-		}
-		//hanshake para UMC
-		send(nucleo_cliente, "soy_el_nucleo", 13, 0);
-		char* bufferHandshakeCli = malloc(8);
-		int bytesRecibidosH = recv(nucleo_cliente, bufferHandshakeCli, 8, 0);
-		if (bytesRecibidosH <= 0) {
-			printf("se recibieron %d bytes, no se pudo conectar con la UMC\n", bytesRecibidosH);
-			return 1;
-		} else {
-			printf("se recibieron %d bytes, estamos conectados con la UMC!\n", bytesRecibidosH);
-		}
 
 	//despues bindeo el nucleo y lo pongo a escuchar
 	int activado = 1;
@@ -82,28 +63,27 @@ int main(int argc, char* argv[]){
 	//ahora creo el select
 	fd_set descriptores;
 	int nuevo_cliente;
-	t_list* cpus;
-	t_list* consolas;
+	t_list* cpus, *consolas;
 	cpus = list_create();
 	consolas = list_create();
 	int max_desc = nucleo_cliente;
 	struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
 	int sin_size = sizeof(struct sockaddr_in);
-	int i;
+	int i,conexionUMC=0;
 
 	while(1){
-
+		if(!conexionUMC){conexionUMC=conectarUmc(nucleo_cliente,direccionUMC);};			//Cuando se crea la UMC, lo acepta
 		FD_ZERO (&descriptores);
 		FD_SET(nucleo_servidor,&descriptores);
 		FD_SET(nucleo_cliente,&descriptores);
 		max_desc = nucleo_cliente;
 			for(i=0; i<list_size(consolas);i++){
-				int conset = list_get(consolas,i); //conset = consola para setear
+				int conset = (int)list_get(consolas,i); //conset = consola para setear
 				FD_SET(conset,&descriptores);
 				if(conset > max_desc){ max_desc = conset; }
 			}
 			for(i=0; i<list_size(cpus);i++){
-					int cpuset = list_get(cpus,i);
+					int cpuset =(int) list_get(cpus,i);
 					FD_SET(cpuset,&descriptores);
 					if(cpuset > max_desc){ max_desc = cpuset; }
 				}
@@ -112,10 +92,9 @@ int main(int argc, char* argv[]){
 		 	perror ("Error en el select");
 		    exit (EXIT_FAILURE);
 		}
-
 		for(i=0; i<list_size(consolas);i++){
 			//entro si una consola me mando algo
-			int unaConsola = list_get(consolas,i);
+			int unaConsola = (int) list_get(consolas,i);
 			if(FD_ISSET(unaConsola , &descriptores)){
 					printf("se activo la consola %d\n",unaConsola);
 					int protocoloC=0; //donde quiero recibir y cantidad que puedo recibir
@@ -142,8 +121,8 @@ int main(int argc, char* argv[]){
 			}
 		 }
 		for(i=0; i<list_size(cpus);i++){
-			//ver los clientes que recibieron informacion
-			int unCPU = list_get(cpus,i);
+			//que cpu me mando informacion
+			int unCPU = (int) list_get(cpus,i);
 			if(FD_ISSET(unCPU , &descriptores)){
 					printf("se activo el cpu %d\n",unCPU);
 					int protocoloCPU=0; //donde quiero recibir y cantidad que puedo recibir
@@ -175,14 +154,14 @@ int main(int argc, char* argv[]){
 					perror("Fallo el accept");
 				}
 				printf("Recibi una conexion en %d!!\n", nuevo_cliente);
-
 				char* bufferHandshake = malloc(15);
 				int bytesRecibidosHs = recv(nuevo_cliente, bufferHandshake, 15, 0);
 				bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 						if (strcmp("soy_un_cpu",bufferHandshake) == 0){
-							send(nuevo_cliente, "Hola_cpu",8,0);
+							int puertoumc=htonl(PUERTO_UMC);
+							send(nuevo_cliente, &puertoumc,sizeof(puertoumc),0);
 							list_add(cpus, (void *)nuevo_cliente);
-							printf("acepte un nuevo cpu\n");
+							printf("acepte un nuevo cpu");
 						}else if(strcmp("soy_una_consola",bufferHandshake) == 0){
 							send(nuevo_cliente, "Hola_consola",12,0); //handshake para consola
 							list_add(consolas, (void *)nuevo_cliente);
@@ -192,8 +171,8 @@ int main(int argc, char* argv[]){
 							perror("No lo tengo que aceptar, fallo el handshake\n");
 							close(nuevo_cliente);
 						}
+						free (bufferHandshake);
 		}
-
 	}
 	//free(datosMemoria);
 	return 0;
@@ -224,4 +203,28 @@ void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
 		}
 	}
 }
+struct sockaddr_in crearDireccion(int puerto){
+	struct sockaddr_in direccion;
+	direccion.sin_family = AF_INET;
+	direccion.sin_addr.s_addr = INADDR_ANY;
+	direccion.sin_port = htons(puerto);
+	return direccion;
+}
+int conectarUmc (int umc, struct sockaddr_in direccion){
+if (connect(umc, (void*) &direccion, sizeof(direccion)) != 0) {
+			return 0;
+		}
+		//hanshake para UMC
+		send(umc, "soy_el_nucleo", 13, 0);
+		char* bufferHandshakeCli = malloc(8);
+		int bytesRecibidosH = recv(umc, bufferHandshakeCli, 8, 0);
+		if (bytesRecibidosH <= 0) {
+			printf("Rechazado por la UMC\n");
+			free (bufferHandshakeCli);
+			return 0;}
+		printf("Aceptado por la UMC!\n");
+		free (bufferHandshakeCli);
+		return umc;
+}
+
 

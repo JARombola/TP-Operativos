@@ -18,20 +18,21 @@
 #include <commons/config.h>
 
 #define PUERTO_SWAP 6660
+#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
 typedef struct{
 	int puerto;
 	char* nombre_swap;
 	int cantidadPaginas;
-	int tamañoPagina;
+	int tamPagina;
 	int retardoCompactacion;
 }datosConfiguracion;
 
 void leerConfiguracion(char*, datosConfiguracion*);
 
 int main(int argc, char* argv[]){
-//	datosConfiguracion datosSwap;
-//	leerConfiguracion(ruta,datosConfiguracion);
+//	datosConfiguracion* datosSwap;
+//	leerConfiguracion(argv[1],datosConfiguracion);
 	struct sockaddr_in direccionSwap;
 
 	direccionSwap.sin_family = AF_INET;
@@ -109,7 +110,7 @@ void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
 			datos->puerto = buscarInt(archivoConfiguracion, "PUERTO");
 			datos->nombre_swap = config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP");
 			datos->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
-			datos->tamañoPagina = buscarInt(archivoConfiguracion, "TAMAÑO_PAGINA");
+			datos->tamPagina = buscarInt(archivoConfiguracion, "TAMAÑO_PAGINA");
 			datos->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
 			config_destroy(archivoConfiguracion);
 		}

@@ -33,25 +33,22 @@ int main() {
 
 
 	int nucleo= conectar(PUERTO_NUCLEO);
-
-	if (autentificar(nucleo)){
-		printf("Fui rechazado por el Nucleo \n");
+	int puertoUMC=autentificar(nucleo);
+	if (!puertoUMC){
 		printf("Conexion al Nucleo Fail \n");
 		return -1;
 	}
-	printf("Conexion al Nucleo OK \n");
-	int puertoUMC = esperarRespuesta(nucleo);
+	printf("Conexion al Nucleo OK:%d \n",puertoUMC);
 
 	if (puertoUMC<0){
 		printf("Error de conexion con el nucleo \n");
 		return -2;
 	}
 
-	printf("Intentando conectarse a la UML ... \n");
+	printf("Intentando conectarse a la UMC ... \n");
 	int umc = 0;
-	int umc = conectar(puertoUMC);
+	umc = conectar(puertoUMC);
 	if (autentificar(umc)< 0){
-		printf("Fue rechazado por la UMC \n");
 		printf("Conexion a la UMC Fail \n");
 		return -3;
 	}
@@ -85,34 +82,24 @@ int conectar(int puerto){
 	direccServ.sin_port = htons(puerto);
 
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-
 	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
-
 	return conexion;
 }
 
 int autentificar(int conexion){
 	send(conexion, "soy_un_cpu", 10, 0);
-
-	if (esperarConfirmacion(conexion) < 0){
-		return -1;
-	}
-
-	return 0;
+	return (esperarConfirmacion(conexion));			//ME DEVUELVE EL PUERTO DE LA UMC o 0 si hubo error
 }
 
 int esperarConfirmacion(int conexion){
-
-	char* bufferHandshake = malloc(8);
-	int bytesRecibidos = recv(conexion, bufferHandshake, 11, 0);
-
+	int puertoUMC=0;
+	int bytesRecibidos = recv(conexion, &puertoUMC, sizeof(int32_t), 0);
 	if (bytesRecibidos <= 0) {
 		printf("Rechazado\n");
-		return -1;
-	} else {
-		printf("Aceptado\n");
 		return 0;
 	}
+	printf("Aceptado\n");
+	return (ntohl(puertoUMC));
 }
 
 int esperarRespuesta(int conexion){
