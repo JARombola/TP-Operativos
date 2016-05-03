@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 						perror("El nucleo se desconecto\n");
 						close(consola_cliente);
 						//todo intentar conectar? o sin nucleo el programa tiene que terminar forzosamente?
+						return -1;
 						break;
 					case 1:														//IMPRIMIR
 						printf("el nucleo quiere que imprima\n");

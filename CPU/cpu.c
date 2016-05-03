@@ -108,14 +108,16 @@ char* esperarRespuesta(int conexion){
 	protocolo = ntohl(protocolo);
 
 	if (buffer < 1){
-	//	printf("Error de Conexion \n");
-	}
+		perror("Error de Conexion \n");
+		return 0; // todo se desconecto, habria que reconectar pero falra saber de que puerto
+	}else{
 
 	char* mensaje = malloc(protocolo* sizeof(char) + 1);
 	buffer = recv(conexion, mensaje, protocolo, 0);
 	mensaje[protocolo + 1] = '\0';
 	printf("1: %s \n", mensaje);
 	return mensaje;
+	}
 }
 
 char* esperarPeticion(int conexion){
