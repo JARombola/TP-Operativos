@@ -31,10 +31,21 @@ typedef struct{
 	int retardo;
 }datosConfiguracion;
 
+
+/*	FALTAN CREAR "ESTRUCTURAS" PARA: - INDICE DE CODIGO
+ *  							     - INDICE DE ETIQUETAS
+ *            					     - INDICE DE STACK
+ */
+
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int);
 int conectarSwap(int, struct sockaddr_in);
 int comprobarCliente(int);
+//COMPLETAR...........................................................
+void inicializarPrograma();
+void enviarBytes();
+void almacenarBytes();
+void finalizarPrograma(int);
 
 
 int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
@@ -243,6 +254,27 @@ int comprobarCliente(int nuevoCliente) {
 	}
 	free(bufferHandshake);
 	return 0;
-
+}
+int comprobarOperacion(int codigoOperacion){				//Recibe el 1er byte y lo manda acá. En cada funcion deberá recibir el resto de bytes
+	switch(codigoOperacion){
+	case 1:inicializarPrograma();break;
+	case 2:enviarBytes();break;
+	case 3:almacenarBytes();break;
+	case 4:finalizarPrograma();break;
 	}
+}
+void inicializarPrograma(){
 
+}
+
+void enviarBytes(){
+
+}
+
+void almacenarBytes(){
+
+}
+
+void finalizarPrograma(int PID){
+
+}

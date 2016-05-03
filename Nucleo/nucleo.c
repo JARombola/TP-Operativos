@@ -5,8 +5,8 @@
  *      Author: utnso
  */
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <commons/string.h>
 #include <commons/config.h>
@@ -16,8 +16,8 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <unistd.h>
-#include <commons/collections/node.h>
 #include <commons/collections/list.h>
+#include <parser/metadata_program.h>
 
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
@@ -35,15 +35,29 @@ typedef struct{
 	char** shared_vars;
 }datosConfiguracion;
 
+typedef struct{
+	int PID;
+	int PC;
+	int SP;
+	int pagsCodigo;
+	int indiceCodigo;
+	int indiceEtiquetas;
+}pcb;
+
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int puerto);
 int conectarUmc(int, struct sockaddr_in);
 int comprobarCliente(int);
+void manejarPCB(char*);
+char* armarLiteral(FILE*);
+int instruccion(char*);
 
 int main(int argc, char* argv[]){
+	char* literal;
 //	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
 //	leerConfiguracion(argv[0], &datosMemoria);
-	struct sockaddr_in direccionNucleo = crearDireccion(PUERTO_NUCLEO); //creo la direccion cliente y servidor
+	manejarPCB("/home/utnso/tp-2016-1c-CodeBreakers/Consola/Nuevo");
+/*	struct sockaddr_in direccionNucleo = crearDireccion(PUERTO_NUCLEO); //creo la direccion cliente y servidor
 	struct sockaddr_in direccionUMC = crearDireccion(PUERTO_UMC);
 
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
@@ -174,7 +188,7 @@ int main(int argc, char* argv[]){
 		}
 	}
 	//free(datosMemoria);
-	return 0;
+	return 0;*/
 }
 
 //--------------------------------------LECTURA CONFIGURACION
@@ -242,4 +256,38 @@ int comprobarCliente(int nuevoCliente) {
 		return 0;
 	}
 }
+//----------------------------------------PCB------------------------------------------------------
+void manejarPCB(char* ruta){
+	pcb pcbProceso;
+	FILE* archivo=fopen(ruta,"r");
+	char* codigo=armarLiteral(archivo);					//El codigo del programa
+	printf("%s",codigo);
+	t_metadata_program* metadata=metadata_desde_literal(codigo);
+	pcbProceso.PC=metadata->instruccion_inicio;
+	pcbProceso.pagsCodigo=metadata->instrucciones_size;			//Hay que dividir por cantidad de paginas!!!!!!
+
+}
+
+char* armarLiteral(FILE* archivoCodigo) {		//Copia el codigo ansisop
+	char unaLinea[200], *codigoTotal;
+	codigoTotal = string_new();
+	while (!feof(archivoCodigo)) {
+		fgets(unaLinea, 200, archivoCodigo);
+//		if (instruccion(unaLinea)){					//IGNORA begin y comentarios
+		string_append(&codigoTotal,unaLinea);//}
+	}
+	return codigoTotal;
+}
+
+int instruccion(char* linea) {
+	if ( (strcmp(_string_trim(linea),"begin") == 0) || (strcmp(_string_trim(linea),"begin\n") == 0) ){		//No se si tiene que ignorar el begin... :/
+		return 0;
+	}
+    if (_string_trim(linea)[0] == '#'){
+    	return 0;
+    }
+    return 1;
+}
+
+
 

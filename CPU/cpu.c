@@ -11,10 +11,10 @@ const int PUERTO_NUCLEO = 6662;
 
 int conectar(int puerto);
 int autentificar(int conexion);
-char* esperarPeticion(int nucleo);
+int esperarPeticion(int nucleo);
 int procesarPeticion(char* pcb, int nucleo, int umc);
 int esperarConfirmacion(int conexion);
-char* esperarRespuesta(int conexion);
+int esperarRespuesta(int conexion);
 
 /*Precondiciones:
  * 				El nucleo debe confirmar al CPU
@@ -59,7 +59,6 @@ int main() {
 
 	while (1){
 		pcb = esperarPeticion(nucleo);
-
 		statusPeticion  = procesarPeticion(pcb,nucleo,umc);
 		if (statusPeticion < 0){
 			perror("Error en el proceso de peticion \n");
@@ -130,3 +129,4 @@ int procesarPeticion(char* pcb, int nucleo, int umc){
 //	ejecutar(instrucciones);
 	return 0;
 }
+
