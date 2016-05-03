@@ -166,6 +166,7 @@ int main(int argc, char* argv[]){
 				printf("acepte un nuevo cpu");
 				break;
 			case 2:
+				send(nuevo_cliente,"1",1,0);
 				list_add(consolas, (void *) nuevo_cliente);				//consola
 				printf("acepte una nueva consola\n");
 				break;

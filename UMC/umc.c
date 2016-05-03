@@ -137,11 +137,13 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 								perror("No lo tengo que aceptar, fallo el handshake\n");
 								close(nuevo_cliente);
 								break;
-							case 1:														//1=CPU
+							case 1:
+								send(nuevo_cliente,"1",1,0);									//1=CPU
 								list_add(cpus, (void *)nuevo_cliente);
 								printf("acepte un nuevo cpu\n");
 								break;
 							case 2:
+								send(nuevo_cliente,"1",1,0);
 								cliente_nucleo = nuevo_cliente;
 								nucleoOK = 1;
 								printf("acepte al nucleo\n");
