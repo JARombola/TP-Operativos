@@ -163,7 +163,7 @@ int main(int argc, char* argv[]){
 				puertoumc = htonl(PUERTO_UMC);						//cpu, primer mensaje es el puerto de la UMC
 				send(nuevo_cliente, &puertoumc, sizeof(puertoumc), 0);
 				list_add(cpus, (void *) nuevo_cliente);
-				printf("acepte un nuevo cpu");
+				printf("acepte un nuevo cpu\n");
 				break;
 			case 2:
 				send(nuevo_cliente,"1",1,0);
