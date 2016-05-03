@@ -42,8 +42,8 @@ int conectarUmc(int, struct sockaddr_in);
 int main(int argc, char* argv[]){
 //	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
 //	leerConfiguracion(argv[0], &datosMemoria);
-	struct sockaddr_in direccionNucleo=crearDireccion(PUERTO_NUCLEO); //creo la direccion cliente y servidor
-	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);
+	struct sockaddr_in direccionNucleo = crearDireccion(PUERTO_NUCLEO); //creo la direccion cliente y servidor
+	struct sockaddr_in direccionUMC = crearDireccion(PUERTO_UMC);
 
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
 	int nucleo_cliente = socket(AF_INET, SOCK_STREAM, 0);

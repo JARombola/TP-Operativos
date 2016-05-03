@@ -32,45 +32,27 @@ typedef struct{
 }datosConfiguracion;
 
 void leerConfiguracion(char*, datosConfiguracion*);
+struct sockaddr_in crearDireccion(int);
+int conectarSwap(int, struct sockaddr_in);
 
 
 int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 	//lector de comandos
-	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
+	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
 	char* comando;
 	int velocidad;
 //	leerConfiguracion(argv[1], &datosMemoria);
 //	printf("Puerto: %d\n",datosMemoria.puerto);
 	//socket
-	struct sockaddr_in direccionSwap; //creo la direccion cliente y servidor
-	direccionSwap.sin_family = AF_INET;
-	direccionSwap.sin_addr.s_addr = INADDR_ANY;
-	direccionSwap.sin_port = htons(PUERTO_SWAP);
-	struct sockaddr_in direccionUMC;
-	direccionUMC.sin_family = AF_INET;
-	direccionUMC.sin_addr.s_addr = INADDR_ANY;
-	direccionUMC.sin_port = htons(PUERTO_UMC);
+	struct sockaddr_in direccionSwap=crearDireccion(PUERTO_SWAP);
+	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);
 
 	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
 	int umc_cliente = socket(AF_INET, SOCK_STREAM, 0);
 	int cliente_nucleo; //socket del nucleo, para el accept
 	printf("se creo la umc servidor: %d y cliente: %d\n",umc_servidor,umc_cliente);
 
-	//primero me conecto a la swap
-		if (connect(umc_cliente, (void*) &direccionSwap, sizeof(direccionSwap)) != 0) {
-				perror("No se pudo conectar con la swap");
-				return 1;
-			}
-			//hanshake para SWAP
-			send(umc_cliente, "soy_la_umc", 10, 0);
-			char* bufferHandshakeSwap = malloc(10);
-			int bytesRecibidosH = recv(umc_cliente, bufferHandshakeSwap, 10, 0);
-			if (bytesRecibidosH <= 0) {
-				printf("se recibieron %d bytes, no se pudo conectar con la swap\n", bytesRecibidosH);
-				return 1;
-			} else {
-				printf("se recibieron %d bytes, estamos conectados con la swap!\n", bytesRecibidosH);
-			}
+
 	//despues bindeo la umc y la pongo a escuchar
 		int activado = 1;
 		setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
@@ -84,52 +66,31 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 	//ahora espero al Nucleo
 		struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
 		int sin_size = sizeof(struct sockaddr_in);
-		int seConecto=1;
-		while(seConecto){
-			cliente_nucleo = accept(umc_servidor, (void *) &direccionCliente, (void *)&sin_size); //acepto el cliente en un descriptor
-			if (cliente_nucleo == -1){
-				perror("Fallo el accept");
-			}
-			printf("Recibi una conexion en %d!!\n", cliente_nucleo);
-		//handshake
-			char* bufferHNucleo = malloc(20);
-				int bytesRecibidosN = recv(cliente_nucleo, bufferHNucleo, 20, 0);
-				bufferHNucleo[bytesRecibidosN] = '\0'; //lo paso a string para comparar
-					if(strcmp("soy_el_nucleo",bufferHNucleo) != 0){
-						perror("No lo tengo que aceptar, no es el nucleo");
-					}else{
-						send(cliente_nucleo, "Hola nucleo",11,0); //handshake para nucleo
-						seConecto = 0;
-					}
-		}
 	//ahora creo el select de cpus
 		fd_set descriptores;
 		int nuevo_cliente;
 		t_list* cpus;
 		cpus = list_create();
-		int max_desc = cliente_nucleo;
-		int i;
+		int max_desc = 0;
+		int i,conexionSwap=0;
 
 	while(1){
-
 		FD_ZERO (&descriptores);
-			FD_SET(umc_servidor,&descriptores);
-			FD_SET(umc_cliente,&descriptores);
-			FD_SET(cliente_nucleo,&descriptores);
-			max_desc = cliente_nucleo;
-				for(i=0; i<list_size(cpus);i++){
-					int cpuset = list_get(cpus,i);
-					FD_SET(cpuset,&descriptores);
-					if(cpuset > max_desc){ max_desc = cpuset; }
-				}
-
+		if (!conexionSwap){conexionSwap=conectarSwap(umc_cliente,direccionSwap);}
+		FD_SET(umc_cliente,&descriptores);
+		FD_SET(umc_servidor,&descriptores);
+		max_desc=umc_cliente;
+		for(i=0; i<list_size(cpus);i++){
+			int cpuset = list_get(cpus,i);
+			FD_SET(cpuset,&descriptores);
+			if(cpuset > max_desc){ max_desc = cpuset; }
+		}
 		if (select (max_desc+1, &descriptores, NULL, NULL, NULL) < 0){
-			 	perror ("Error en el select");
-			    exit (EXIT_FAILURE);
+			 	printf("Select\n");
 		}
 
 		for(i=0; i<list_size(cpus);i++){
-			//ver los clientes que recibieron informacion
+			//ver los clientes DE LOS QUE recibi informacion
 			int unCPU = list_get(cpus,i);
 			if(FD_ISSET(unCPU , &descriptores)){
 					printf("se activo el cpu %d\n",unCPU);
@@ -174,11 +135,17 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 							send(nuevo_cliente, "Hola_cpu",8,0);
 							list_add(cpus, (void *)nuevo_cliente);
 							printf("acepte un nuevo cpu\n");
+						}else if(strcmp("soy_el_nucleo",bufferHandshake) == 0){
+							send(nuevo_cliente, "Hola_nucleo",12,0); //handshake para consola
+							list_add(cpus, (void *)nuevo_cliente);				//AGREGO EL NUCLEO A CPUS!?!?!?!?!?!??!?!?!?!??!?!?!?!??!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?
+							printf("acepte al nucleo\n");
+							//aca iria un close y un free mejor?
 						}else{
 							perror("No lo tengo que aceptar, fallo el handshake\n");
-							close(nuevo_cliente);
+							//close(nuevo_cliente);
 						}
-		}
+						free (bufferHandshake);
+			}
 	}
 	/*-------------------corto lector de comandos para probar sockets, se deberan usar en hilos diferentes
 	while (1) {
@@ -200,10 +167,9 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 					}
 				}
 			}
-		}
-	}*/
+		}*/
 
-	free(datosConfiguracion);
+	//free(datosConfiguracion);
 	return 0;
 }
 
@@ -232,5 +198,30 @@ void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
 			config_destroy(archivoConfiguracion);
 		}
 	}
+}
+
+struct sockaddr_in crearDireccion(int puerto){
+	struct sockaddr_in direccion;
+	direccion.sin_family = AF_INET;
+	direccion.sin_addr.s_addr = INADDR_ANY;
+	direccion.sin_port = htons(puerto);
+	return direccion;
+}
+
+
+int conectarSwap(int swap, struct sockaddr_in direccionSwap){
+if (connect(swap, (void*) &direccionSwap, sizeof(direccionSwap)) != 0) {
+				return 0;
+			}
+			//hanshake para SWAP
+			send(swap, "soy_la_umc", 10, 0);
+			char* bufferHandshakeSwap = malloc(10);
+			int bytesRecibidosH = recv(swap, bufferHandshakeSwap, 10, 0);
+			if (bytesRecibidosH <= 0) {
+				printf("Error al concetarse con Swap");
+				return 0;
+			}
+			printf("Conectado con la swap!\n");
+			return swap;
 }
 
