@@ -34,6 +34,7 @@ typedef struct{
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int);
 int conectarSwap(int, struct sockaddr_in);
+int comprobarCliente(int);
 
 
 int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
@@ -127,24 +128,21 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 					perror("Fallo el accept");
 				}
 				printf("Recibi una conexion en %d!!\n", nuevo_cliente);
+				switch (comprobarCliente(nuevo_cliente)) {
+							case 0:															//Error
+								perror("No lo tengo que aceptar, fallo el handshake\n");
+								close(nuevo_cliente);
+								break;
+							case 1:														//1=CPU
+								list_add(cpus, (void *)nuevo_cliente);
+								printf("acepte un nuevo cpu\n");
+								break;
+							case 2:
+								list_add(cpus, (void *)nuevo_cliente);				//AGREGO EL NUCLEO A CPUS!?!?!?!?!?!??!?!?!?!??!?!?!?!??!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?
+								printf("acepte al nucleo\n");
+								break;
+							}
 
-				char* bufferHandshake = malloc(15);
-				int bytesRecibidosHs = recv(nuevo_cliente, bufferHandshake, 15, 0);
-				bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
-						if (strcmp("soy_un_cpu",bufferHandshake) == 0){
-							send(nuevo_cliente, "Hola_cpu",8,0);
-							list_add(cpus, (void *)nuevo_cliente);
-							printf("acepte un nuevo cpu\n");
-						}else if(strcmp("soy_el_nucleo",bufferHandshake) == 0){
-							send(nuevo_cliente, "Hola_nucleo",12,0); //handshake para consola
-							list_add(cpus, (void *)nuevo_cliente);				//AGREGO EL NUCLEO A CPUS!?!?!?!?!?!??!?!?!?!??!?!?!?!??!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?
-							printf("acepte al nucleo\n");
-							//aca iria un close y un free mejor?
-						}else{
-							perror("No lo tengo que aceptar, fallo el handshake\n");
-							//close(nuevo_cliente);
-						}
-						free (bufferHandshake);
 			}
 	}
 	/*-------------------corto lector de comandos para probar sockets, se deberan usar en hilos diferentes
@@ -192,8 +190,8 @@ void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
 			datos->retardo = buscarInt(archivoConfiguracion, "RETARDO");
 			struct sockaddr_in ipLinda;			//recurso TURBIO para guardar la ip :/
 			char *direccion;
-			inet_aton(config_get_string_value(archivoConfiguracion,"IP"), &ipLinda.sin_addr); // store IP in antelope
-			direccion = inet_ntoa(ipLinda.sin_addr); // return the IP
+			inet_aton(config_get_string_value(archivoConfiguracion,"IP"), &ipLinda.sin_addr); //
+			direccion = inet_ntoa(ipLinda.sin_addr);
 			datos->ip=direccion;
 			config_destroy(archivoConfiguracion);
 		}
@@ -224,4 +222,20 @@ if (connect(swap, (void*) &direccionSwap, sizeof(direccionSwap)) != 0) {
 			printf("Conectado con la swap!\n");
 			return swap;
 }
+
+int comprobarCliente(int nuevoCliente) {
+	char* bufferHandshake = malloc(15);
+	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
+	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
+	if (strcmp("soy_un_cpu", bufferHandshake) == 0) {
+		free(bufferHandshake);
+		return 1;
+	} else if (strcmp("soy_el_nucleo", bufferHandshake) == 0) {
+		free(bufferHandshake);
+		return 2;
+	}
+	free(bufferHandshake);
+	return 0;
+
+	}
 
