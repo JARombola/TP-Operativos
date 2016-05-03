@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 		t_list* cpus;
 		cpus = list_create();
 		int max_desc = 0;
-		int i,conexionSwap=0;
+		int i,conexionSwap=0, nucleoOK=0;
 
 	while(1){
 		FD_ZERO (&descriptores);
@@ -85,6 +85,10 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 			int cpuset = list_get(cpus,i);
 			FD_SET(cpuset,&descriptores);
 			if(cpuset > max_desc){ max_desc = cpuset; }
+		}
+		if(nucleoOK){
+			FD_SET(cliente_nucleo,&descriptores);
+			if(cliente_nucleo > max_desc){ max_desc = cliente_nucleo; }
 		}
 		if (select (max_desc+1, &descriptores, NULL, NULL, NULL) < 0){
 			 	printf("Select\n");
@@ -116,7 +120,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 			 }
 		  }
 		if (FD_ISSET(cliente_nucleo,&descriptores)){
-			//se activo el Nucleo, me esta mandando algo
+			//se activo el Nucleo, me esta mandando algo (nucleoOK=0 si se desconecto)
 		}
 		if (FD_ISSET(umc_cliente,&descriptores)){
 			//se activo la swap, me esta mandando algo
@@ -138,7 +142,8 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 								printf("acepte un nuevo cpu\n");
 								break;
 							case 2:
-								list_add(cpus, (void *)nuevo_cliente);				//AGREGO EL NUCLEO A CPUS!?!?!?!?!?!??!?!?!?!??!?!?!?!??!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?
+								cliente_nucleo = nuevo_cliente;
+								nucleoOK = 1;
 								printf("acepte al nucleo\n");
 								break;
 							}

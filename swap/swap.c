@@ -28,53 +28,22 @@ typedef struct{
 	int retardoCompactacion;
 }datosConfiguracion;
 
+int crear_socket_server(int puerto);
+int aceptar(int server);
 void leerConfiguracion(char*, datosConfiguracion*);
 
 int main(int argc, char* argv[]){
 //	datosConfiguracion* datosSwap;
 //	leerConfiguracion(argv[1],datosConfiguracion);
-	struct sockaddr_in direccionSwap;
-
-	direccionSwap.sin_family = AF_INET;
-	direccionSwap.sin_addr.s_addr = INADDR_ANY;
-	direccionSwap.sin_port = htons(PUERTO_SWAP);
-
-	int swap_servidor = socket(AF_INET, SOCK_STREAM, 0);
+	int swap_servidor = crear_socket_server(PUERTO_SWAP);
 	int umc_cliente;
-	printf("se creo la swap en %d\n",swap_servidor);
 
-	int activado = 1;
-	setsockopt(swap_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
-	if (bind(swap_servidor, (void *)&direccionSwap, sizeof(direccionSwap)) != 0){
-		perror("Fallo el bind");
-		return 1;
-	}
 	printf("Estoy escuchando\n");
 	listen(swap_servidor,100);
 
 	//----------------------------creo cliente para umc
+	umc_cliente = aceptar(swap_servidor);
 
-	struct sockaddr_in direccionUMC; //direccion donde guarde el cliente
-	int sin_size = sizeof(struct sockaddr_in);
-
-	int seConecto=1;
-	while(seConecto){
-		umc_cliente = accept(swap_servidor, (void *) &direccionUMC, (void *)&sin_size);
-		if (umc_cliente == -1){
-			perror("Fallo el accept");
-		}
-		printf("Recibi una conexion en %d!!\n", umc_cliente);
-	//---------------------------------handshake
-		char* bufferHandshake = malloc(10);
-		int bytesRecibidosH = recv(umc_cliente, bufferHandshake, 10, 0);
-		bufferHandshake[bytesRecibidosH] = '\0'; //lo paso a string para comparar
-			if(strcmp("soy_la_umc",bufferHandshake) != 0){
-				perror("No lo tengo que aceptar, no es la UMC");
-			}else{
-				send(umc_cliente, "Hola consola",12,0); //handshake para consola
-				seConecto = 0;
-			}
-	}
 	//----------------recibo datos de la UMC
 
 	while (1){
@@ -83,7 +52,7 @@ int main(int argc, char* argv[]){
 			protocoloUMC=ntohl(protocoloUMC);
 				if(bytesRecibidosUMC <= 0){
 					perror("la UMC se desconecto o algo. Se la elimino\n");
-					return 0; //todo que vuelva al while anterior y espera a la consola devuelta
+					return 0; //todo que vuelva al while anterior y espera a la umc devuelta
 				} else {
 					char* bufferUMC = malloc(protocoloUMC * sizeof(char) + 1);
 					bytesRecibidosUMC = recv(umc_cliente, bufferUMC, protocoloUMC, 0);
@@ -96,6 +65,49 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 
+int crear_socket_server(int puerto){
+
+	struct sockaddr_in direccionServer;
+	direccionServer.sin_family = AF_INET;
+	direccionServer.sin_addr.s_addr = INADDR_ANY;
+	direccionServer.sin_port = htons(puerto);
+
+		int servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+		printf("se creo la swap en %d\n",servidor);
+
+		int activado = 1;
+		setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
+		if (bind(servidor, (void *)&direccionServer, sizeof(direccionServer)) != 0){
+			perror("Fallo el bind");
+			return 1;
+		}
+		return servidor;
+}
+
+int aceptar(int server){
+	struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
+		int sin_size = sizeof(struct sockaddr_in);
+		int cliente;
+		int seConecto=1;
+		while(seConecto){
+			cliente = accept(server, (void *) &direccionCliente, (void *)&sin_size);
+			if (cliente == -1){
+				perror("Fallo el accept");
+			}
+			printf("Recibi una conexion en %d!!\n", cliente);
+		char* bufferHandshake = malloc(10);
+			int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);
+			bufferHandshake[bytesRecibidosH] = '\0'; //lo paso a string para comparar
+				if(strcmp("soy_la_umc",bufferHandshake) != 0){
+					perror("No lo tengo que aceptar, no es la UMC");
+				}else{
+					send(cliente, "Hola umc",8,0); //handshake para consola
+					seConecto = 0;
+				}
+		}
+		return cliente;
+}
 
 void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
 	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
