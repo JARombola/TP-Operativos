@@ -29,7 +29,7 @@ typedef struct{
 }datosConfiguracion;
 
 int crear_socket_server(int puerto);
-int aceptar(int server);
+int aceptarUMC(int server);
 void leerConfiguracion(char*, datosConfiguracion*);
 
 int main(int argc, char* argv[]){
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
 	listen(swap_servidor,100);
 
 	//----------------------------creo cliente para umc
-	umc_cliente = aceptar(swap_servidor);
+	umc_cliente = aceptarUMC(swap_servidor);
 
 	//----------------recibo datos de la UMC
 
@@ -52,7 +52,9 @@ int main(int argc, char* argv[]){
 			protocoloUMC=ntohl(protocoloUMC);
 				if(bytesRecibidosUMC <= 0){
 					perror("la UMC se desconecto o algo. Se la elimino\n");
-					return 0; //todo que vuelva al while anterior y espera a la umc devuelta
+					close(umc_cliente);
+					printf("esperando devuelta a la umc.\n");
+					umc_cliente = aceptarUMC(swap_servidor);
 				} else {
 					char* bufferUMC = malloc(protocoloUMC * sizeof(char) + 1);
 					bytesRecibidosUMC = recv(umc_cliente, bufferUMC, protocoloUMC, 0);
@@ -85,7 +87,7 @@ int crear_socket_server(int puerto){
 		return servidor;
 }
 
-int aceptar(int server){
+int aceptarUMC(int server){
 	struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
 		int sin_size = sizeof(struct sockaddr_in);
 		int cliente;
@@ -103,6 +105,7 @@ int aceptar(int server){
 					perror("No lo tengo que aceptar, no es la UMC");
 				}else{
 					send(cliente, "Hola umc",8,0); //handshake para consola
+					printf("se conecto la UMC\n");
 					seConecto = 0;
 				}
 		}
