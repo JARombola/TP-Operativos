@@ -44,6 +44,11 @@ typedef struct{
 	int indiceEtiquetas;
 }pcb;
 
+typedef struct{
+	int inicio;
+	int offset;
+}sentencia;
+
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int puerto);
 int conectarUmc(int, struct sockaddr_in);
@@ -51,6 +56,8 @@ int comprobarCliente(int);
 void manejarPCB(char*);
 char* armarLiteral(FILE*);
 int instruccion(char*);
+t_list* crearIndiceDeCodigo(t_metadata_program*);
+void* mostrar(int*);
 
 int main(int argc, char* argv[]){
 	char* literal;
@@ -262,9 +269,11 @@ void manejarPCB(char* ruta){
 	FILE* archivo=fopen(ruta,"r");
 	char* codigo=armarLiteral(archivo);					//El codigo del programa
 	printf("%s",codigo);
-	t_metadata_program* metadata=metadata_desde_literal(codigo);
+	t_metadata_program *metadata=metadata_desde_literal(codigo);
 	pcbProceso.PC=metadata->instruccion_inicio;
-	pcbProceso.pagsCodigo=metadata->instrucciones_size;			//Hay que dividir por cantidad de paginas!!!!!!
+	t_list* indiceCodigo=crearIndiceDeCodigo(metadata);
+	list_iterate(indiceCodigo,(void*)mostrar);						//Ver inicio y offset de cada sentencia
+	pcbProceso.pagsCodigo=metadata->instrucciones_size;			//!!!!!!!!!!!!!!!!!!!Hay que dividir por cantidad de paginas!!!!!!
 
 }
 
@@ -273,13 +282,12 @@ char* armarLiteral(FILE* archivoCodigo) {		//Copia el codigo ansisop
 	codigoTotal = string_new();
 	while (!feof(archivoCodigo)) {
 		fgets(unaLinea, 200, archivoCodigo);
-//		if (instruccion(unaLinea)){					//IGNORA begin y comentarios
-		string_append(&codigoTotal,unaLinea);//}
+		string_append(&codigoTotal,unaLinea);
 	}
 	return codigoTotal;
 }
 
-int instruccion(char* linea) {
+int instruccion(char* linea) {							//*******Podria usarse la funcion del Parser: LlamasSinRetorno
 	if ( (strcmp(_string_trim(linea),"begin") == 0) || (strcmp(_string_trim(linea),"begin\n") == 0) ){		//No se si tiene que ignorar el begin... :/
 		return 0;
 	}
@@ -289,5 +297,24 @@ int instruccion(char* linea) {
     return 1;
 }
 
+t_list* crearIndiceDeCodigo(t_metadata_program* meta){
+	t_list* lineas=list_create();
+	t_intructions* unaInstruccion=meta->instrucciones_serializado;
+	printf("\ninstrucciones:%d\n",meta->instrucciones_size); //=5
+	int i;
+	for (i=0;i<(meta->instrucciones_size);i++,unaInstruccion++){
+			int* unaLinea=malloc(sizeof(int*));									//0=inicio, 1=offset
+			unaLinea[0]=unaInstruccion->start;
+			unaLinea[1]=unaInstruccion->offset;
+			list_add(lineas, (int*)unaLinea);					//Guarda el PUNTERO al int
+		}
+	return lineas;
+	list_clean(lineas);
+	list_destroy(lineas);
+}
+
+void* mostrar(int* sentencia){
+	printf("Inicio:%d | Offset:%d\n",sentencia[0],sentencia[1]);
+}
 
 
