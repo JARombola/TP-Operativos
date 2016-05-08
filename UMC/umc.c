@@ -39,7 +39,8 @@ typedef struct{
 
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int);
-int conectarSwap(int, struct sockaddr_in);
+int conectar(int);
+int autentificar(int);
 int comprobarCliente(int);
 //COMPLETAR...........................................................
 void inicializarPrograma();
@@ -55,30 +56,32 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 	int velocidad;
 //	leerConfiguracion(argv[1], &datosMemoria);
 //	printf("Puerto: %d\n",datosMemoria.puerto);
-	//socket
-	struct sockaddr_in direccionSwap=crearDireccion(PUERTO_SWAP);
-	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);
 
-	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
-	int umc_cliente = socket(AF_INET, SOCK_STREAM, 0);
-	int cliente_nucleo; //socket del nucleo, para el accept
-	printf("se creo la umc servidor: %d y cliente: %d\n",umc_servidor,umc_cliente);
+	//-------------------------SOCKETS
+	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);		//Para el bind
+	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); 			//creo el descriptor con esa direccion
+	printf("se creo la umc\n");
+	printf("Intentando conectar con la SWAP...\n");
 
+	int umc_cliente = conectar(PUERTO_SWAP);
+	if (!autentificar(umc_cliente)){printf("Falló el handshake\n");return -1;}
+	printf("Aceptados\n");
 
-	//despues bindeo la umc y la pongo a escuchar
-		int activado = 1;
-		setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
-		if (bind(umc_servidor, (void *)&direccionUMC, sizeof(direccionUMC)) != 0){
-			perror("Fallo el bind");
-			return 1;
-		}
-		printf("Estoy escuchando\n");
-		listen(umc_servidor,15);
+	int cliente_nucleo; 											//socket del nucleo, para el accept
+	int activado = 1;
+	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado,
+			sizeof(activado)); 												//para cerrar los binds al cerrar
+	if (bind(umc_servidor, (void *) &direccionUMC, sizeof(direccionUMC)) != 0) {
+		perror("Fallo el bind");
+		return 1;
+	}
+	printf("Estoy escuchando\n");
+	listen(umc_servidor, 15);
 
-	//ahora espero al Nucleo
-		struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
-		int sin_size = sizeof(struct sockaddr_in);
+	struct sockaddr_in direccionCliente; 							//direccion donde guarde el cliente
+	int sin_size = sizeof(struct sockaddr_in);
 	//ahora creo el select de cpus
+
 		fd_set descriptores;
 		int nuevo_cliente;
 		t_list* cpus;
@@ -88,7 +91,6 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 
 	while(1){
 		FD_ZERO (&descriptores);
-		if (!conexionSwap){conexionSwap=conectarSwap(umc_cliente,direccionSwap);}
 		FD_SET(umc_cliente,&descriptores);
 		FD_SET(umc_servidor,&descriptores);
 		max_desc=umc_cliente;
@@ -224,21 +226,23 @@ struct sockaddr_in crearDireccion(int puerto){
 	return direccion;
 }
 
+int conectar(int puerto){   							//Con la swap
+	struct sockaddr_in direccion=crearDireccion(puerto);
+	int conexion = socket(AF_INET, SOCK_STREAM, 0);
+	while (connect(conexion, (void*) &direccion, sizeof(direccion)));
+	return conexion;
+}
 
-int conectarSwap(int swap, struct sockaddr_in direccionSwap){
-if (connect(swap, (void*) &direccionSwap, sizeof(direccionSwap)) != 0) {
-				return 0;
-			}
-			//hanshake para SWAP
-			send(swap, "soy_la_umc", 10, 0);
-			char* bufferHandshakeSwap = malloc(10);
-			int bytesRecibidosH = recv(swap, bufferHandshakeSwap, 10, 0);
-			if (bytesRecibidosH <= 0) {
-				printf("Error al concetarse con Swap");
-				return 0;
-			}
-			printf("Conectado con la swap!\n");
-			return swap;
+int autentificar(int conexion) {
+	send(conexion, "soy_la_umc", 10, 0);
+	char* bufferHandshakeSwap = malloc(10);
+	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 10, 0);
+	if (bytesRecibidosH <= 0) {
+		printf("Error al conectarse con Swap");
+		return 0;
+	}
+	printf("Conectado con la swap!\n");
+	return 1;
 }
 
 int comprobarCliente(int nuevoCliente) {
@@ -260,7 +264,7 @@ int comprobarOperacion(int codigoOperacion){				//Recibe el 1er byte y lo manda 
 	case 1:inicializarPrograma();break;
 	case 2:enviarBytes();break;
 	case 3:almacenarBytes();break;
-	case 4:finalizarPrograma();break;
+	case 4:finalizarPrograma(4);break;
 	}
 }
 void inicializarPrograma(){

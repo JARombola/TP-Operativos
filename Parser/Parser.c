@@ -75,30 +75,5 @@ void analizarParser(char* instruccion){
 	analizadorLinea(strdup(instruccion), &functions, &kernel_functions);
 }
 
-int main(int argc,char* argv[]){
-
-	printf("Abriendo archivo \n");
-	FILE *ansisop =	fopen(argv[1], "r");
-
-	if (ansisop == NULL){
-		printf("Error al abrir el archivo, verifique la existencia del mismo \n");
-		return -1;
-	}
-
-	printf("Analizando archivo ... \n");
-
-	char linea[200];
-	while (!feof(ansisop)) {
-		fgets(linea,200,ansisop);
-        analizarParser(linea);
-	}
-
-	fclose(ansisop);
-	printf("Archivo cerrado\n");
-
-	return 0;
-}
-
-
 
 

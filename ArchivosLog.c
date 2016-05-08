@@ -1,27 +1,5 @@
 #include <commons/log.h>
 
-void menuLogs() {
-	int opcion;
-	char *mensaje, *programa;
-	mensaje = string_new();
-	programa = string_new();
-	printf("Mensaje: ");
-	scanf("%d",&opcion);
-	programa = string_new();
-	programa = "Prueba";
-	switch (opcion) {
-	case 1:
-		registrarError(programa, "Feo: ingresó un 1");
-		break;
-	case 2:
-		registrarInfo(programa, "Ingresó un 2");
-		break;
-	case 3:
-		registrarWarning(programa, "Epa... ingresó un 3");
-	break;
-}
-
-}
 
 void registrarError(char* programa, char* mensaje) {
 t_log* archivoLog = log_create("Errores.log", programa, true,

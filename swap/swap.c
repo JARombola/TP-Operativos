@@ -28,21 +28,36 @@ typedef struct{
 	int retardoCompactacion;
 }datosConfiguracion;
 
-int crear_socket_server(int puerto);
-int aceptarUMC(int server);
+struct sockaddr_in crearDireccion(int puerto);
+int comprobarCliente(int);
 void leerConfiguracion(char*, datosConfiguracion*);
 
 int main(int argc, char* argv[]){
 //	datosConfiguracion* datosSwap;
 //	leerConfiguracion(argv[1],datosConfiguracion);
-	int swap_servidor = crear_socket_server(PUERTO_SWAP);
-	int umc_cliente;
-
+	struct sockaddr_in direccionServer=crearDireccion(PUERTO_SWAP);
+	int	swap_servidor=socket(AF_INET, SOCK_STREAM, 0),
+		umc_cliente;
+	printf("se creo la swap\n Esperando UMC...\n");
+	int activado = 1;
+	setsockopt(swap_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
+		if (bind(swap_servidor, (void *)&direccionServer, sizeof(direccionServer)) != 0){
+			perror("Fallo el bind");
+			return 1;
+		}
 	printf("Estoy escuchando\n");
-	listen(swap_servidor,100);
+	listen(swap_servidor,5);
 
 	//----------------------------creo cliente para umc
-	umc_cliente = aceptarUMC(swap_servidor);
+	struct sockaddr_in direccionCliente;
+	int sin_size = sizeof(struct sockaddr_in);
+	do{
+	umc_cliente = accept(swap_servidor, (void *) &direccionCliente, (void *)&sin_size);
+				if (umc_cliente == -1){
+					perror("Fallo el accept");
+				}
+				printf("Recibi una conexion\n");}
+	while(!comprobarCliente(umc_cliente));						//Mientras el que se conecta no es la UMC
 
 	//----------------recibo datos de la UMC
 
@@ -51,10 +66,9 @@ int main(int argc, char* argv[]){
 			int bytesRecibidosUMC = recv(umc_cliente, &protocoloUMC, sizeof(int32_t), 0);
 			protocoloUMC=ntohl(protocoloUMC);
 				if(bytesRecibidosUMC <= 0){
-					perror("la UMC se desconecto o algo. Se la elimino\n");
+					perror("la UMC se desconecto o algo. Se la elimino\n Swap autodestruida\n");
 					close(umc_cliente);
-					printf("esperando devuelta a la umc.\n");
-					umc_cliente = aceptarUMC(swap_servidor);
+					return 0;
 				} else {
 					char* bufferUMC = malloc(protocoloUMC * sizeof(char) + 1);
 					bytesRecibidosUMC = recv(umc_cliente, bufferUMC, protocoloUMC, 0);
@@ -67,49 +81,25 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 
-int crear_socket_server(int puerto){
-
-	struct sockaddr_in direccionServer;
-	direccionServer.sin_family = AF_INET;
-	direccionServer.sin_addr.s_addr = INADDR_ANY;
-	direccionServer.sin_port = htons(puerto);
-
-		int servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-		printf("se creo la swap en %d\n",servidor);
-
-		int activado = 1;
-		setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
-		if (bind(servidor, (void *)&direccionServer, sizeof(direccionServer)) != 0){
-			perror("Fallo el bind");
-			return 1;
-		}
-		return servidor;
+//-----------------------------------FUNCIONES-----------------------------------
+struct sockaddr_in crearDireccion(int puerto) {
+	struct sockaddr_in direccion;
+	direccion.sin_family = AF_INET;
+	direccion.sin_addr.s_addr = INADDR_ANY;
+	direccion.sin_port = htons(puerto);
+	return direccion;
 }
 
-int aceptarUMC(int server){
-	struct sockaddr_in direccionCliente; //direccion donde guarde el cliente
-		int sin_size = sizeof(struct sockaddr_in);
-		int cliente;
-		int seConecto=1;
-		while(seConecto){
-			cliente = accept(server, (void *) &direccionCliente, (void *)&sin_size);
-			if (cliente == -1){
-				perror("Fallo el accept");
-			}
-			printf("Recibi una conexion en %d!!\n", cliente);
-		char* bufferHandshake = malloc(10);
-			int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);
-			bufferHandshake[bytesRecibidosH] = '\0'; //lo paso a string para comparar
-				if(strcmp("soy_la_umc",bufferHandshake) != 0){
-					perror("No lo tengo que aceptar, no es la UMC");
-				}else{
-					send(cliente, "Hola umc",8,0); //handshake para consola
-					printf("se conecto la UMC\n");
-					seConecto = 0;
-				}
-		}
-		return cliente;
+
+int comprobarCliente(int cliente){
+	char* bufferHandshake = malloc(11);
+	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);
+	bufferHandshake[bytesRecibidosH] = '\0'; 					//lo paso a string para comparar
+	if (strcmp("soy_la_umc", bufferHandshake)) {
+		return 0;}															//No era la UMC :/
+	send(cliente, "Hola umc", 8, 0);
+	printf("se conecto la UMC\n");
+	return 1;
 }
 
 void leerConfiguracion(char *ruta, datosConfiguracion *datos) {

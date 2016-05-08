@@ -11,10 +11,10 @@ const int PUERTO_NUCLEO = 6662;
 
 int conectar(int puerto);
 int autentificar(int conexion);
-int esperarPeticion(int nucleo);
+char* esperarPeticion(int nucleo);
 int procesarPeticion(char* pcb, int nucleo, int umc);
 int esperarConfirmacion(int conexion);
-int esperarRespuesta(int conexion);
+char* esperarRespuesta(int conexion);
 
 /*Precondiciones:
  * 				El nucleo debe confirmar al CPU
@@ -32,23 +32,17 @@ int main() {
 	printf("Intentando conectarse al Nucleo ... \n");
 
 
-	int nucleo= conectar(PUERTO_NUCLEO);
-	int puertoUMC=autentificar(nucleo);
-	if (!puertoUMC){
-		printf("Conexion al Nucleo Fail \n");
+	int nucleo=conectar(PUERTO_NUCLEO);
+	if (!autentificar(nucleo)){
+		printf("Conexion al Nucleo Fail, error Handshake \n");
 		return -1;
 	}
-	printf("Conexion al Nucleo OK:%d \n",puertoUMC);
+	printf("Conexion al Nucleo OK \n");
 
-	if (puertoUMC<0){
-		printf("Error de conexion con el nucleo \n");
-		return -2;
-	}
 
 	printf("Intentando conectarse a la UMC ... \n");
-	int umc = 0;
-	umc = conectar(puertoUMC);
-	if (autentificar(umc)< 0){
+	int umc = conectar(PUERTO_UMC);
+	if (!autentificar(umc)){
 		printf("Conexion a la UMC Fail \n");
 		return -3;
 	}
@@ -81,7 +75,7 @@ int conectar(int puerto){
 	direccServ.sin_port = htons(puerto);
 
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
+	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)));
 	return conexion;
 }
 
@@ -91,14 +85,14 @@ int autentificar(int conexion){
 }
 
 int esperarConfirmacion(int conexion){
-	int puertoUMC=0;
-	int bytesRecibidos = recv(conexion, &puertoUMC, sizeof(int32_t), 0);
+	int buffer=0;
+	int bytesRecibidos = recv(conexion, &buffer, sizeof(int32_t), 0);
 	if (bytesRecibidos <= 0) {
 		printf("Rechazado\n");
 		return 0;
 	}
 	printf("Aceptado\n");
-	return (ntohl(puertoUMC));
+	return 1;
 }
 
 char* esperarRespuesta(int conexion){
