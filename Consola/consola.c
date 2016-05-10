@@ -13,21 +13,28 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+
 #define PUERTO_NUCLEO 6662
 int protocolo(int nucleo);
 int conectar (int);
 int autentificar(int);
 int esperarConfirmacion(int);
+char* header(int);
+char* agregarHeader(int, char*);
+int enviarAnsisop(FILE*, int);
 
 int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecutar (#!, ver "Nuevo")
-
+	printf("Consola creada. Conectando al Nucleo...\n");
 	int nucleo=conectar(PUERTO_NUCLEO);
-	printf("Consola creada\n Intentando conectar al nucleo...\n");
 	if (!autentificar(nucleo)) {
 		printf("Conexion al nucleo fail, error handshake\n");
 		return -1;
 	}
-	printf("Aceptados! :)\n");
+	printf("Conexion Ok\n");
+	FILE* ansisop=fopen(argv[1],"r");
+	if (!ansisop){perror("Archivo");}
+	if(enviarAnsisop(ansisop, nucleo)){printf("Error en el envio del codigo\n");}
+	printf("Ansisop enviado con éxito\n");
 	while (1){
 		char *mensaje;
 		mensaje = string_new();
@@ -58,10 +65,9 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 					bufferC[protocoloC + 1] = '\0';
 					printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidosC, bufferC);*/
 
-	//}
+	}
 	return 0;
 }
-
 int conectar(int puerto){
 
 	struct sockaddr_in direccNucleo;
@@ -90,21 +96,59 @@ int esperarConfirmacion(int conexion){
 	return 1;
 }
 
+char* header(int numeroBytes){
+	char* longitud=string_new();longitud=string_reverse(string_itoa(numeroBytes));
+	string_append(&longitud,"0000");
+	longitud=string_substring(longitud,0,4);
+	longitud=string_reverse(longitud);
+	return longitud;
+}
+
+char* agregarHeader(int bytes, char* codigo){
+	char* head=malloc(4);
+	head=header(bytes);
+	codigo=string_reverse(codigo);
+	string_append(&codigo,string_reverse(head));
+	codigo=string_reverse(codigo);
+	free (head);
+	return codigo;
+}
+
+int enviarAnsisop(FILE* archivo, int sockNucleo){
+	fseek (archivo, 0, SEEK_END);
+	int bytesArchivo = ftell (archivo);
+	fseek (archivo, 0, SEEK_SET);
+	char* codigo = (char*)malloc((bytesArchivo+4)*sizeof(char)); 			//+4 Para el header (longitud)
+	if (codigo){
+		fread (codigo, sizeof(char), bytesArchivo, archivo);
+	}
+	else {
+		perror("Error Malloc");
+		free(codigo);
+		fclose(archivo);
+		return 1;
+	}
+	fclose (archivo);
+	codigo=agregarHeader(bytesArchivo,codigo);
+	int enviados=send(sockNucleo, codigo, string_length(codigo), 0);
+	free(codigo);
+	if(enviados==bytesArchivo+4){return 0;}							//Envio ok
+	return 1;											//Error
+}
 
 int protocolo(int nucleo) {
 	char* buffer = malloc(2);
 	int bytesRecibidos = recv(nucleo, buffer, 1, 0);
 	buffer[bytesRecibidos] = '\0'; //lo paso a string para comparar
 	if(bytesRecibidos <= 0){ //se desconecto
-		free(buffer);
 		return 0;
 	}
 	if (strcmp("1", buffer) == 0) {//quiere imprimir
-		free(buffer);
 		return 1;
 	} else if (strcmp("2", buffer) == 0) { //quiere imprimir texto
-		free(buffer);
 		return 2;
 	}
+	free(buffer);
 	return -1;
 }
+

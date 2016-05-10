@@ -38,14 +38,14 @@ int main(int argc, char* argv[]){
 	struct sockaddr_in direccionServer=crearDireccion(PUERTO_SWAP);
 	int	swap_servidor=socket(AF_INET, SOCK_STREAM, 0),
 		umc_cliente;
-	printf("se creo la swap\n Esperando UMC...\n");
+	printf("se creo la swap\n");
 	int activado = 1;
 	setsockopt(swap_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
 		if (bind(swap_servidor, (void *)&direccionServer, sizeof(direccionServer)) != 0){
 			perror("Fallo el bind");
 			return 1;
 		}
-	printf("Estoy escuchando\n");
+	printf("Esperando UMC...\n");
 	listen(swap_servidor,5);
 
 	//----------------------------creo cliente para umc
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]){
 				}
 				printf("Recibi una conexion\n");}
 	while(!comprobarCliente(umc_cliente));						//Mientras el que se conecta no es la UMC
-
+	printf("UMC Conectada!\n");
 	//----------------recibo datos de la UMC
 
 	while (1){
@@ -98,8 +98,8 @@ int comprobarCliente(int cliente){
 	if (strcmp("soy_la_umc", bufferHandshake)) {
 		return 0;}															//No era la UMC :/
 	send(cliente, "Hola umc", 8, 0);
-	printf("se conecto la UMC\n");
 	return 1;
+	free(bufferHandshake);
 }
 
 void leerConfiguracion(char *ruta, datosConfiguracion *datos) {

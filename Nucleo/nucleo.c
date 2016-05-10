@@ -44,25 +44,22 @@ typedef struct {
 	int indiceEtiquetas;
 } pcb;
 
-typedef struct {
-	int inicio;
-	int offset;
-} sentencia;
 
 int autentificar(int);
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int puerto);
 int conectarUMC(int);
 int comprobarCliente(int);
+int recibirProtocolo(int);
+void* recibirMensaje(int, int);
 void manejarPCB(char*);
-char* armarLiteral(FILE*);
-int instruccion(char*);
 t_list* crearIndiceDeCodigo(t_metadata_program*);
 void mostrar(int*);
 
+
 int main(int argc, char* argv[]) {
 	char* literal;
-//	datosConfiguracion datosMemoria=malloc(sizeof(datosConfiguracion));
+//	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
 //	leerConfiguracion(argv[0], &datosMemoria);
 //	manejarPCB("/home/utnso/tp-2016-1c-CodeBreakers/Consola/Nuevo");
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -103,6 +100,7 @@ int main(int argc, char* argv[]) {
 		FD_SET(nucleo_servidor, &descriptores);
 		FD_SET(conexionUMC, &descriptores);
 		max_desc = conexionUMC;
+
 		for (i = 0; i < list_size(consolas); i++) {
 			int conset = (int) list_get(consolas, i); //conset = consola para setear
 			FD_SET(conset, &descriptores);
@@ -123,32 +121,25 @@ int main(int argc, char* argv[]) {
 			exit(EXIT_FAILURE);
 		}
 		for (i = 0; i < list_size(consolas); i++) {
-			//entro si una consola me mando algo
+																			//entro si una consola me mando algo
 			int unaConsola = (int) list_get(consolas, i);
 			if (FD_ISSET(unaConsola, &descriptores)) {
-				printf("se activo la consola %d\n", unaConsola);
-				int protocoloC = 0; //donde quiero recibir y cantidad que puedo recibir
-				int bytesRecibidosC = recv(unaConsola, &protocoloC,
-						sizeof(int32_t), 0);
-				protocoloC = ntohl(protocoloC);
-				if (bytesRecibidosC <= 0) {
-					perror("la consola se desconecto o algo. Se la elimino\n");
+				int protocolo = recibirProtocolo(unaConsola);
+				if (protocolo == -1) {
+					perror("La consola se desconecto o algo. Eliminada\n");
 					list_remove(consolas, i);
 				} else {
-					char* bufferC = malloc(protocoloC * sizeof(char) + 1);
-					bytesRecibidosC = recv(unaConsola, bufferC, protocoloC, 0);
-					bufferC[protocoloC + 1] = '\0'; //para pasarlo a string (era un stream)
-					printf("cliente: %d, me llegaron %d bytes con %s\n",
-							unaConsola, bytesRecibidosC, bufferC);
+					char* bufferConsola = malloc(protocolo + 1);
+					int mensaje = recibirMensaje(unaConsola, protocolo);
+					free(bufferConsola);
 					//mando mensaje a los CPUs
 					for (i = 0; i < list_size(cpus); i++) {
 						//ver los clientes que recibieron informacion
 						int unCPU = list_get(cpus, i);
-						int longitud = htonl(string_length(bufferC));
+						int longitud = htonl(string_length(bufferConsola));
 						send(unCPU, &longitud, sizeof(int32_t), 0);
-						send(unCPU, bufferC, strlen(bufferC), 0);
+						send(unCPU, bufferConsola, strlen(bufferConsola), 0);
 					}
-					free(bufferC);
 				}
 			}
 		}
@@ -156,20 +147,13 @@ int main(int argc, char* argv[]) {
 			//que cpu me mando informacion
 			int unCPU = (int) list_get(cpus, i);
 			if (FD_ISSET(unCPU, &descriptores)) {
-				printf("se activo el cpu %d\n", unCPU);
-				int protocoloCPU = 0; //donde quiero recibir y cantidad que puedo recibir
-				int bytesRecibidosCpu = recv(unCPU, &protocoloCPU,
-						sizeof(int32_t), 0);
-				protocoloCPU = ntohl(protocoloCPU);
-				if (bytesRecibidosCpu <= 0) {
+				int protocolo=recibirProtocolo(unCPU);
+				if (protocolo==-1) {
 					perror("el cpu se desconecto o algo. Se lo elimino\n");
-					list_remove(cpus, i); //no entendi de la funcion de commons: list_remove_and_destroy_element, el parametro: void(*element_destroyer)(void*)
+					list_remove(cpus, i);
 				} else {
-					char* bufferCpu = malloc(protocoloCPU * sizeof(char) + 1);
-					bytesRecibidosCpu = recv(unCPU, bufferCpu, protocoloCPU, 0);
-					bufferCpu[protocoloCPU + 1] = '\0'; //para pasarlo a string (era un stream)
-					printf("cliente: %d, me llegaron %d bytes con %s\n", unCPU,
-							bytesRecibidosCpu, bufferCpu);
+					char* bufferCpu = malloc(protocolo + 1);
+					int mensaje = recibirMensaje(unCPU,protocolo);
 					free(bufferCpu);
 				}
 			}
@@ -186,7 +170,6 @@ int main(int argc, char* argv[]) {
 				perror("Fallo el accept");
 			}
 			printf("Recibi una conexion en %d!!\n", nuevo_cliente);
-			int puertoumc;
 			switch (comprobarCliente(nuevo_cliente)) {
 			case 0:														//Error
 				perror("No lo tengo que aceptar, fallo el handshake\n");
@@ -195,12 +178,17 @@ int main(int argc, char* argv[]) {
 			case 1:
 				send(nuevo_cliente, "1", 1, 0);
 				list_add(cpus, (void *) nuevo_cliente);
-				printf("acepte un nuevo cpu\n");
+				printf("Acepté un nuevo cpu\n");
 				break;
 			case 2:
 				send(nuevo_cliente, "1", 1, 0);
 				list_add(consolas, (void *) nuevo_cliente);			//consola
-				printf("acepte una nueva consola\n");
+				printf("Acepté una nueva consola\n");
+				int tamanio=recibirProtocolo(nuevo_cliente);
+				char* codigo=malloc(tamanio);
+				codigo=recibirMensaje(nuevo_cliente, tamanio);
+				manejarPCB(codigo);
+				free(codigo);
 				break;
 			}
 		}
@@ -274,22 +262,35 @@ int comprobarCliente(int nuevoCliente) {
 	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
 	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 	if (!strcmp("soy_un_cpu", bufferHandshake)) {
-		free(bufferHandshake);
 		return 1;
 	} else if (!strcmp("soy_una_consola", bufferHandshake)) {
-		free(bufferHandshake);
 		return 2;
-	} else {
-		free(bufferHandshake);
-		return 0;
 	}
+	return 0;
+	free(bufferHandshake);
 }
+
+int recibirProtocolo(int conexion){
+	char* protocolo = malloc(4);
+	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
+	if (bytesRecibidos <= 0) {	printf("Error al recibir protocolo\n");
+	return -1;
+	}
+	return atoi(protocolo);}
+
+void* recibirMensaje(int conexion, int tamanio){
+	char* mensaje=malloc(tamanio);
+	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
+	if (bytesRecibidos != tamanio) {
+		perror("Error al recibir el mensaje\n");
+		return -1;}
+	return mensaje;
+}
+
 //----------------------------------------PCB------------------------------------------------------
-void manejarPCB(char* ruta) {
+void manejarPCB(char* codigo) {
 	pcb pcbProceso;
-	FILE* archivo = fopen(ruta, "r");
-	char* codigo = armarLiteral(archivo);				//El codigo del programa
-	printf("%s", codigo);
+	printf("***CODIGO:\n%s\n", codigo);
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
 	pcbProceso.PC = metadata->instruccion_inicio;
 	t_list* indiceCodigo = crearIndiceDeCodigo(metadata);
@@ -298,26 +299,6 @@ void manejarPCB(char* ruta) {
 
 }
 
-char* armarLiteral(FILE* archivoCodigo) {		//Copia el codigo ansisop
-	char unaLinea[200], *codigoTotal;
-	codigoTotal = string_new();
-	while (!feof(archivoCodigo)) {
-		fgets(unaLinea, 200, archivoCodigo);
-		string_append(&codigoTotal, unaLinea);
-	}
-	return codigoTotal;
-}
-
-int instruccion(char* linea) {//*******Podria usarse la funcion del Parser: LlamasSinRetorno
-	if ((strcmp(_string_trim(linea), "begin") == 0)
-			|| (strcmp(_string_trim(linea), "begin\n") == 0)) {	//No se si tiene que ignorar el begin... :/
-		return 0;
-	}
-	if (_string_trim(linea)[0] == '#') {
-		return 0;
-	}
-	return 1;
-}
 
 t_list* crearIndiceDeCodigo(t_metadata_program* meta) {
 	t_list* lineas = list_create();

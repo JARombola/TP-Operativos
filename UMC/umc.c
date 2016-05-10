@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <commons/string.h>
 #include <commons/config.h>
 #include <sys/socket.h>
@@ -14,6 +15,7 @@
 #include <arpa/inet.h>
 #include <commons/collections/node.h>
 #include <commons/collections/list.h>
+#include <pthread.h>
 
 #define PUERTO_SWAP 6660
 #define PUERTO_UMC 6661
@@ -42,52 +44,57 @@ struct sockaddr_in crearDireccion(int);
 int conectar(int);
 int autentificar(int);
 int comprobarCliente(int);
+int recibirProtocolo(int);
+void* recibirMensaje(int, int);
 //COMPLETAR...........................................................
-void inicializarPrograma();
-void enviarBytes();
-void almacenarBytes();
+void comprobarOperacion(int);
+void inicializarPrograma(int PID, int cantPaginas);
+void enviarBytes(int pagina, int offset, int tamanio);
+void almacenarBytes(int pagina, int offset, int tamanio, int buffer);
 void finalizarPrograma(int);
+void atenderNucleo(int);
+void atenderCpu(int);
+
 
 
 int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
-	//lector de comandos
-	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
+	pthread_attr_t attr;
+	pthread_t thread;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+
+//	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
 	char* comando;
 	int velocidad;
 //	leerConfiguracion(argv[1], &datosMemoria);
 //	printf("Puerto: %d\n",datosMemoria.puerto);
 
 	//-------------------------SOCKETS
-	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);		//Para el bind
-	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); 			//creo el descriptor con esa direccion
-	printf("se creo la umc\n");
-	printf("Intentando conectar con la SWAP...\n");
-
-	int umc_cliente = conectar(PUERTO_SWAP);
+	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);					//Para el bind
+	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); 						//creo el descriptor con esa direccion
+	int umc_cliente = conectar(PUERTO_SWAP),
+			cliente_nucleo,											//Socket del nucleo para el accept
+			activado=1,
+			max_desc = 0,
+			nuevo_cliente,											//Recibir conexiones
+			sin_size = sizeof(struct sockaddr_in),
+			i, nucleoOK=0,conexionSwap=0;
+	printf("UMC Creada. Conectando con la Swap...\n");
 	if (!autentificar(umc_cliente)){printf("Falló el handshake\n");return -1;}
-	printf("Aceptados\n");
-
-	int cliente_nucleo; 											//socket del nucleo, para el accept
-	int activado = 1;
-	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado,
-			sizeof(activado)); 												//para cerrar los binds al cerrar
+	printf("Conexion con la Swap Ok\n");
+	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado,sizeof(activado)); 				//para cerrar los binds al cerrar
 	if (bind(umc_servidor, (void *) &direccionUMC, sizeof(direccionUMC)) != 0) {
 		perror("Fallo el bind");
 		return 1;
 	}
-	printf("Estoy escuchando\n");
+	printf("Escuchando\n");
 	listen(umc_servidor, 15);
 
 	struct sockaddr_in direccionCliente; 							//direccion donde guarde el cliente
-	int sin_size = sizeof(struct sockaddr_in);
-	//ahora creo el select de cpus
 
 		fd_set descriptores;
-		int nuevo_cliente;
 		t_list* cpus;
 		cpus = list_create();
-		int max_desc = 0;
-		int i,conexionSwap=0, nucleoOK=0;
 
 	while(1){
 		FD_ZERO (&descriptores);
@@ -95,7 +102,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 		FD_SET(umc_servidor,&descriptores);
 		max_desc=umc_cliente;
 		for(i=0; i<list_size(cpus);i++){
-			int cpuset = list_get(cpus,i);
+			int cpuset = (int)list_get(cpus,i);
 			FD_SET(cpuset,&descriptores);
 			if(cpuset > max_desc){ max_desc = cpuset; }
 		}
@@ -104,30 +111,25 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 			if(cliente_nucleo > max_desc){ max_desc = cliente_nucleo; }
 		}
 		if (select (max_desc+1, &descriptores, NULL, NULL, NULL) < 0){
-			 	printf("Select\n");
+			 	perror("Select fail");
 		}
 
 		for(i=0; i<list_size(cpus);i++){
-			//ver los clientes DE LOS QUE recibi informacion
-			int unCPU = list_get(cpus,i);
-			if(FD_ISSET(unCPU , &descriptores)){
-					printf("se activo el cpu %d\n",unCPU);
-					int protocoloCPU=0; //donde quiero recibir y cantidad que puedo recibir
-					int bytesRecibidosCpu = recv(unCPU, &protocoloCPU, sizeof(int32_t), 0);
-					protocoloCPU=ntohl(protocoloCPU);
-						if(bytesRecibidosCpu <= 0){
-							perror("el cpu se desconecto o algo. Se lo elimino\n");
-							list_remove(cpus, i);
+														//CPUs que se activaron
+			int unCPU = (int) list_get(cpus, i);
+				if (FD_ISSET(unCPU, &descriptores)) {
+					int protocolo=recibirProtocolo(unCPU);
+					if (protocolo==-1) {
+						perror("el cpu se desconecto o algo. Se lo elimino\n");
+						list_remove(cpus, i);
 					} else {
-							char* bufferCpu = malloc(protocoloCPU * sizeof(char) + 1);
-							bytesRecibidosCpu = recv(unCPU, bufferCpu, protocoloCPU, 0);
-							bufferCpu[protocoloCPU + 1] = '\0'; //para pasarlo a string (era un stream)
-							printf("cliente: %d, me llegaron %d bytes con %s\n", unCPU,bytesRecibidosCpu, bufferCpu);
+						char* bufferCpu = malloc(protocolo + 1);
+						int mensaje =(int) recibirMensaje(unCPU,protocolo);
+						comprobarOperacion(mensaje);
 						//mando el mensaje a la swap
 							int longitud = htonl(string_length(bufferCpu));
 							send(umc_cliente, &longitud, sizeof(int32_t), 0);
 							send(umc_cliente, bufferCpu, strlen(bufferCpu), 0);
-
 							free(bufferCpu);
 					}
 			 }
@@ -138,8 +140,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 		if (FD_ISSET(umc_cliente,&descriptores)){
 			//se activo la swap, me esta mandando algo
 		}
-		if(FD_ISSET(umc_servidor,&descriptores)){ //aceptar cliente
-
+		if(FD_ISSET(umc_servidor,&descriptores)){			 //aceptar cliente
 			nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente, (void *)&sin_size);
 				if (nuevo_cliente == -1){
 					perror("Fallo el accept");
@@ -154,12 +155,17 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 								send(nuevo_cliente,"1",1,0);									//1=CPU
 								list_add(cpus, (void *)nuevo_cliente);
 								printf("acepte un nuevo cpu\n");
+								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
+								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
+								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
+								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
 								break;
 							case 2:
 								send(nuevo_cliente,"1",1,0);
 								cliente_nucleo = nuevo_cliente;
 								nucleoOK = 1;
 								printf("acepte al nucleo\n");
+								pthread_create(&thread,&attr,atenderNucleo,nuevo_cliente);
 								break;
 							}
 
@@ -239,9 +245,10 @@ int autentificar(int conexion) {
 	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 10, 0);
 	if (bytesRecibidosH <= 0) {
 		printf("Error al conectarse con Swap");
+		free (bufferHandshakeSwap);
 		return 0;
 	}
-	printf("Conectado con la swap!\n");
+	free (bufferHandshakeSwap);
 	return 1;
 }
 
@@ -259,26 +266,64 @@ int comprobarCliente(int nuevoCliente) {
 	free(bufferHandshake);
 	return 0;
 }
-int comprobarOperacion(int codigoOperacion){				//Recibe el 1er byte y lo manda acá. En cada funcion deberá recibir el resto de bytes
+
+int recibirProtocolo(int conexion){
+	char* protocolo = malloc(4);
+	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
+	if (bytesRecibidos <= 0) {	printf("Error al recibir protocolo\n");
+	return -1;
+	}
+	return atoi(protocolo);}
+
+void* recibirMensaje(int conexion, int tamanio){
+	int mensaje=malloc(tamanio);
+	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
+	if (bytesRecibidos != tamanio) {
+		perror("Error al recibir el mensaje\n");
+		return -1;}
+	return mensaje;
+}
+
+void comprobarOperacion(int codigoOperacion){				//Recibe el 1er byte y lo manda acá. En cada funcion deberá recibir el resto de bytes
 	switch(codigoOperacion){
-	case 1:inicializarPrograma();break;
-	case 2:enviarBytes();break;
-	case 3:almacenarBytes();break;
-	case 4:finalizarPrograma(4);break;
+	case 1:							//inicializarPrograma(); 		HACER LOS RECV NECESARIOS!
+		break;
+	case 2:							//enviarBytes();
+		break;
+	case 3:							//almacenarBytes();
+		break;
+	case 4:							//finalizarPrograma();
+		break;
 	}
 }
-void inicializarPrograma(){
+
+
+//-----------------------------------------------OPERACIONES UMC-------------------------------------------------
+void inicializarPrograma(int PID, int cantPaginas){
 
 }
 
-void enviarBytes(){
+void enviarBytes(int pagina, int offset, int tamanio){
 
 }
 
-void almacenarBytes(){
+void almacenarBytes(int pagina, int offset, int tamanio, int buffer){
 
 }
 
 void finalizarPrograma(int PID){
 
+}
+//--------------------------------------------HILOS------------------------
+
+void atenderCpu(int conexion){
+	printf("Hilo de CPU creado\n");
+	int i;
+	for (i=0;i<2000;i++);
+	printf("%d\n",i);
+	printf("\n");
+}
+
+void atenderNucleo(int conexion){
+	printf("Hilo de Nucleo creado\n");
 }
