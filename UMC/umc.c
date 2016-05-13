@@ -55,23 +55,25 @@ void finalizarPrograma(int);
 void atenderNucleo(int);
 void atenderCpu(int);
 
-
+pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
+	int TAMPAGINA=ntohl(10);				//TEMPORAL PARA PROBAR NUCLEO
 	pthread_attr_t attr;
 	pthread_t thread;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
-//	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
+	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
 	char* comando;
 	int velocidad;
-//	leerConfiguracion(argv[1], &datosMemoria);
-//	printf("Puerto: %d\n",datosMemoria.puerto);
+//	leerConfiguracion(argv[1], datosMemoria);
+
 
 	//-------------------------SOCKETS
 	struct sockaddr_in direccionUMC=crearDireccion(PUERTO_UMC);					//Para el bind
 	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); 						//creo el descriptor con esa direccion
+	printf("UMC Creada. Conectando con la Swap...\n");
 	int umc_cliente = conectar(PUERTO_SWAP),
 			cliente_nucleo,											//Socket del nucleo para el accept
 			activado=1,
@@ -79,7 +81,7 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 			nuevo_cliente,											//Recibir conexiones
 			sin_size = sizeof(struct sockaddr_in),
 			i, nucleoOK=0,conexionSwap=0;
-	printf("UMC Creada. Conectando con la Swap...\n");
+	//calloc(datosMemoria.marcos,datosMemoria.marco_size);
 	if (!autentificar(umc_cliente)){printf("Falló el handshake\n");return -1;}
 	printf("Conexion con la Swap Ok\n");
 	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado,sizeof(activado)); 				//para cerrar los binds al cerrar
@@ -95,7 +97,29 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 		fd_set descriptores;
 		t_list* cpus;
 		cpus = list_create();
-
+/*	if (fork()==0){						//Para que reciba los mensajes x consola
+		while (1) {
+				comando = string_new(), scanf("%s", comando);
+				if (esIgual(comando, "retardo")) {
+					printf("velocidad nueva:");
+					scanf("%d", &velocidad);
+					printf("Velocidad actualizada:%d\n", velocidad);
+				} else {
+					if (esIgual(comando, "dump")) {
+						printf("Estructuras de Memoria\n");
+						printf("Datos de Memoria\n");
+					} else {
+						if (esIgual(comando, "tlb")) {
+							printf("TLB Borrada :)\n");
+						} else {
+							if (esIgual(comando, "memoria")) {
+								printf("Memoria Limpiada :)\n");
+							}
+						}
+					}
+				}
+		}
+	}else{*/
 	while(1){
 		FD_ZERO (&descriptores);
 		FD_SET(umc_cliente,&descriptores);
@@ -156,12 +180,9 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 								list_add(cpus, (void *)nuevo_cliente);
 								printf("acepte un nuevo cpu\n");
 								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
-								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
-								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
-								pthread_create(&thread,&attr,atenderCpu,nuevo_cliente);
 								break;
 							case 2:
-								send(nuevo_cliente,"1",1,0);
+								send(nuevo_cliente,&TAMPAGINA,4,0);
 								cliente_nucleo = nuevo_cliente;
 								nucleoOK = 1;
 								printf("acepte al nucleo\n");
@@ -171,28 +192,6 @@ int main(int argc, char* argv[]) { //SOCKETS, CONEXION, BLA...
 
 			}
 	}
-	/*-------------------corto lector de comandos para probar sockets, se deberan usar en hilos diferentes
-	while (1) {
-		comando = string_new(), scanf("%s", comando);
-		if (esIgual(comando, "retardo")) {
-			printf("velocidad nueva:");
-			scanf("%d", &velocidad);
-			printf("Velocidad actualizada:%d\n", velocidad);
-		} else {
-			if (esIgual(comando, "dump")) {
-				printf("Estructuras de Memoria\n");
-				printf("Datos de Memoria\n");
-			} else {
-				if (esIgual(comando, "tlb")) {
-					printf("TLB Borrada :)\n");
-				} else {
-					if (esIgual(comando, "memoria")) {
-						printf("Memoria Limpiada :)\n");
-					}
-				}
-			}
-		}*/
-
 	//free(datosConfiguracion);
 	return 0;
 }
@@ -319,9 +318,9 @@ void finalizarPrograma(int PID){
 void atenderCpu(int conexion){
 	printf("Hilo de CPU creado\n");
 	int i;
-	for (i=0;i<2000;i++);
-	printf("%d\n",i);
-	printf("\n");
+	for (i=0;i<2000;i++){
+		usleep(1*1000);
+	printf("%d\n",conexion);}
 }
 
 void atenderNucleo(int conexion){

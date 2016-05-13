@@ -16,8 +16,10 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <unistd.h>
+#include <commons/collections/queue.h>
 #include <commons/collections/list.h>
 #include <parser/metadata_program.h>
+
 
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
@@ -42,31 +44,45 @@ typedef struct {
 	int pagsCodigo;
 	int indiceCodigo;
 	int indiceEtiquetas;
+	int consola;
 } pcb;
 
 
-int autentificar(int);
+int autentificarUMC(int);
 void leerConfiguracion(char*, datosConfiguracion*);
 struct sockaddr_in crearDireccion(int puerto);
 int conectarUMC(int);
 int comprobarCliente(int);
 int recibirProtocolo(int);
 void* recibirMensaje(int, int);
-void manejarPCB(char*);
-t_list* crearIndiceDeCodigo(t_metadata_program*);
+pcb* crearPCB(char*,int);
+t_list* crearIndiceDeCodigo(t_metadata_program*,int);
 void mostrar(int*);
 
 
 int main(int argc, char* argv[]) {
+	int i,tamPagina;
 	char* literal;
+	//--------------------------------CONFIGURACION-----------------------------
 //	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
-//	leerConfiguracion(argv[0], &datosMemoria);
+//	leerConfiguracion(argv[1], &datosMemoria);
 //	manejarPCB("/home/utnso/tp-2016-1c-CodeBreakers/Consola/Nuevo");
+	/*t_queue* dispositivos[datosMemoria.io_ids.CANTIDAD];
+	for(i=0;i<=cant;i++){
+	dispositivos[i]=queue_create();}*/
+	//---------------------------------COLAS PCB-----------------------------------
+	t_queue* colaNuevos=queue_create();
+	t_queue* colaListos=queue_create();
+	t_queue* colaExec=queue_create();
+	t_queue* colaBloq=queue_create();
+	t_queue* colaTerminados=queue_create();
+	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in direccionNucleo = crearDireccion(PUERTO_NUCLEO);
 	printf("Nucleo creado, conectando con la UMC...\n");
 	int conexionUMC = conectarUMC(PUERTO_UMC);
-	if (!autentificar(conexionUMC)) {
+	tamPagina=autentificarUMC(conexionUMC);
+	if (!tamPagina) {
 		printf("Falló el handshake\n");
 		return -1;
 	}
@@ -93,7 +109,7 @@ int main(int argc, char* argv[]) {
 	int max_desc = conexionUMC;
 	struct sockaddr_in direccionCliente;	//direccion donde guarde el cliente
 	int sin_size = sizeof(struct sockaddr_in);
-	int i;
+
 
 	while (1) {
 		FD_ZERO(&descriptores);
@@ -118,7 +134,7 @@ int main(int argc, char* argv[]) {
 
 		if (select(max_desc + 1, &descriptores, NULL, NULL, NULL) < 0) {
 			perror("Error en el select");
-			exit(EXIT_FAILURE);
+			//exit(EXIT_FAILURE);
 		}
 		for (i = 0; i < list_size(consolas); i++) {
 																			//entro si una consola me mando algo
@@ -171,24 +187,27 @@ int main(int argc, char* argv[]) {
 			}
 			printf("Recibi una conexion en %d!!\n", nuevo_cliente);
 			switch (comprobarCliente(nuevo_cliente)) {
-			case 0:														//Error
+			case 0:															//ERROR!!
 				perror("No lo tengo que aceptar, fallo el handshake\n");
 				close(nuevo_cliente);
 				break;
-			case 1:
+			case 1:															//CPU
 				send(nuevo_cliente, "1", 1, 0);
 				list_add(cpus, (void *) nuevo_cliente);
 				printf("Acepté un nuevo cpu\n");
 				break;
-			case 2:
+			case 2:															//CONSOLA, RECIBO EL CODIGO
 				send(nuevo_cliente, "1", 1, 0);
-				list_add(consolas, (void *) nuevo_cliente);			//consola
+				list_add(consolas, (void *) nuevo_cliente);
 				printf("Acepté una nueva consola\n");
 				int tamanio=recibirProtocolo(nuevo_cliente);
+				if (tamanio>0){
 				char* codigo=malloc(tamanio);
 				codigo=recibirMensaje(nuevo_cliente, tamanio);
-				manejarPCB(codigo);
-				free(codigo);
+				pcb* pcbNuevo=crearPCB(codigo,tamPagina);
+				queue_push(colaNuevos,(pcb*) pcbNuevo);
+			//	list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
+				free(codigo);}
 				break;
 			}
 		}
@@ -239,22 +258,19 @@ struct sockaddr_in crearDireccion(int puerto) {
 int conectarUMC(int puerto) {
 	struct sockaddr_in direccionUMC = crearDireccion(puerto);
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-	while (connect(conexion, (void*) &direccionUMC, sizeof(direccionUMC)))
-		;
+	while (connect(conexion, (void*) &direccionUMC, sizeof(direccionUMC)));
 	return conexion;
 }
 
-int autentificar(int conexion) {
+int autentificarUMC(int conexion) {
 	send(conexion, "soy_el_nucleo", 13, 0);
-	char* bufferHandshakeCli = malloc(8);
-	int bytesRecibidosH = recv(conexion, bufferHandshakeCli, 8, 0);
+	int tamPagina;
+	int bytesRecibidosH = recv(conexion, &tamPagina, 4, 0);
 	if (bytesRecibidosH <= 0) {
 		printf("Rechazado por la UMC\n");
-		free(bufferHandshakeCli);
 		return 0;
 	}
-	free(bufferHandshakeCli);
-	return 1;
+	return htonl(tamPagina);					//ME ENVIA EL TAMAÑO DE PAGINA
 }
 
 int comprobarCliente(int nuevoCliente) {
@@ -262,12 +278,14 @@ int comprobarCliente(int nuevoCliente) {
 	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
 	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 	if (!strcmp("soy_un_cpu", bufferHandshake)) {
+		free(bufferHandshake);
 		return 1;
 	} else if (!strcmp("soy_una_consola", bufferHandshake)) {
+		free(bufferHandshake);
 		return 2;
 	}
-	return 0;
 	free(bufferHandshake);
+	return 0;
 }
 
 int recibirProtocolo(int conexion){
@@ -288,32 +306,43 @@ void* recibirMensaje(int conexion, int tamanio){
 }
 
 //----------------------------------------PCB------------------------------------------------------
-void manejarPCB(char* codigo) {
-	pcb pcbProceso;
-	printf("***CODIGO:\n%s\n", codigo);
+pcb* crearPCB(char* codigo,int tamPagina) {
+	pcb* pcbProceso;
+//	printf("***CODIGO:\n%s\n", codigo);
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
-	pcbProceso.PC = metadata->instruccion_inicio;
-	t_list* indiceCodigo = crearIndiceDeCodigo(metadata);
-	list_iterate(indiceCodigo, (void*) mostrar);//Ver inicio y offset de cada sentencia
-	pcbProceso.pagsCodigo = metadata->instrucciones_size;//!!!!!!!!!!!!!!!!!!!Hay que dividir por cantidad de paginas!!!!!!
-
+	t_intructions* unaInstruccion = metadata->instrucciones_serializado;
+	pcbProceso->PC = unaInstruccion[metadata->instruccion_inicio].start;					//Pos de la primer instruccion
+	t_list* indiceCodigo = crearIndiceDeCodigo(metadata,tamPagina);
+	pcbProceso->indiceCodigo=indiceCodigo;
+	//int asd=metadata_buscar_etiqueta("Etiqueta",metadata->etiquetas,metadata->etiquetas_size);
+	pcbProceso->pagsCodigo = list_size(indiceCodigo)-1;			//-1 para que empiece desde 0
+	return pcbProceso;
 }
 
 
-t_list* crearIndiceDeCodigo(t_metadata_program* meta) {
+t_list* crearIndiceDeCodigo(t_metadata_program* meta, int tamPagina) {
 	t_list* lineas = list_create();
 	t_intructions* unaInstruccion = meta->instrucciones_serializado;
-	printf("\ninstrucciones:%d\n", meta->instrucciones_size); //=5
 	int i;
-	for (i = 0; i < (meta->instrucciones_size); i++, unaInstruccion++) {
-		int* unaLinea = malloc(sizeof(int*));				//0=inicio, 1=offset
-		unaLinea[0] = unaInstruccion->start;
-		unaLinea[1] = unaInstruccion->offset;
-		list_add(lineas, (int*) unaLinea);			//Guarda el PUNTERO al int
+	for (i = 0; i < (meta->instrucciones_size); i++, unaInstruccion++) {					//Corta el codigo segun tamaño de pagina
+		int j, resto = (unaInstruccion->offset) % tamPagina;
+		for (j = 0; j < (unaInstruccion->offset) / tamPagina; j++) {
+			int* unaLinea = malloc(sizeof(int*));										//0=inicio, 1=offset
+			unaLinea[0] = unaInstruccion->start + j * tamPagina;
+			unaLinea[1] = tamPagina;
+			list_add(lineas, (int*) unaLinea);											//Guarda el PUNTERO al int
+		}
+		if (resto) {
+			int* unaLinea = malloc(sizeof(int*));
+			unaLinea[0] = unaInstruccion->start + j * tamPagina;
+			unaLinea[1] = resto;
+			list_add(lineas, (int*) unaLinea);
+		}
 	}
 	return lineas;
 	list_clean(lineas);
 	list_destroy(lineas);
+
 }
 
 void mostrar(int* sentencia) {
