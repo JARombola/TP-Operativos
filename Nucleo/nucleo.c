@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
 				close(nuevo_cliente);
 				break;
 			case 1:															//CPU
-				send(nuevo_cliente, "1", 1, 0);
+				send(nuevo_cliente, tamPagina, 4, 0);
 				list_add(cpus, (void *) nuevo_cliente);
 				printf("Acepté un nuevo cpu\n");
 				break;
