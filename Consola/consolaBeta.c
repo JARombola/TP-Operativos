@@ -30,7 +30,7 @@ int main (int argc, char* argv[]){
 	int nucleo = conectarseAlNucleo();
 	if (nucleo < 0) return -1;
 
-	if (enviarAlNucleo(nucleo , "arch.ansisop")<0) return -1;
+	if (enviarAlNucleo(nucleo , argv[1])<0) return -1;
 
 	if (imprimirMensajesDelNucleo(nucleo)) return -1;
 
