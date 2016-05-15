@@ -7,11 +7,11 @@ int main(){
 
 	printf("servidor afuera: %d \n", servidor);
 
-	int cliente = esperarConexion(&servidor);
+	int cliente = esperarConexion(servidor);
 
 
 
-  if (&cliente > 0){
+  if (cliente > 0){
 	  printf("recibi un cliente ok \n");
   }
   else{
