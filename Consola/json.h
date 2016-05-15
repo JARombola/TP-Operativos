@@ -66,7 +66,7 @@ void buscar(char* archivo, char* key, char*value){
 	int k =0;
 	char valor[200];
 	for (i=0; i<=longitud; i++){
-		if ((archivo[i]==key[0]) && (archivo[i+1]==key[0]) && (archivo[i+2]==':')){
+		if ((archivo[i]==key[0]) && (archivo[i+1]==key[1]) && (archivo[i+2]==':')){
 			for (j=i+3; archivo[j]!='\n';j++){
 				valor[k] = archivo[j];
 				k++;

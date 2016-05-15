@@ -16,9 +16,9 @@ int conectarseAlNucleo();
 int enviarAlNucleo(int nucleo , char* archivoAnsisop);
 int imprimirMensajesDelNucleo(int nucleo);
 
-const char* ARCHIVO_DE_CONFIGURACION = "ArchivoDeConfiguracionConsola.txt";
+char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionConsola.txt";
 int PUERTO_NUCLEO;
-char* AUTENTIFICACION;
+char AUTENTIFICACION[100];
 
 int main (int argc, char* argv[]){
 	printf("Consola estable \n");
@@ -30,7 +30,7 @@ int main (int argc, char* argv[]){
 	int nucleo = conectarseAlNucleo();
 	if (nucleo < 0) return -1;
 
-	if (enviarAlNucleo(nucleo , argv[1])<0) return -1;
+	if (enviarAlNucleo(nucleo , "arch.ansisop")<0) return -1;
 
 	if (imprimirMensajesDelNucleo(nucleo)) return -1;
 
@@ -80,6 +80,7 @@ int enviarAlNucleo(int nucleo , char* archivoAnsisop){
 	}
 
 	char* ansisop = toJson(archivo);
+	printf("Le mando: %s\n", ansisop);
 	enviarMensaje(nucleo, ansisop);
 
 	return 0;
@@ -89,7 +90,7 @@ int imprimirMensajesDelNucleo(int nucleo){
 	char* respuesta;
 	while (1){
 		respuesta = esperarRespuesta(nucleo);
-		if (respuesta == NULL){
+		if (*respuesta == NULL){
 			printf("Conexion con el Nucleo finalizada...\n");
 			return 0;
 		}
@@ -108,4 +109,3 @@ int conectarseAlNucleo(){
 	printf("Conexion con el nucleo OK... \n");
 	return nucleo;
 }
-

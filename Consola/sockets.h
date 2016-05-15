@@ -108,7 +108,6 @@ char* esperarRespuesta(int conexion){
 	int bytes= recv(conexion, &tamanioPaquete,4,0);
 
 	if (bytes<=0){
-		printf("Error de conexion \n");
 		*buffer = NULL;
 	}else{
 		buffer = malloc(tamanioPaquete);
