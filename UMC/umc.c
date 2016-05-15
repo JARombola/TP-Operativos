@@ -17,10 +17,14 @@
 #include <commons/collections/list.h>
 #include <pthread.h>
 
-#define PUERTO_SWAP 6660
-#define PUERTO_UMC 6661
 #define esIgual(a,b) string_equals_ignore_case(a,b)
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
+
+//datos a leer por el archivo
+#define PUERTO_SWAP 6660
+#define PUERTO_UMC 6661
+#define MARCOS 100
+#define MARCO_SIZE 3
 
 typedef struct{
 	char* ip;				//PASAR A IP CON: inet_addr() / o inet_ntoa()
@@ -28,8 +32,10 @@ typedef struct{
 }datosConfiguracion;
 
 typedef struct{
-	int proceso, pagina, offset, marco;
-}paginas;
+	int proceso, pagina, marco;
+}traductor_marco;
+
+
 
 
 /*	FALTAN CREAR "ESTRUCTURAS" PARA: - INDICE DE CODIGO
@@ -43,7 +49,7 @@ int conectar(int);
 int autentificar(int);
 int comprobarCliente(int);
 int recibirProtocolo(int);
-void* recibirMensaje(int, int);
+char* recibirMensaje(int, int);
 int procesoActivo(int);
 //COMPLETAR...........................................................
 void comprobarOperacion(int);
@@ -54,9 +60,14 @@ void finalizarPrograma(int);
 void consola();
 void atenderNucleo(int);
 void atenderCpu(int);
+int hayEspacio(int paginas);
+int ponerEnMemoria(char* codigo);
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
-int TAMPAGINA=10;
+	t_list *tabla_de_paginas;
+	int mucho = MARCOS*MARCO_SIZE;
+	char *memoria;
+
 int main(int argc, char* argv[]) {
 	int umc_cliente,
 		activado=1,
@@ -71,6 +82,8 @@ int main(int argc, char* argv[]) {
 	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
 	leerConfiguracion(argv[1], datosMemoria);
 
+	tabla_de_paginas = list_create();
+	memoria = malloc(mucho);
 
 	//-------------------------SOCKETS
 	struct sockaddr_in direccionUMC = crearDireccion(PUERTO_UMC);//Para el bind
@@ -101,7 +114,7 @@ int main(int argc, char* argv[]) {
 			perror("Fallo el accept");
 		}
 	} while (comprobarCliente(nuevo_cliente) != 2);												//Espero la conexion del nucleo
-	int tamPagEnvio = ntohl(TAMPAGINA);
+	int tamPagEnvio = ntohl(MARCO_SIZE);
 	send(nuevo_cliente, &tamPagEnvio, 4, 0);													//Le envio el tamaño de pagina
 	printf("Acepte al nucleo\n");
 	//-----------------------------Funcionamiento de la UMC--------------------------------------------
@@ -209,8 +222,8 @@ int recibirProtocolo(int conexion){
 	}
 	return atoi(protocolo);}
 
-void* recibirMensaje(int conexion, int tamanio){
-	int mensaje=malloc(tamanio);
+char* recibirMensaje(int conexion, int tamanio){
+	char *mensaje=malloc(tamanio);
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
@@ -296,7 +309,7 @@ void atenderCpu(int conexion){
 					paginas = recibirProtocolo(conexion);
 					offset = recibirProtocolo(conexion);
 					if (paginas && offset) {
-						enviarBytes(paginas, offset, TAMPAGINA);
+						enviarBytes(paginas, offset, MARCO_SIZE);
 					} else {
 						salir = 1;
 					}
@@ -306,7 +319,7 @@ void atenderCpu(int conexion){
 					offset = recibirProtocolo(conexion);
 					buffer = recibirProtocolo(conexion);
 					if (paginas && offset && buffer) {
-						almacenarBytes(paginas, offset, TAMPAGINA, buffer);
+						almacenarBytes(paginas, offset, MARCO_SIZE, buffer);
 					} else {
 						salir = 1;
 					}
@@ -321,4 +334,53 @@ void atenderCpu(int conexion){
 
 void atenderNucleo(int conexion){
 	printf("Hilo de Nucleo creado\n");
+		//[PROTOCOLO]: - siempre recibo PRIMERO el codigo de operacion (1 o 4) inicializar o finalizar
+		int salir=0;
+		while (!salir) {
+			int operacion = atoi(recibirMensaje(conexion,1));
+				if (operacion) {
+					int paginas, pid;
+
+					switch (operacion) {
+					case 1:												//inicializar programa
+							pid = recibirProtocolo(conexion);
+							paginas = recibirProtocolo(conexion);
+						if(hayEspacio(paginas)){
+							send(conexion, '1',1,0);
+							int espacio_del_codigo = paginas*MARCO_SIZE;
+							char* codigo = recibirMensaje(conexion,espacio_del_codigo);
+							if (ponerEnMemoria(codigo)){
+								printf("se guardo el codigo");
+
+							}else{printf("no se pudo guardar el codigo en memoria");}
+
+						}else{send(conexion, '0',1,0);}
+
+						break;
+					case 3:
+
+						break;
+					}
+				}else{salir=1;}
+		}
+		printf("Nucleo en %d termino, eliminado\n",conexion);
+}
+
+//--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
+int hayEspacio(int paginas){
+
+
+	return 1;
+}
+int ponerEnMemoria(char* codigo){
+	int aux_libre=0, aux_sig=0;
+	traductor_marco *traductorMarco= malloc(sizeof(traductor_marco));
+
+	//for
+	//memcpy(memoria + aux_libre, codigo + aux_sig, MARCO_SIZE);
+
+	aux_sig +=MARCO_SIZE;
+
+
+	return 1;
 }
