@@ -42,7 +42,7 @@ typedef struct {
 	int PC;
 	int SP;
 	int pagsCodigo;
-	int indiceCodigo;
+	t_intructions* indiceCodigo;
 	int indiceEtiquetas;
 	int consola;
 } pcb;
@@ -55,9 +55,13 @@ int conectarUMC(int);
 int comprobarCliente(int);
 int recibirProtocolo(int);
 void* recibirMensaje(int, int);
-pcb* crearPCB(char*,int);
-t_list* crearIndiceDeCodigo(t_metadata_program*,int);
+pcb* crearPCB(char*,int,int*);
+t_list* crearIndiceDeCodigo(t_metadata_program*);
+int cantPaginas(t_metadata_program*,int);
 void mostrar(int*);
+char* header(int);
+char* agregarHeader(char*);
+
 
 
 int main(int argc, char* argv[]) {
@@ -98,7 +102,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	printf("Estoy escuchando\n");
-	listen(nucleo_servidor, 15);
+	listen(nucleo_servidor, 100);
 
 	//ahora creo el select
 	fd_set descriptores;
@@ -144,6 +148,7 @@ int main(int argc, char* argv[]) {
 				if (protocolo == -1) {
 					perror("La consola se desconecto o algo. Eliminada\n");
 					list_remove(consolas, i);
+					close(unaConsola);
 				} else {
 					char* bufferConsola = malloc(protocolo + 1);
 					int mensaje = recibirMensaje(unaConsola, protocolo);
@@ -154,7 +159,7 @@ int main(int argc, char* argv[]) {
 						int unCPU = list_get(cpus, i);
 						int longitud = htonl(string_length(bufferConsola));
 						send(unCPU, &longitud, sizeof(int32_t), 0);
-						send(unCPU, bufferConsola, strlen(bufferConsola), 0);
+						send(unCPU, bufferConsola, string_length(bufferConsola), 0);
 					}
 				}
 			}
@@ -167,6 +172,7 @@ int main(int argc, char* argv[]) {
 				if (protocolo==-1) {
 					perror("el cpu se desconecto o algo. Se lo elimino\n");
 					list_remove(cpus, i);
+					close(unCPU);
 				} else {
 					char* bufferCpu = malloc(protocolo + 1);
 					int mensaje = recibirMensaje(unCPU,protocolo);
@@ -200,14 +206,29 @@ int main(int argc, char* argv[]) {
 				send(nuevo_cliente, "1", 1, 0);
 				list_add(consolas, (void *) nuevo_cliente);
 				printf("Acepté una nueva consola\n");
-				int tamanio=recibirProtocolo(nuevo_cliente);
-				if (tamanio>0){
-				char* codigo=malloc(tamanio);
-				codigo=recibirMensaje(nuevo_cliente, tamanio);
-				pcb* pcbNuevo=crearPCB(codigo,tamPagina);
-				queue_push(colaNuevos,(pcb*) pcbNuevo);
-			//	list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
-				free(codigo);}
+				pcb* pcbNuevo = malloc(sizeof(pcb));
+				int tamanio = recibirProtocolo(nuevo_cliente);
+				if (tamanio > 0) {
+					char* codigo = recibirMensaje(nuevo_cliente, tamanio);
+					int paginasNecesarias;
+					char* mensajeInicial = malloc(10);
+					pcbNuevo = crearPCB(codigo, tamPagina, &paginasNecesarias);
+					memcpy(mensajeInicial, "1", 1);
+					memcpy(mensajeInicial + 1, header(pcbNuevo->PID), 4);
+					memcpy(mensajeInicial + 5, header(paginasNecesarias), 4);
+					memcpy(mensajeInicial + 9, "\0", 1);
+					printf("%s\n", mensajeInicial);
+					send(conexionUMC, mensajeInicial, string_length(mensajeInicial), 0);
+					free(mensajeInicial);
+					free(codigo);
+			/*		recv(conexionUMC, mensajeInicial, 1, 0);
+					if (strcmp(mensajeInicial, "1")) {
+					agregarHeader(codigo);
+					send(conexionUMC, codigo, string_length(codigo), 0);
+					queue_push(colaNuevos,(pcb*) pcbNuevo);
+				}*/
+				list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
+				}
 				break;
 			}
 		}
@@ -301,51 +322,86 @@ void* recibirMensaje(int conexion, int tamanio){
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
-		return -1;}
+		return (int)-1;}
 	return mensaje;
 }
 
+char* header(int tamanio){							//Recibe numero de bytes, y lo devuelve en 4 bytes (Ej. recibe "2" y devuelve "0002")
+	char* longitud=string_new();
+	longitud=string_reverse(string_itoa(tamanio));
+	string_append(&longitud,"0000");
+	longitud=string_substring(longitud,0,4);
+	longitud=string_reverse(longitud);
+	return longitud;
+}
+
+char* agregarHeader(char* mensaje){
+	char* head=malloc(4);
+	memcpy(head,header(string_length(mensaje)),4);
+	mensaje=string_reverse(mensaje);
+	string_append(&mensaje,string_reverse(head));
+	mensaje=string_reverse(mensaje);
+	free (head);
+	return mensaje;
+}
 //----------------------------------------PCB------------------------------------------------------
-pcb* crearPCB(char* codigo,int tamPagina) {
-	pcb* pcbProceso;
+
+pcb* crearPCB(char* codigo,int tamPagina,int *paginasNecesarias) {
+	pcb* pcbProceso=malloc(sizeof(pcb));
 //	printf("***CODIGO:\n%s\n", codigo);
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
-	t_intructions* unaInstruccion = metadata->instrucciones_serializado;
-	pcbProceso->PC = unaInstruccion[metadata->instruccion_inicio].start;					//Pos de la primer instruccion
-	t_list* indiceCodigo = crearIndiceDeCodigo(metadata,tamPagina);
-	pcbProceso->indiceCodigo=indiceCodigo;
-	//int asd=metadata_buscar_etiqueta("Etiqueta",metadata->etiquetas,metadata->etiquetas_size);
-	pcbProceso->pagsCodigo = list_size(indiceCodigo)-1;			//-1 para que empiece desde 0
+	pcbProceso->PID=10;
+	pcbProceso->PC = metadata->instruccion_inicio;					//Pos de la primer instruccion
+	pcbProceso->indiceCodigo=crearIndiceDeCodigo(metadata);
+	pcbProceso->pagsCodigo = metadata->instrucciones_size;
+	*paginasNecesarias=cantPaginas(metadata,tamPagina);
 	return pcbProceso;
 }
 
 
-t_list* crearIndiceDeCodigo(t_metadata_program* meta, int tamPagina) {
-	t_list* lineas = list_create();
+int cantPaginas(t_metadata_program* meta, int tamPagina) {
 	t_intructions* unaInstruccion = meta->instrucciones_serializado;
-	int i;
-	for (i = 0; i < (meta->instrucciones_size); i++, unaInstruccion++) {					//Corta el codigo segun tamaño de pagina
-		int j, resto = (unaInstruccion->offset) % tamPagina;
-		for (j = 0; j < (unaInstruccion->offset) / tamPagina; j++) {
-			int* unaLinea = malloc(sizeof(int*));										//0=inicio, 1=offset
-			unaLinea[0] = unaInstruccion->start + j * tamPagina;
-			unaLinea[1] = tamPagina;
-			list_add(lineas, (int*) unaLinea);											//Guarda el PUNTERO al int
+	t_list* lineas = list_create();
+		int i;
+		for (i = 0; i < (meta->instrucciones_size); i++, unaInstruccion++) {					//Corta el codigo segun tamaño de pagina
+			int j, resto = (unaInstruccion->offset) % tamPagina;
+			for (j = 0; j < (unaInstruccion->offset) / tamPagina; j++) {
+				int* unaLinea = malloc(sizeof(int*));										//0=inicio, 1=offset
+				unaLinea[0] = unaInstruccion->start + j * tamPagina;
+				unaLinea[1] = tamPagina;
+				list_add(lineas, (int*) unaLinea);											//Guarda el PUNTERO al int
+			}
+			if (resto) {
+				int* unaLinea = malloc(sizeof(int*));
+				unaLinea[0] = unaInstruccion->start + j * tamPagina;
+				unaLinea[1] = resto;
+				list_add(lineas, (int*) unaLinea);
+			}
 		}
-		if (resto) {
-			int* unaLinea = malloc(sizeof(int*));
-			unaLinea[0] = unaInstruccion->start + j * tamPagina;
-			unaLinea[1] = resto;
-			list_add(lineas, (int*) unaLinea);
-		}
-	}
-	return lineas;
+	int cantPaginas=list_size(lineas)-1;				//-1 para que empiece desde 0
 	list_clean(lineas);
 	list_destroy(lineas);
-
+	return cantPaginas;
 }
 
-void mostrar(int* sentencia) {
-	printf("Inicio:%d | Offset:%d\n", sentencia[0], sentencia[1]);
-}
+t_list* crearIndiceDeCodigo(t_metadata_program* meta){
+ 	t_list* lineas=list_create();
+ 	t_intructions* unaInstruccion=meta->instrucciones_serializado;
+ 	printf("\ninstrucciones:%d\n",meta->instrucciones_size); //=5
+ 	int i;
+ 	for (i=0;i<(meta->instrucciones_size);i++,unaInstruccion++){
+ 			int* unaLinea=malloc(sizeof(int*));									//0=inicio, 1=offset
+ 			unaLinea[0]=unaInstruccion->start;
+ 			unaLinea[1]=unaInstruccion->offset;
+ 			list_add(lineas, (int*)unaLinea);					//Guarda el PUNTERO al int
+ 		}
+ 	return lineas;
+ 	list_clean(lineas);
+ 	list_destroy(lineas);
+ }
+
+ void mostrar(int* sentencia){
+ 	printf("Inicio:%d | Offset:%d\n",sentencia[0],sentencia[1]);
+ }
+
 
