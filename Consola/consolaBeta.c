@@ -108,3 +108,4 @@ int conectarseAlNucleo(){
 	printf("Conexion con el nucleo OK... \n");
 	return nucleo;
 }
+

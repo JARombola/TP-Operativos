@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 					bufferC[protocoloC + 1] = '\0';
 					printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidosC, bufferC);*/
 
-	}
+/*	}
 	return 0;
 }
 int conectar(int puerto){

@@ -1,8 +1,0 @@
-#!/home/utnso/tp-2016-1c-CodeBreakers/Consola/Debug/Consola
-begin
-	variables a, b
-	#asdasd
-	a = 3
-	b = 5
-	a = b + 12
-end
