@@ -15,7 +15,7 @@ int autentificar(int conexion, char* autor);
 int esperarConfirmacion(int conexion);
 int crearServidor(int puerto);
 void enviarMensaje(int conexion, char* mensaje);
-int esperarConexion(int* servidor);
+int esperarConexion(int servidor);							//Arreglado
 char* esperarRespuesta(int conexion);
 int aceptar(int servidor);
 
@@ -89,8 +89,8 @@ int crearServidor(int puerto){
 }
 
 
-int esperarConexion(int* servidor){
-	int cliente22 = aceptar(*servidor);
+int esperarConexion(int servidor){
+	int cliente22 = aceptar(servidor);				//Arreglado
 
 	return cliente22;
 //	if (cliente <= 0){
@@ -127,9 +127,8 @@ char* esperarRespuesta(int conexion){
 
 int aceptar(int servidor){
 	struct sockaddr_in direccionCliente;
-	unsigned int tamanioDireccion;
-
-	int cliente = accept(servidor, (void*) &direccionCliente, &tamanioDireccion);
+	unsigned int tamanioDireccion=sizeof(struct sockaddr_in);						//Arreglados
+	int cliente = accept(servidor, (void*) &direccionCliente, (void*)&tamanioDireccion);
 	printf("SOCKETS-ACEPTAR :: Cliente %d \n", cliente);
 	return cliente;
 }
