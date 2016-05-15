@@ -15,7 +15,7 @@ int autentificar(int conexion, char* autor);
 int esperarConfirmacion(int conexion);
 int crearServidor(int puerto);
 void enviarMensaje(int conexion, char* mensaje);
-int esperarConexion(int servidor);							//Arreglado
+int esperarConexion(int servidor);
 char* esperarRespuesta(int conexion);
 int aceptar(int servidor);
 
@@ -31,7 +31,6 @@ int conectar(int puerto, char* autor){
 	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
 
 	if (autentificar(conexion,autor)){
-		printf("Rechazado \n");
 		return -1;
 	}
 
@@ -40,19 +39,14 @@ int conectar(int puerto, char* autor){
 void enviarMensaje(int conexion, char* mensaje){
 	uint32_t longitud = strlen(mensaje)+1;
 	send(conexion, &longitud, 4,0);
-	printf("Llego el primero %d\n",longitud);
 	send(conexion,mensaje,longitud,0);
 }
 
 int autentificar(int conexion, char* autor){
-	printf("Esperando...%s\n",autor);
-	enviarMensaje(conexion,autor);
-	printf("mensaje enviado\n");
+	enviarMensaje(conexion,autor);;
 	if (esperarConfirmacion(conexion)){
-		printf("Confirmacion denegada\n");
 		return 1;
 	}
-	printf("Confirmacion aceptada\n");
 	return 0;
 }
 
@@ -90,23 +84,22 @@ int crearServidor(int puerto){
 
 
 int esperarConexion(int servidor){
-	int cliente22 = aceptar(servidor);				//Arreglado
+	int cliente = aceptar(servidor);
 
-	return cliente22;
-//	if (cliente <= 0){
-//		return -1;
-//		printf("Error de conexion\n");
-//	}
-//
-//	char* autentificacion = esperarRespuesta(cliente);
-//
-//	if (!(tienePermiso(autentificacion))){
-//		close(cliente);
-//		return 0;
-//	}
-//
-//	send(cliente,"ok",3,0);
-//	return cliente;
+	if (cliente <= 0){
+		return -1;
+		printf("Error de conexion\n");
+	}
+
+	char* autentificacion = esperarRespuesta(cliente);
+
+	if (!(tienePermiso(autentificacion))){
+		close(cliente);
+		return 0;
+	}
+
+	send(cliente,"ok",3,0);
+	return cliente;
 }
 
 char* esperarRespuesta(int conexion){
@@ -115,8 +108,7 @@ char* esperarRespuesta(int conexion){
 	int bytes= recv(conexion, &tamanioPaquete,4,0);
 
 	if (bytes<=0){
-		printf("Error de conexion \n");
-		*buffer = -1;
+		*buffer = NULL;
 	}else{
 		buffer = malloc(tamanioPaquete);
 
@@ -127,9 +119,8 @@ char* esperarRespuesta(int conexion){
 
 int aceptar(int servidor){
 	struct sockaddr_in direccionCliente;
-	unsigned int tamanioDireccion=sizeof(struct sockaddr_in);						//Arreglados
-	int cliente = accept(servidor, (void*) &direccionCliente, (void*)&tamanioDireccion);
-	printf("SOCKETS-ACEPTAR :: Cliente %d \n", cliente);
+	unsigned int tamanioDireccion = sizeof(struct sockaddr_in);
+	int cliente = accept(servidor, (void*) &direccionCliente, &tamanioDireccion);
 	return cliente;
 }
 

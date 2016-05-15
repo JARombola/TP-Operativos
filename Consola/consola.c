@@ -5,7 +5,7 @@
  *      Author: utnso
  */
 
-#include <stdlib.h>
+/*#include <stdlib.h>
 #include <stdio.h>
 #include <commons/string.h>
 #include <arpa/inet.h>
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 					bufferC[protocoloC + 1] = '\0';
 					printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidosC, bufferC);*/
 
-	}
+/*	}
 	return 0;
 }
 int conectar(int puerto){
@@ -75,7 +75,7 @@ int conectar(int puerto){
 	direccNucleo.sin_addr.s_addr = INADDR_ANY;
 	direccNucleo.sin_port = htons(puerto);
 
-	int conexion = socket(AF_INET, SOCK_STREAM, 0);
+	int conexion = sconectarUMCocket(AF_INET, SOCK_STREAM, 0);
 	while (connect(conexion, (void*) &direccNucleo, sizeof(direccNucleo)));
 	return conexion;
 }
@@ -150,5 +150,5 @@ int protocolo(int nucleo) {
 	}
 	free(buffer);
 	return -1;
-}
+}*/
 
