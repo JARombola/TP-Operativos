@@ -75,7 +75,7 @@ int conectar(int puerto){
 	direccNucleo.sin_addr.s_addr = INADDR_ANY;
 	direccNucleo.sin_port = htons(puerto);
 
-	int conexion = socket(AF_INET, SOCK_STREAM, 0);
+	int conexion = sconectarUMCocket(AF_INET, SOCK_STREAM, 0);
 	while (connect(conexion, (void*) &direccNucleo, sizeof(direccNucleo)));
 	return conexion;
 }
