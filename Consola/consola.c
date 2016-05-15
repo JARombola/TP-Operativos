@@ -5,7 +5,7 @@
  *      Author: utnso
  */
 
-#include <stdlib.h>
+/*#include <stdlib.h>
 #include <stdio.h>
 #include <commons/string.h>
 #include <arpa/inet.h>
@@ -150,5 +150,5 @@ int protocolo(int nucleo) {
 	}
 	free(buffer);
 	return -1;
-}
+}*/
 
