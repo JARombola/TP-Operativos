@@ -51,6 +51,7 @@ int comprobarCliente(int);
 int recibirProtocolo(int);
 char* recibirMensaje(int, int);
 int procesoActivo(int);
+void mostrarTablaPag(traductor_marco*);
 //COMPLETAR...........................................................
 void comprobarOperacion(int);
 void inicializarPrograma(int PID, int cantPaginas);
@@ -61,13 +62,12 @@ void consola();
 void atenderNucleo(int);
 void atenderCpu(int);
 int hayEspacio(int paginas);
-int ponerEnMemoria(char* codigo);
+int ponerEnMemoria(char* codigo,int id);
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 	t_list *tabla_de_paginas;
 	int mucho = MARCOS*MARCO_SIZE;
 	char *memoria;
-
 int main(int argc, char* argv[]) {
 	int umc_cliente,
 		activado=1,
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
 	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
-	leerConfiguracion(argv[1], datosMemoria);
+	//leerConfiguracion(argv[1], datosMemoria);
 
 	tabla_de_paginas = list_create();
 	memoria = malloc(mucho);
@@ -340,22 +340,21 @@ void atenderNucleo(int conexion){
 			int operacion = atoi(recibirMensaje(conexion,1));
 				if (operacion) {
 					int paginas, pid;
-
 					switch (operacion) {
 					case 1:												//inicializar programa
 							pid = recibirProtocolo(conexion);
 							paginas = recibirProtocolo(conexion);
 						if(hayEspacio(paginas)){
-							send(conexion, '1',1,0);
-							int espacio_del_codigo = paginas*MARCO_SIZE;
-							char* codigo = recibirMensaje(conexion,espacio_del_codigo);
-							if (ponerEnMemoria(codigo)){
-								printf("se guardo el codigo");
-
-							}else{printf("no se pudo guardar el codigo en memoria");}
-
-						}else{send(conexion, '0',1,0);}
-
+							send(conexion, "1",1,0);
+							int espacio_del_codigo = recibirProtocolo(conexion);
+							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
+//							printf("Codigo: %s",codigo);
+							if (ponerEnMemoria(codigo,pid)){
+								printf("se guardo el codigo\n");
+								list_iterate(tabla_de_paginas,mostrarTablaPag);
+							}
+						}else{printf("no se pudo guardar el codigo en memoria\n");
+									send(conexion, '0',1,0);}
 						break;
 					case 3:
 
@@ -372,15 +371,44 @@ int hayEspacio(int paginas){
 
 	return 1;
 }
-int ponerEnMemoria(char* codigo){
-	int aux_libre=0, aux_sig=0;
-	traductor_marco *traductorMarco= malloc(sizeof(traductor_marco));
-
-	//for
-	//memcpy(memoria + aux_libre, codigo + aux_sig, MARCO_SIZE);
-
-	aux_sig +=MARCO_SIZE;
-
-
+int ponerEnMemoria(char* codigo,int proceso){
+	int aux_libre = 0, aux_sig = 0, i;
+	int cantMarcos=string_length(codigo)/MARCO_SIZE;
+	if (string_length(codigo)%MARCO_SIZE) cantMarcos++;
+	for (i = 0; i <= cantMarcos; i++) {
+		traductor_marco *traductorMarco = malloc(sizeof(traductor_marco));
+		memcpy(memoria + aux_sig, codigo + MARCO_SIZE * i, MARCO_SIZE);			//1er parametro: buscarEspacioLibre;
+		traductorMarco->pagina=i;
+		traductorMarco->proceso=proceso;
+		traductorMarco->marco=buscarMarcoLibre();
+		list_add(tabla_de_paginas,traductorMarco);
+		//PARA PROBAR LA DIVISION DEL CODIGO
+//		memcpy(asd, codigo + (MARCO_SIZE * i), MARCO_SIZE);
+//		memcpy(asd + 4, "\0", 1);
+//		printf("%s|", asd);
+		aux_sig += MARCO_SIZE;
+	}
+	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
 	return 1;
+}
+
+void mostrarTablaPag(traductor_marco* fila){
+	printf("Marco: %d, Pag: %d, Proc:%d\n",fila->marco,fila->pagina,fila->proceso);
+}
+
+int buscarMarcoLibre() {
+	int posicion, encontrado = 0, j;
+	traductor_marco* unaFila;
+	for (posicion = 1; posicion <= list_size(tabla_de_paginas) && !encontrado; posicion++) {				//Si encuentra el n° marco => encontrado =0; i++
+		j = 0;
+		do {
+			encontrado = 1;
+			unaFila = list_get(tabla_de_paginas, j);
+			if (unaFila->marco == posicion) {														//Si la posicion ya está => encontrado=0 y salgo del while mas rapido
+				encontrado = 0;
+			}
+			j++;
+		} while (encontrado && j <= list_size(tabla_de_paginas));
+	}																						//Va a salir cuando haya recorrido TODA la lista, o cuando haya encontrado un lugar vacio
+	return posicion;
 }
