@@ -57,28 +57,19 @@ int levantarArchivoDeConfiguracion(){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
 	}
-	char* archivoJson = toJson(archivoDeConfiguracion);
-	char* puertoDelNucleo = buscar(archivoJson,"PN");
+	char* archivoJson =toJson(archivoDeConfiguracion);
+	char puertoDelNucleo [6];
+	buscar(archivoJson,"PN", puertoDelNucleo);
 	PUERTO_NUCLEO = atoi(puertoDelNucleo);
 	if (PUERTO_NUCLEO == 0){
 		printf("Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
-	AUTENTIFICACION = buscar(archivoJson,"AT");
+	buscar(archivoJson,"AT", AUTENTIFICACION);
 
 	return 0;
 }
-int conectarseAlNucleo(){
-	printf("Conectandose con el Nucleo...\n");
-	int nucleo = conectar(PUERTO_NUCLEO,AUTENTIFICACION);
-	if (nucleo < 0){
-		printf("Error: No se ha logrado establecer la conexion con el Nucleos\n");
-		return -1;
-	}
-	printf("conexion con el nucleo OK...\n");
 
-	return nucleo;
-}
 int enviarAlNucleo(int nucleo , char* archivoAnsisop){
 
 	FILE* archivo = fopen(archivoAnsisop,"r");
@@ -97,7 +88,7 @@ int imprimirMensajesDelNucleo(int nucleo){
 	printf("Esperando al Nucleo ...\n");
 	char* respuesta;
 	while (1){
-		respuesta = esperarRespueta(nucleo);
+		respuesta = esperarRespuesta(nucleo);
 		if (respuesta == NULL){
 			printf("Conexion con el Nucleo finalizada...\n");
 			return 0;
@@ -117,4 +108,3 @@ int conectarseAlNucleo(){
 	printf("Conexion con el nucleo OK... \n");
 	return nucleo;
 }
-
