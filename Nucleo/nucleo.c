@@ -19,10 +19,15 @@
 #include <commons/collections/queue.h>
 #include <commons/collections/list.h>
 #include <parser/metadata_program.h>
+#include <semaphore.h>
+#include <pthread.h>
 
-
+//todo #define IP_UMC
 #define PUERTO_UMC 6661
 #define PUERTO_NUCLEO 6662
+#define QUANTUM 3
+#define QUANTUM_SLEEP 500
+
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra) 	//MACRO
 
 typedef struct {
@@ -47,6 +52,19 @@ typedef struct {
 	int consola;
 } pcb;
 
+t_list *cpus, *consolas;
+
+//estructuras para planificacion
+pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
+t_queue* colaListos;
+t_queue* colaExec;
+t_queue* colaBloq;
+t_queue* colaTerminados;
+sem_t sem_Listos;
+sem_t sem_Exec;
+sem_t sem_Bloq;
+sem_t sem_Terminado;
+sem_t sem_cpuDisponible;
 
 int autentificarUMC(int);
 void leerConfiguracion(char*, datosConfiguracion*);
@@ -55,6 +73,7 @@ int conectarUMC(int);
 int comprobarCliente(int);
 int recibirProtocolo(int);
 void* recibirMensaje(int, int);
+
 pcb* crearPCB(char*,int,int*);
 t_list* crearIndiceDeCodigo(t_metadata_program*);
 int cantPaginas(t_metadata_program*,int);
@@ -62,6 +81,12 @@ void mostrar(int*);
 char* header(int);
 char* agregarHeader(char*);
 
+void atender_Listos();
+void atender_Exec();
+void atender_Bloq();
+void atender_Terminados();
+void  mandar_instruccion_a_CPU();
+void procesar_respuesta();
 
 
 int main(int argc, char* argv[]) {
@@ -74,12 +99,29 @@ int main(int argc, char* argv[]) {
 	/*t_queue* dispositivos[datosMemoria.io_ids.CANTIDAD];
 	for(i=0;i<=cant;i++){
 	dispositivos[i]=queue_create();}*/
-	//---------------------------------COLAS PCB-----------------------------------
-	t_queue* colaNuevos=queue_create();
-	t_queue* colaListos=queue_create();
-	t_queue* colaExec=queue_create();
-	t_queue* colaBloq=queue_create();
-	t_queue* colaTerminados=queue_create();
+	//---------------------------------PLANIFICACION PCB-----------------------------------
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);//todo agregar el destroy
+	pthread_t hiloListos, hiloExec, hiloBloq, hiloTerminados;
+
+	pthread_create(&hiloListos, &attr, (void*)atender_Listos, NULL);
+	//pthread_create(&hiloExec, &attr, (void*)atender_Exec, NULL);
+	pthread_create(&hiloBloq, &attr, (void*)atender_Bloq, NULL);//todo un hilo por cada e/s, y por parametro el sleep
+	pthread_create(&hiloTerminados, &attr, (void*)atender_Terminados, NULL);
+
+	colaListos=queue_create();
+	colaExec=queue_create();
+	colaBloq=queue_create();
+	colaTerminados=queue_create();
+
+	sem_init(&sem_Listos, 0, 0);
+	sem_init(&sem_Exec, 0, 0);
+	sem_init(&sem_Bloq, 0, 0);
+	sem_init(&sem_Terminado, 0, 0);
+	sem_init(&sem_cpuDisponible, 0, 0);
+
+
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in direccionNucleo = crearDireccion(PUERTO_NUCLEO);
@@ -107,7 +149,6 @@ int main(int argc, char* argv[]) {
 	//ahora creo el select
 	fd_set descriptores;
 	int nuevo_cliente;
-	t_list* cpus, *consolas;
 	cpus = list_create();
 	consolas = list_create();
 	int max_desc = conexionUMC;
@@ -147,20 +188,17 @@ int main(int argc, char* argv[]) {
 				int protocolo = recibirProtocolo(unaConsola);
 				if (protocolo == -1) {
 					perror("La consola se desconecto o algo. Eliminada\n");
+					//todo si el proceso no termino, hay que eliminarlo, y avisar a todos
 					list_remove(consolas, i);
 					close(unaConsola);
 				} else {
 					char* bufferConsola = malloc(protocolo + 1);
-					int mensaje = recibirMensaje(unaConsola, protocolo);
+					char* mensaje = recibirMensaje(unaConsola, protocolo);
 					free(bufferConsola);
-					//mando mensaje a los CPUs
-					for (i = 0; i < list_size(cpus); i++) {
-						//ver los clientes que recibieron informacion
-						int unCPU = list_get(cpus, i);
-						int longitud = htonl(string_length(bufferConsola));
-						send(unCPU, &longitud, sizeof(int32_t), 0);
-						send(unCPU, bufferConsola, string_length(bufferConsola), 0);
-					}
+					printf("mensaje de consola: %s",mensaje);
+					free(mensaje);
+					//no me deberia mandar nada la consola
+
 				}
 			}
 		}
@@ -171,11 +209,12 @@ int main(int argc, char* argv[]) {
 				int protocolo=recibirProtocolo(unCPU);
 				if (protocolo==-1) {
 					perror("el cpu se desconecto o algo. Se lo elimino\n");
+					sem_wait(&sem_cpuDisponible);
 					list_remove(cpus, i);
 					close(unCPU);
 				} else {
 					char* bufferCpu = malloc(protocolo + 1);
-					int mensaje = recibirMensaje(unCPU,protocolo);
+					int mensaje = atoi(recibirMensaje(unCPU,protocolo));
 					free(bufferCpu);
 				}
 			}
@@ -200,6 +239,8 @@ int main(int argc, char* argv[]) {
 			case 1:															//CPU
 				send(nuevo_cliente, tamPagina, 4, 0);
 				list_add(cpus, (void *) nuevo_cliente);
+				sem_post(&sem_cpuDisponible);
+				pthread_create(&hiloExec, &attr, (void*)atender_Exec, (void*)nuevo_cliente);
 				printf("Acepté un nuevo cpu\n");
 				break;
 			case 2:															//CONSOLA, RECIBO EL CODIGO
@@ -219,6 +260,11 @@ int main(int argc, char* argv[]) {
 					memcpy(mensajeInicial + 9, "\0", 1);
 					printf("%s\n", mensajeInicial);
 					send(conexionUMC, mensajeInicial, string_length(mensajeInicial), 0);
+					//todo si recibo 0, no hay espacio, elimino pcb
+					//si recibo 1
+					printf("el pcb %d se guardo en la umc y paso a la cola de Listos",pcbNuevo->PID);
+					queue_push(colaListos, pcbNuevo);
+					sem_post(&sem_Listos);
 					free(mensajeInicial);
 					free(codigo);
 			/*		recv(conexionUMC, mensajeInicial, 1, 0);
@@ -322,7 +368,7 @@ void* recibirMensaje(int conexion, int tamanio){
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
-		return (int)-1;}
+		return -1;}
 	return mensaje;
 }
 
@@ -403,5 +449,98 @@ t_list* crearIndiceDeCodigo(t_metadata_program* meta){
  void mostrar(int* sentencia){
  	printf("Inicio:%d | Offset:%d\n",sentencia[0],sentencia[1]);
  }
+//----------------------------PLANIFICACION
 
+ void atender_Listos(){
+	 sem_wait(&sem_Listos);
+	 pcb* pcbListo = malloc(sizeof(pcb));
+	 pcbListo = queue_pop(colaListos);
+	 int paso=1;
+	 while(paso){
+		 if(&sem_cpuDisponible>0 ){ //todo se puede el semaforo? sino un contador
+			 printf("el proceso %d paso de Listo a Execute",pcbListo->PID);
+			 queue_push(colaExec, pcbListo);
+			 sem_post(&sem_Exec);
+			 paso=0;
+		 }
+	 }
+	 free(pcbListo);
+ }
+ void atender_Exec(int cpu){
+	 sem_wait(&sem_Exec);
+	 sem_wait(&sem_cpuDisponible);
+	 pcb* pcbExec = malloc(sizeof(pcb));
+	 pcbExec = queue_pop(colaListos);
+	 int i,todoSigueIgual=1;
+	 for(i=0; i<QUANTUM; i++){
+		 mandar_instruccion_a_CPU(cpu,pcbExec,&todoSigueIgual);
+		 pcbExec->PC++;
+		 sleep(QUANTUM_SLEEP);
+	 } //si en el medio del q se bloqueo o termino, todoSigueIgual=0
+	 if(todoSigueIgual){
+		 printf("el proceso %d paso de Execute a Listo",pcbExec->PID);
+		 queue_push(colaListos, pcbExec);
+		 sem_post(&sem_Listos);
+	 }
+	 sem_post(&sem_cpuDisponible);
+	 free(pcbExec);
 
+ }
+ void atender_Bloq(){
+	 //varias colas?
+	 /*obtener_valor [identificador de variable compartida]
+		grabar_valor [identificador de variable compartida] [valor a grabar]
+		wait [identificador de semáforo]
+		signal [identificador de semáforo]
+		entrada_salida [identificador de dispositivo] [unidades de tiempo a utilizar]
+	  */
+ }
+ void atender_Terminados(){
+	 sem_wait(&sem_Terminado);
+	 pcb* pcbTerminado = malloc(sizeof(pcb));
+	 pcbTerminado = queue_pop(colaTerminados);
+	 //todo avisar umc y consola que termino el programa
+ }
+
+void mandar_instruccion_a_CPU(int cpu, pcb*pcb, int igual){
+	//todo concatenar pcbExec->PID,pcbExec->PC,pcbExec->SP
+	//send(cpu, pcbTrucho, 12);
+
+	procesar_respuesta(recibirProtocolo(cpu),cpu,  pcb, &igual);
+}
+void procesar_respuesta(int op,int cpu, pcb*pcb, int todoSigueIgual){
+		int mostrar;
+		int tamanio;
+		char* texto;
+	switch (op){
+	case 1:
+		//tengo que bloquearme,
+		printf("el proceso %d paso de Execute a Bloqueado",pcb->PID);
+		todoSigueIgual=0;
+		queue_push(colaBloq, pcb);
+		sem_post(&sem_Bloq);
+		break;
+	case 2:
+		//termino el ansisop, va a listos
+		printf("el proceso %d paso de Execute a Terminado",pcb->PID);
+		todoSigueIgual=0;
+		queue_push(colaTerminados, pcb);
+		sem_post(&sem_Terminado);
+		break;
+	case 3:
+		//imprimir
+		//agregar header cod_op
+		mostrar = recibirProtocolo(cpu);
+		send(pcb->consola, mostrar, 4, 0);
+		break;
+	case 4:
+		//imprimirTexto
+		//agregar header cod_op
+		tamanio = recibirProtocolo(cpu);
+		texto = recibirMensaje(cpu, tamanio);
+		//send(pcb->consola, concatentar headers,(tamanio+4);
+		break;
+
+	}
+
+}
