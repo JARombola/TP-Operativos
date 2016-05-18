@@ -16,34 +16,49 @@ int finalizado;
 
 t_puntero definirVariable(t_nombre_variable variable) {
 	printf("definir la variable %c\n", variable);
-	return POSICION_MEMORIA;
+	char mensaje[100] = "Espacio Libre, id:" + pcb.id;
+	enviarMensaje(umc, mensaje);
+	char* resp = esperarRespuesta(umc);
+	char pagina [54];
+	char desplazamiento [10];
+	parsearRespuesta(resp, pagina, desplazamiento);
+	// ponerlo en el pbc
+	strcat(pagina,desplazamiento);
+	return  pagina;
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	printf("Obtener posicion de %c\n", variable);
+	char* pagina[54] = //pcb.pagina + pcb.desplazamiento
 	return POSICION_MEMORIA;
 }
 
-t_valor_variable dereferenciar(t_puntero puntero) {
+t_valor_variable dereferenciar(t_puntero puntero) { //nose que es esto
 	printf("Dereferenciar %d y su valor es: [VALOR]\n", puntero);
 	return CONTENIDO_VARIABLE;
 }
 
 void asignar(t_puntero puntero, t_valor_variable variable) {
 	printf("Asignando en %d el valor [VALOR]\n", puntero);
+	char mensaje[100] = "Asignar:" +/*pcb.pagina*/ +"/"+/*pcb.desplazamiento*/+"/"+ valor;
+	enviarMensaje(umc,mensaje);
 }
 
 void imprimir(t_valor_variable valor)
 {
 	printf("Imprimir %d \n", valor);
+	char mensaje[100] = "Imprimi:" + itoa(valor);
+	enviarMensaje(nucleo,mensaje);
 }
 
-void imprimirTexto(char* texto) {
-	printf("ImprimirTexto: %s", texto);
+void imprimirTexto(char* texto) { 
+	printf("ImprimirTexto: %s \n", texto);
+	char mensaje[100] = "Imprimi:" + texto;
+	enviarMensaje(nucleo,mensaje);
 }
 
 void finalizar() {
-	printf("Finalizado");
+	printf("Finalizado \n");
 	finalizado = 1;
 }
 void llamasSinRetorno(char* texto) {
@@ -51,11 +66,8 @@ void llamasSinRetorno(char* texto) {
 		printf("Inicio de Programa\n");
 		return;
 	}
-    if (texto[0] == '#'){
-    	printf("Comentario: %s \n", texto);
-    	return;
-    }
     printf("Llamada a la funcion: %s \n", texto);
+    saltoDeLinea(); // VER AK COMO SE HACER
 }
 
 AnSISOP_funciones functions = {
@@ -67,13 +79,6 @@ AnSISOP_funciones functions = {
 		.AnSISOP_imprimirTexto			= imprimirTexto,
 		.AnSISOP_finalizar              = finalizar,
 		.AnSISOP_llamarSinRetorno       = llamasSinRetorno,
-		/*.AnSISOP_obtenerValorCompartida
-		   .AnSISOP_asignarValorCompartida
-		   .AnSISOP_irAlLabel
-		   AnSISOP_llamarConRetorno
-		   AnSISOP_retornar
-		   AnSISOP_entradaSalida*/
-
 };
 AnSISOP_kernel kernel_functions = {};
 //---------------------------------------
