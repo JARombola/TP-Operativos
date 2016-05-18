@@ -30,7 +30,7 @@ t_puntero definirVariable(t_nombre_variable variable) {
 t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	printf("Obtener posicion de %c\n", variable);
 	char* pagina[54] = //pcb.pagina + pcb.desplazamiento
-	return POSICION_MEMORIA;
+	return pagina;
 }
 
 t_valor_variable dereferenciar(t_puntero puntero) { //nose que es esto
