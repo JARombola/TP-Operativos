@@ -2,7 +2,7 @@
  * Al usar esto tenes que definir en tu .c
  * int tienePermiso(char* autentificacion){} y retornar 0 si no tiene y 1 si tiene permiso
  */
-#include <arpa/inet.h>
+/*#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -123,4 +123,4 @@ int aceptar(int servidor){
 	int cliente = accept(servidor, (void*) &direccionCliente, &tamanioDireccion);
 	return cliente;
 }
-
+*/

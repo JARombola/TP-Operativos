@@ -19,7 +19,7 @@ int imprimirMensajesDelNucleo(int nucleo);
 char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionConsola.txt";
 int PUERTO_NUCLEO;
 char AUTENTIFICACION[100];
-
+/*
 int main (int argc, char* argv[]){
 	printf("Consola estable \n");
 
@@ -108,4 +108,4 @@ int conectarseAlNucleo(){
 	}
 	printf("Conexion con el nucleo OK... \n");
 	return nucleo;
-}
+}*/

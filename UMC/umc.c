@@ -19,16 +19,13 @@
 
 #define esIgual(a,b) string_equals_ignore_case(a,b)
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
+#define marcosTotal datosMemoria->marco_size*datosMemoria->marcos
 
-//datos a leer por el archivo
-#define PUERTO_SWAP 6660
-#define PUERTO_UMC 6661
-#define MARCOS 100
-#define MARCO_SIZE 3
+
 
 typedef struct{
 	char* ip;				//PASAR A IP CON: inet_addr() / o inet_ntoa()
-	int puerto, puerto_swap, marcos, marco_size, marco_x_proc, entradas_tlb, retardo;
+	int puerto_umc, puerto_swap, marcos, marco_size, marco_x_proc, entradas_tlb, retardo;
 }datosConfiguracion;
 
 typedef struct{
@@ -43,7 +40,7 @@ typedef struct{
  *            					     - INDICE DE STACK
  */
 
-void leerConfiguracion(char*, datosConfiguracion*);
+int leerConfiguracion(char*, datosConfiguracion**);
 struct sockaddr_in crearDireccion(int);
 int conectar(int);
 int autentificar(int);
@@ -62,12 +59,15 @@ void consola();
 void atenderNucleo(int);
 void atenderCpu(int);
 int hayEspacio(int paginas);
-int ponerEnMemoria(char* codigo,int id);
+int ponerEnMemoria(char* codigo,int id,int cantPags);
+int buscarMarcoLibre();
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
-	t_list *tabla_de_paginas;
-	int mucho = MARCOS*MARCO_SIZE;
-	char *memoria;
+t_list *tabla_de_paginas;
+int totalPaginas;
+char *memoria;
+datosConfiguracion *datosMemoria;
+
 int main(int argc, char* argv[]) {
 	int umc_cliente,
 		activado=1,
@@ -79,18 +79,19 @@ int main(int argc, char* argv[]) {
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
-	datosConfiguracion* datosMemoria=malloc(sizeof(datosConfiguracion));
-	//leerConfiguracion(argv[1], datosMemoria);
-
+	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
+	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
+		printf("Error archivo de configuracion\n FIN.");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
+	printf("total Marcos: %d\n",marcosTotal);
 	tabla_de_paginas = list_create();
-	memoria = malloc(mucho);
+	memoria = malloc(marcosTotal);
 
 	//-------------------------SOCKETS
-	struct sockaddr_in direccionUMC = crearDireccion(PUERTO_UMC);//Para el bind
+	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc);//Para el bind
 	struct sockaddr_in direccionCliente;			//Donde guardo al cliente
 	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
 	printf("UMC Creada. Conectando con la Swap...\n");
-	umc_cliente = conectar(PUERTO_SWAP);
+	umc_cliente = conectar(datosMemoria->puerto_swap);
 	//calloc(datosMemoria.marcos,datosMemoria.marco_size);
 	//-----------------------------------SWAP---------------------------------
 	if (!autentificar(umc_cliente)) {
@@ -98,9 +99,8 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 	printf("Conexion con la Swap Ok\n");
-	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado,
-			sizeof(activado));			//Para evitar esperas al cerrar socket
-	if (bind(umc_servidor, (void *) &direccionUMC, sizeof(direccionUMC)) != 0) {
+	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));			//Para evitar esperas al cerrar socket
+	if (bind(umc_servidor, (void *) &direccionUMC, sizeof(direccionUMC))) {
 		perror("Fallo el bind");
 		return 1;
 	}
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
 			perror("Fallo el accept");
 		}
 	} while (comprobarCliente(nuevo_cliente) != 2);												//Espero la conexion del nucleo
-	int tamPagEnvio = ntohl(MARCO_SIZE);
+	int tamPagEnvio = ntohl(datosMemoria->marco_size);
 	send(nuevo_cliente, &tamPagEnvio, 4, 0);													//Le envio el tamaño de pagina
 	printf("Acepte al nucleo\n");
 	//-----------------------------Funcionamiento de la UMC--------------------------------------------
@@ -144,31 +144,31 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-void leerConfiguracion(char *ruta, datosConfiguracion* datos) {
+int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
 	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
 	if (archivoConfiguracion == NULL) {
-		perror("FIN PROGRAMA");
-		exit(0);
+		return 0;
 	} else {
 		int cantidadKeys = config_keys_amount(archivoConfiguracion);
 		if (cantidadKeys != 8) {
 			perror("ERROR CANTIDAD DATOS DE CONFIGURACION");
 		} else {
-			datos->puerto=buscarInt(archivoConfiguracion, "PUERTO");
-			datos->puerto_swap=buscarInt(archivoConfiguracion, "PUERTO_SWAP");
-			datos->marcos=buscarInt(archivoConfiguracion, "MARCOS");
-			datos->marco_size=buscarInt(archivoConfiguracion, "MARCO_SIZE");
-			datos->marco_x_proc=buscarInt(archivoConfiguracion, "MARCO_X_PROC");
-			datos->entradas_tlb=buscarInt(archivoConfiguracion, "ENTRADAS_TLB");
-			datos->retardo=buscarInt(archivoConfiguracion, "RETARDO");
-			struct sockaddr_in ipLinda;			//recurso TURBIO para guardar la ip :/
+			(*datos)->puerto_umc=buscarInt(archivoConfiguracion, "PUERTO_UMC");
+			(*datos)->puerto_swap=buscarInt(archivoConfiguracion, "PUERTO_SWAP");
+			(*datos)->marcos=buscarInt(archivoConfiguracion, "MARCOS");
+			(*datos)->marco_size=buscarInt(archivoConfiguracion, "MARCO_SIZE");
+			(*datos)->marco_x_proc=buscarInt(archivoConfiguracion, "MARCO_X_PROC");
+			(*datos)->entradas_tlb=buscarInt(archivoConfiguracion, "ENTRADAS_TLB");
+			(*datos)->retardo=buscarInt(archivoConfiguracion, "RETARDO");
+			struct sockaddr_in ipLinda;							//recurso TURBIO para guardar la ip :/
 			char *direccion;
 			inet_aton(config_get_string_value(archivoConfiguracion,"IP"), &ipLinda.sin_addr); //
 			direccion = inet_ntoa(ipLinda.sin_addr);
-			datos->ip=direccion;
+			(*datos)->ip=direccion;
 			config_destroy(archivoConfiguracion);
 		}
 	}
+	return 1;
 }
 
 struct sockaddr_in crearDireccion(int puerto){
@@ -309,7 +309,7 @@ void atenderCpu(int conexion){
 					paginas = recibirProtocolo(conexion);
 					offset = recibirProtocolo(conexion);
 					if (paginas && offset) {
-						enviarBytes(paginas, offset, MARCO_SIZE);
+						enviarBytes(paginas, offset, datosMemoria->marco_size);
 					} else {
 						salir = 1;
 					}
@@ -319,7 +319,7 @@ void atenderCpu(int conexion){
 					offset = recibirProtocolo(conexion);
 					buffer = recibirProtocolo(conexion);
 					if (paginas && offset && buffer) {
-						almacenarBytes(paginas, offset, MARCO_SIZE, buffer);
+						almacenarBytes(paginas, offset, datosMemoria->marco_size, buffer);
 					} else {
 						salir = 1;
 					}
@@ -344,17 +344,20 @@ void atenderNucleo(int conexion){
 					case 1:												//inicializar programa
 							pid = recibirProtocolo(conexion);
 							paginas = recibirProtocolo(conexion);
-						if(hayEspacio(paginas)){
+						if(1){				//hayEspacio(paginas)
 							send(conexion, "1",1,0);
 							int espacio_del_codigo = recibirProtocolo(conexion);
 							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
-//							printf("Codigo: %s",codigo);
-							if (ponerEnMemoria(codigo,pid)){
+							printf("Codigo: %s-\n",codigo);
+							if (ponerEnMemoria(codigo,pid,paginas)){
 								printf("se guardo el codigo\n");
-								list_iterate(tabla_de_paginas,mostrarTablaPag);
+								/*list_iterate(tabla_de_paginas,mostrarTablaPag);
+								list_take_and_remove(tabla_de_paginas,5);
+								list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
 							}
-						}else{printf("no se pudo guardar el codigo en memoria\n");
-									send(conexion, '0',1,0);}
+						}else{
+							printf("1 Ansisop rechazado, memoria insuficiente\n");
+							send(conexion, "0",1,0);}
 						break;
 					case 3:
 
@@ -367,27 +370,50 @@ void atenderNucleo(int conexion){
 
 //--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
 int hayEspacio(int paginas){
-
-
-	return 1;
+	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=marcosTotal-list_size(tabla_de_paginas)));
 }
-int ponerEnMemoria(char* codigo,int proceso){
-	int aux_libre = 0, aux_sig = 0, i;
-	int cantMarcos=string_length(codigo)/MARCO_SIZE;
-	if (string_length(codigo)%MARCO_SIZE) cantMarcos++;
-	for (i = 0; i <= cantMarcos; i++) {
-		traductor_marco *traductorMarco = malloc(sizeof(traductor_marco));
-		memcpy(memoria + aux_sig, codigo + MARCO_SIZE * i, MARCO_SIZE);			//1er parametro: buscarEspacioLibre;
-		traductorMarco->pagina=i;
-		traductorMarco->proceso=proceso;
-		traductorMarco->marco=buscarMarcoLibre();
-		list_add(tabla_de_paginas,traductorMarco);
+int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
+	int i=0,acum=0,offset,resto,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
+	do{
+		for (offset = 0;(offset < tamMarco) && (codigo[acum] != '\n'); offset++, acum++) {
+			printf("%c", codigo[acum]);
+		}
+		printf("* i=%d\n",i);
+
+		resto = tamMarco%offset;
+		cantPags=offset/tamMarco;
+		a=0;
+		for(a=0;a<cantPags;a++){
+			traductor_marco *traductorMarco = malloc(sizeof(traductor_marco));
+			pos = buscarMarcoLibre();
+			memcpy(memoria+pos*tamMarco,codigo+(i*tamMarco),tamMarco);
+			traductorMarco->pagina=i;
+			traductorMarco->proceso=proceso;
+			traductorMarco->marco=pos;
+			list_add(tabla_de_paginas,traductorMarco);
+			i++;
+		}
+		if (resto || !cantPags){
+			traductor_marco *traductorMarco = (traductor_marco*)malloc(sizeof(traductor_marco));
+			pos = buscarMarcoLibre();
+			memcpy(memoria+pos*tamMarco,codigo+(i*tamMarco),resto);
+			traductorMarco->pagina=i;
+			traductorMarco->proceso=proceso;
+			traductorMarco->marco=pos;
+			i++;
+			list_add(tabla_de_paginas,traductorMarco);
+		}
+		if(codigo[acum]=='\n') acum++;											//Para que no se clave
+	}while (i < paginasNecesarias);
+
+
 		//PARA PROBAR LA DIVISION DEL CODIGO
-//		memcpy(asd, codigo + (MARCO_SIZE * i), MARCO_SIZE);
-//		memcpy(asd + 4, "\0", 1);
-//		printf("%s|", asd);
-		aux_sig += MARCO_SIZE;
-	}
+	//	char* asd=malloc(cantMarcos*datosMemoria->marco_size);
+	//	memcpy(asd, codigo + (datosMemoria->marco_size * i), datosMemoria->marco_size);
+	//	memcpy(asd + datosMemoria->marco_size+1, "\0", 1);
+	//	printf("%s|", asd);
+
+	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
 	return 1;
 }
@@ -397,18 +423,18 @@ void mostrarTablaPag(traductor_marco* fila){
 }
 
 int buscarMarcoLibre() {
-	int posicion, encontrado = 0, j;
+	int posicion, encontrado = 0,j;
 	traductor_marco* unaFila;
-	for (posicion = 1; posicion <= list_size(tabla_de_paginas) && !encontrado; posicion++) {				//Si encuentra el n° marco => encontrado =0; i++
-		j = 0;
+	for (posicion = 0 ; posicion <list_size(tabla_de_paginas); posicion++) {				//Si encuentra el n° marco => encontrado =0; i++
+		j=0;
+		encontrado = 0;
 		do {
-			encontrado = 1;
 			unaFila = list_get(tabla_de_paginas, j);
 			if (unaFila->marco == posicion) {														//Si la posicion ya está => encontrado=0 y salgo del while mas rapido
-				encontrado = 0;
-			}
+				encontrado = 1;}
 			j++;
-		} while (encontrado && j <= list_size(tabla_de_paginas));
+		} while (!encontrado && j < list_size(tabla_de_paginas));
+		if (!encontrado){return posicion;}
 	}																						//Va a salir cuando haya recorrido TODA la lista, o cuando haya encontrado un lugar vacio
 	return posicion;
 }
