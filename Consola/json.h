@@ -63,16 +63,29 @@ void buscar(char* archivo, char* key, char*value){
 	int longitud = strlen(archivo);
 	int i;
 	int j;
-	int k =0;
+	int k;
+	int l =0;
 	char valor[200];
-	for (i=0; i<=longitud; i++){
-		if ((archivo[i]==key[0]) && (archivo[i+1]==key[1]) && (archivo[i+2]==':')){
-			for (j=i+3; archivo[j]!='\n';j++){
-				valor[k] = archivo[j];
-				k++;
+	for (i=0; i<longitud; i++){
+		for (j = 0; j < strlen(key); j++){
+			printf("1)%c\n",archivo[i+j]);
+			printf("2)%c\n",key[j]);
+			if (!(archivo[i+j] == key[j])){
+				printf("1)%c\n",archivo[i+j]);
+				printf("2)%c\n",key[j]);
+				break;
+			}
+		}
+		if (j == strlen(key)){
+			if (archivo[i+j] == ':'){
+				for (k=i+j+1; archivo[k]!='\n';k++){
+					valor[l] = archivo[k];
+					l++;
+				}
+				break;
 			}
 		}
 	}
-	valor[k] = '\0';
+	valor[l] = '\0';
 	strcpy(value,valor);
 }
