@@ -16,6 +16,8 @@
 
 
 #define PUERTO_NUCLEO 6662
+#define IP_NUCLEO "127.0.0.1"
+
 int protocolo(int nucleo);
 int conectar (int);
 int autentificar(int);
@@ -74,7 +76,7 @@ int conectar(int puerto){
 
 	struct sockaddr_in direccNucleo;
 	direccNucleo.sin_family = AF_INET;
-	direccNucleo.sin_addr.s_addr = INADDR_ANY;
+	direccNucleo.sin_addr.s_addr = inet_addr(IP_NUCLEO);				//todo modificar IP
 	direccNucleo.sin_port = htons(puerto);
 
 	int conexion =socket(AF_INET, SOCK_STREAM, 0);
@@ -83,7 +85,9 @@ int conectar(int puerto){
 }
 
 int autentificar(int conexion){
-	send(conexion, "soy_una_consola", 15, 0);
+	int codigo=2;
+	codigo=htonl(codigo);
+	send(conexion, &codigo, 4, 0);
 	return (esperarConfirmacion(conexion));			//ME DEVUELVE EL PUERTO DE LA UMC o 0 si hubo error
 }
 
@@ -120,7 +124,7 @@ int enviarAnsisop(FILE* archivo, int sockNucleo){
 	fseek (archivo, 0, SEEK_END);
 	int bytesArchivo = ftell (archivo);
 	fseek (archivo, 0, SEEK_SET);
-	char* codigo = (char*)malloc(bytesArchivo+4); 			//+4 Para el header (longitud)
+	char* codigo = (char*)malloc(bytesArchivo+4); 											//+4 Para el header (longitud)
 	if (codigo){
 		fread (codigo, sizeof(char), bytesArchivo, archivo);
 	}
@@ -133,24 +137,27 @@ int enviarAnsisop(FILE* archivo, int sockNucleo){
 	fclose (archivo);
 	agregarHeader(&codigo);
 	codigo[bytesArchivo+4]='\0';
-	printf("Long:%d\n",string_length(codigo));
 	int enviados=send(sockNucleo, codigo, string_length(codigo), 0);
-	printf("Codigo: %s %d\n",codigo,string_length(codigo));
+	//printf("Codigo: %s %d\n",codigo,string_length(codigo));
 	free(codigo);
-	if(enviados==string_length(codigo)){return 0;}							//Envio ok
-	return 1;											//Error
+	if(enviados==string_length(codigo)){return 0;}										//Envio ok
+	return 1;																			//Error
 }
 
 int protocolo(int nucleo) {
 	char* buffer = malloc(2);
 	int bytesRecibidos = recv(nucleo, buffer, 1, 0);
-	buffer[bytesRecibidos] = '\0'; //lo paso a string para comparar
-	if(bytesRecibidos <= 0){ //se desconecto
+	buffer[bytesRecibidos] = '\0'; 								//lo paso a string para comparar
+	if(bytesRecibidos <= 0){ 						//se desconecto
+		printf("Error\n");
+		free(buffer);
 		return 0;
 	}
 	if (strcmp("1", buffer) == 0) {//quiere imprimir
+		free(buffer);
 		return 1;
 	} else if (strcmp("2", buffer) == 0) { //quiere imprimir texto
+		free(buffer);
 		return 2;
 	}
 	free(buffer);

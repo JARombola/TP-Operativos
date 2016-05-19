@@ -24,7 +24,7 @@
 
 
 typedef struct{
-	char* ip;				//PASAR A IP CON: inet_addr() / o inet_ntoa()
+	char *ip, *ip_swap;				//PASAR A IP CON: inet_addr() / o inet_ntoa()
 	int puerto_umc, puerto_swap, marcos, marco_size, marco_x_proc, entradas_tlb, retardo;
 }datosConfiguracion;
 
@@ -41,8 +41,8 @@ typedef struct{
  */
 
 int leerConfiguracion(char*, datosConfiguracion**);
-struct sockaddr_in crearDireccion(int);
-int conectar(int);
+struct sockaddr_in crearDireccion(int,char*);
+int conectar(int,char*);
 int autentificar(int);
 int comprobarCliente(int);
 int recibirProtocolo(int);
@@ -78,7 +78,6 @@ int main(int argc, char* argv[]) {
 	pthread_t thread;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
-
 	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		printf("Error archivo de configuracion\n FIN.");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
@@ -86,25 +85,29 @@ int main(int argc, char* argv[]) {
 	tabla_de_paginas = list_create();
 	memoria = malloc(marcosTotal);
 
-	//-------------------------SOCKETS
-	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc);//Para el bind
+	//----------------------------------------------------------------------------SOCKETS
+
+	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc,datosMemoria->ip);//Para el bind
 	struct sockaddr_in direccionCliente;			//Donde guardo al cliente
 	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0); //creo el descriptor con esa direccion
 	printf("UMC Creada. Conectando con la Swap...\n");
-	umc_cliente = conectar(datosMemoria->puerto_swap);
-	//calloc(datosMemoria.marcos,datosMemoria.marco_size);
-	//-----------------------------------SWAP---------------------------------
+	umc_cliente = conectar(datosMemoria->puerto_swap, datosMemoria->ip_swap);
+
+	//----------------------------------------------------------------SWAP
+
 	if (!autentificar(umc_cliente)) {
 		printf("Falló el handshake\n");
-		return -1;
-	}
+		return -1;}
+
 	printf("Conexion con la Swap Ok\n");
 	setsockopt(umc_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));			//Para evitar esperas al cerrar socket
 	if (bind(umc_servidor, (void *) &direccionUMC, sizeof(direccionUMC))) {
 		perror("Fallo el bind");
 		return 1;
 	}
-	//------------------------------------NUCLEO--------------------------------------------
+
+	//-------------------------------------------------------------------------NUCLEO
+
 	printf("Esperando nucleo...\n");
 	listen(umc_servidor, 1);
 	do {
@@ -117,17 +120,16 @@ int main(int argc, char* argv[]) {
 	int tamPagEnvio = ntohl(datosMemoria->marco_size);
 	send(nuevo_cliente, &tamPagEnvio, 4, 0);													//Le envio el tamaño de pagina
 	printf("Acepte al nucleo\n");
-	//-----------------------------Funcionamiento de la UMC--------------------------------------------
+
+	//-------------------------------------------------------------------Funcionamiento de la UMC
+
 	pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nuevo_cliente);				//Hilo para atender al nucleo
 	pthread_create(&thread, &attr, (void*) consola, NULL);										//Hilo para atender comandos
 	listen(umc_servidor, 15);																	//Para recibir conexiones (CPU's)
 
 	while (1) {
-		nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,
-				(void *) &sin_size);
-		if (nuevo_cliente == -1) {
-			perror("Fallo el accept");
-		}
+		nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
+		if (nuevo_cliente == -1) {perror("Fallo el accept");}
 		printf("Recibi una conexion en %d!!\n", nuevo_cliente);
 		switch (comprobarCliente(nuevo_cliente)) {
 		case 0:															//Error
@@ -141,17 +143,20 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	free(datosMemoria);
+	free(memoria);
 	return 0;
 }
 
+
+//------------------------------------------------------------FUNCIONES
 int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
 	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
 	if (archivoConfiguracion == NULL) {
 		return 0;
 	} else {
 		int cantidadKeys = config_keys_amount(archivoConfiguracion);
-		if (cantidadKeys != 8) {
-			perror("ERROR CANTIDAD DATOS DE CONFIGURACION");
+		if (cantidadKeys < 9) {
+			return 0;
 		} else {
 			(*datos)->puerto_umc=buscarInt(archivoConfiguracion, "PUERTO_UMC");
 			(*datos)->puerto_swap=buscarInt(archivoConfiguracion, "PUERTO_SWAP");
@@ -160,27 +165,28 @@ int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
 			(*datos)->marco_x_proc=buscarInt(archivoConfiguracion, "MARCO_X_PROC");
 			(*datos)->entradas_tlb=buscarInt(archivoConfiguracion, "ENTRADAS_TLB");
 			(*datos)->retardo=buscarInt(archivoConfiguracion, "RETARDO");
-			struct sockaddr_in ipLinda;							//recurso TURBIO para guardar la ip :/
-			char *direccion;
-			inet_aton(config_get_string_value(archivoConfiguracion,"IP"), &ipLinda.sin_addr); //
-			direccion = inet_ntoa(ipLinda.sin_addr);
-			(*datos)->ip=direccion;
+			char* ip=string_new();
+			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
+			(*datos)->ip=ip;
+			char* ipSwap=string_new();
+			string_append(&ipSwap,config_get_string_value(archivoConfiguracion,"IP_SWAP"));
+			(*datos)->ip_swap=ipSwap;
 			config_destroy(archivoConfiguracion);
 		}
 	}
 	return 1;
 }
 
-struct sockaddr_in crearDireccion(int puerto){
+struct sockaddr_in crearDireccion(int puerto,char* ip){
 	struct sockaddr_in direccion;
 	direccion.sin_family = AF_INET;
-	direccion.sin_addr.s_addr = INADDR_ANY;
+	direccion.sin_addr.s_addr =inet_addr(ip);
 	direccion.sin_port = htons(puerto);
 	return direccion;
 }
 
-int conectar(int puerto){   							//Con la swap
-	struct sockaddr_in direccion=crearDireccion(puerto);
+int conectar(int puerto,char* ip){   							//Con la swap
+	struct sockaddr_in direccion=crearDireccion(puerto, ip);
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
 	while (connect(conexion, (void*) &direccion, sizeof(direccion)));
 	return conexion;
@@ -344,16 +350,17 @@ void atenderNucleo(int conexion){
 					case 1:												//inicializar programa
 							pid = recibirProtocolo(conexion);
 							paginas = recibirProtocolo(conexion);
-						if(1){				//hayEspacio(paginas)
+						if(1){							//todo hayEspacio(paginas) es la condicion real
 							send(conexion, "1",1,0);
 							int espacio_del_codigo = recibirProtocolo(conexion);
 							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
-							printf("Codigo: %s-\n",codigo);
+							//printf("Codigo: %s-\n",codigo);
 							if (ponerEnMemoria(codigo,pid,paginas)){
 								printf("se guardo el codigo\n");
 								/*list_iterate(tabla_de_paginas,mostrarTablaPag);
 								list_take_and_remove(tabla_de_paginas,5);
 								list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
+								free(codigo);
 							}
 						}else{
 							printf("1 Ansisop rechazado, memoria insuficiente\n");
@@ -370,21 +377,20 @@ void atenderNucleo(int conexion){
 
 //--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
 int hayEspacio(int paginas){
-	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=marcosTotal-list_size(tabla_de_paginas)));
+	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=datosMemoria->marcos-list_size(tabla_de_paginas)));
 }
 int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 	int i=0,acum=0,offset,resto,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
 	do{
 		for (offset = 0;(offset < tamMarco) && (codigo[acum] != '\n'); offset++, acum++) {
-			printf("%c", codigo[acum]);
+	//		printf("%c", codigo[acum]);
 		}
-		printf("* i=%d\n",i);
-
+//		printf("* i=%d\n",i);
 		resto = tamMarco%offset;
 		cantPags=offset/tamMarco;
 		a=0;
 		for(a=0;a<cantPags;a++){
-			traductor_marco *traductorMarco = malloc(sizeof(traductor_marco));
+			traductor_marco *traductorMarco =(traductor_marco*) malloc(sizeof(traductor_marco));
 			pos = buscarMarcoLibre();
 			memcpy(memoria+pos*tamMarco,codigo+(i*tamMarco),tamMarco);
 			traductorMarco->pagina=i;
@@ -405,13 +411,6 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 		}
 		if(codigo[acum]=='\n') acum++;											//Para que no se clave
 	}while (i < paginasNecesarias);
-
-
-		//PARA PROBAR LA DIVISION DEL CODIGO
-	//	char* asd=malloc(cantMarcos*datosMemoria->marco_size);
-	//	memcpy(asd, codigo + (datosMemoria->marco_size * i), datosMemoria->marco_size);
-	//	memcpy(asd + datosMemoria->marco_size+1, "\0", 1);
-	//	printf("%s|", asd);
 
 	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));

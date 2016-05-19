@@ -17,31 +17,35 @@
 #include <commons/string.h>
 #include <commons/config.h>
 
-#define PUERTO_SWAP 6660
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
 typedef struct{
 	int puerto;
+	char* ip;
 	char* nombre_swap;
 	int cantidadPaginas;
 	int tamPagina;
 	int retardoCompactacion;
 }datosConfiguracion;
 
-struct sockaddr_in crearDireccion(int puerto);
+struct sockaddr_in crearDireccion(int puerto, char* ip);
 int comprobarCliente(int);
-void leerConfiguracion(char*, datosConfiguracion*);
+int leerConfiguracion(char*, datosConfiguracion**);
 
 int main(int argc, char* argv[]){
-//	datosConfiguracion* datosSwap;
-//	leerConfiguracion(argv[1],datosConfiguracion);
-	struct sockaddr_in direccionServer=crearDireccion(PUERTO_SWAP);
+
+	datosConfiguracion* datosSwap;
+	if (!(leerConfiguracion("ConfigSwap", &datosSwap)|| leerConfiguracion("../ConfigSwap", &datosSwap))) {
+		printf("Error archivo de configuracion\n FIN.");
+		return 1;
+	}
+	struct sockaddr_in direccionServer=crearDireccion(datosSwap->puerto, datosSwap->ip);
 	int	swap_servidor=socket(AF_INET, SOCK_STREAM, 0),
 		umc_cliente;
 	printf("se creo la swap\n");
 	int activado = 1;
 	setsockopt(swap_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
-		if (bind(swap_servidor, (void *)&direccionServer, sizeof(direccionServer)) != 0){
+		if (bind(swap_servidor, (void *)&direccionServer, sizeof(direccionServer))){
 			perror("Fallo el bind");
 			return 1;
 		}
@@ -82,10 +86,10 @@ int main(int argc, char* argv[]){
 }
 
 //-----------------------------------FUNCIONES-----------------------------------
-struct sockaddr_in crearDireccion(int puerto) {
+struct sockaddr_in crearDireccion(int puerto, char* ip) {
 	struct sockaddr_in direccion;
 	direccion.sin_family = AF_INET;
-	direccion.sin_addr.s_addr = INADDR_ANY;
+	direccion.sin_addr.s_addr = inet_addr(ip);
 	direccion.sin_port = htons(puerto);
 	return direccion;
 }
@@ -102,22 +106,25 @@ int comprobarCliente(int cliente){
 	free(bufferHandshake);
 }
 
-void leerConfiguracion(char *ruta, datosConfiguracion *datos) {
+int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
 	if (archivoConfiguracion == NULL) {
-		perror("FIN PROGRAMA");
-		exit(0);
+		return 0;
 	} else {
 		int cantidadKeys = config_keys_amount(archivoConfiguracion);
-		if (cantidadKeys != 5) {
-			perror("ERROR CANTIDAD DATOS DE CONFIGURACION");
+		if (cantidadKeys < 6) {
+			return 0;
 		} else {
-			datos->puerto = buscarInt(archivoConfiguracion, "PUERTO");
-			datos->nombre_swap = config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP");
-			datos->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
-			datos->tamPagina = buscarInt(archivoConfiguracion, "TAMAÑO_PAGINA");
-			datos->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
+			(*datos)->puerto = buscarInt(archivoConfiguracion, "PUERTO");
+			(*datos)->nombre_swap = config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP");
+			(*datos)->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
+			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAM_PAGINA");
+			(*datos)->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
+			char* ip=string_new();
+			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
+			(*datos)->ip=ip;
 			config_destroy(archivoConfiguracion);
+			return 1;
 		}
 	}
 }
