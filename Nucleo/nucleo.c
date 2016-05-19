@@ -22,6 +22,7 @@
 #include <semaphore.h>
 #include <pthread.h>
 
+
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra) 	//MACRO
 
 typedef struct {
@@ -49,7 +50,12 @@ typedef struct {
 	int consola;
 } pcb;
 
-t_list *cpus, *consolas;
+typedef struct {
+	char *nombre;
+	int valor;
+}variableGlobarl;
+
+t_list *cpus, *consolas, *variablesGlobales;
 
 //estructuras para planificacion
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
@@ -88,23 +94,32 @@ int main(int argc, char* argv[]) {
 	int i;
 	char* literal;
 	//--------------------------------CONFIGURACION-----------------------------
+
 	datosNucleo=malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigNucleo", &datosNucleo) || leerConfiguracion("../ConfigNucleo", &datosNucleo))){
 			printf("Error archivo de configuracion\n FIN.");return 1;}
+
 //	manejarPCB("/home/utnso/tp-2016-1c-CodeBreakers/Consola/Nuevo");
 	/*t_queue* dispositivos[datosNucleo.io_ids.CANTIDAD];
 	for(i=0;i<=cant;i++){
-	dispositivos[i]=queue_create();}*/
+	dispositivos[i]=queue_create();}
 
+	variablesGlobales = list_create();
+	for(int i=0;i<=sizeof(*datosMemoria->shared_vars);i++){
+		variableGlobarl vg;
+		vg->nombre = datosMemoria->shared_vars[i];
+		vg->valor = 0;
+		list_add(variablesGlobales, vg);
+	}
+	*/
 	//---------------------------------PLANIFICACION PCB-----------------------------------
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);//agregar el destroy
+	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);//todo agregar el destroy
 	pthread_t hiloListos, hiloExec, hiloBloq, hiloTerminados;
 
 	pthread_create(&hiloListos, &attr, (void*)atender_Listos, NULL);
-	//pthread_create(&hiloExec, &attr, (void*)atender_Exec, NULL);
-	pthread_create(&hiloBloq, &attr, (void*)atender_Bloq, NULL);		//un hilo por cada e/s, y por parametro el sleep
+	pthread_create(&hiloBloq, &attr, (void*)atender_Bloq, NULL);		//un hilo por cada e/s, y por parametro el sleep?
 	pthread_create(&hiloTerminados, &attr, (void*)atender_Terminados, NULL);
 
 
@@ -467,7 +482,7 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 	 pcbListo = queue_pop(colaListos);
 	 int paso=1;
 	 while(paso){
-		 if(&sem_cpuDisponible>0 ){ // se puede el semaforo? sino un contador
+		 if(&sem_cpuDisponible>0 ){
 			 printf("el proceso %d paso de Listo a Execute",pcbListo->PID);
 			 queue_push(colaExec, pcbListo);
 			 sem_post(&sem_Exec);
@@ -486,6 +501,9 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 		 mandar_instruccion_a_CPU(cpu,pcbExec,&todoSigueIgual);
 		 pcbExec->PC++;
 		 sleep(datosNucleo->quantum_sleep);
+		 if(!todoSigueIgual){
+			 i = datosNucleo->quantum; //el pcb paso a otro estado
+		 }
 	 } //si en el medio del q se bloqueo o termino, todoSigueIgual=0
 	 if(todoSigueIgual){
 		 printf("el proceso %d paso de Execute a Listo",pcbExec->PID);
@@ -509,41 +527,54 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 	 sem_wait(&sem_Terminado);
 	 pcb* pcbTerminado = (pcb*) malloc(sizeof(pcb));
 	 pcbTerminado = queue_pop(colaTerminados);
-	 	 	 	 	 	 // avisar umc y consola que termino el programa
+	//todo avisar umc y consola que termino el programa
+	 free(pcbTerminado);
  }
 
 void mandar_instruccion_a_CPU(int cpu, pcb*pcb, int igual){
-	// concatenar pcbExec->PID,pcbExec->PC,pcbExec->SP
-	//send(cpu, pcbTrucho, 12);
+	char* Instruccion = string_new();
+	string_append(&Instruccion, "1");
+	string_append(&Instruccion, header(pcb->PID));
+	string_append(&Instruccion, header(pcb->PC));
+	string_append(&Instruccion, header(pcb->SP));
+	string_append(&Instruccion, "\0");
+	send(cpu, Instruccion, string_length(Instruccion), 0);
+	free(Instruccion);
 
-	procesar_respuesta(recibirProtocolo(cpu),cpu,  pcb, &igual);
+	int operacion = atoi(recibirMensaje(cpu,1));
+	procesar_respuesta(operacion, cpu,  pcb, &igual);
 }
 void procesar_respuesta(int op,int cpu, pcb*pcb, int todoSigueIgual){
-		int mostrar;
-		int tamanio;
+		int mostrar, tamanio, seBloqueo=0;
 		char* texto;
 	switch (op){
 	case 1:
-		//tengo que bloquearme,
-		printf("el proceso %d paso de Execute a Bloqueado",pcb->PID);
-		todoSigueIgual=0;
-		queue_push(colaBloq, pcb);
-		sem_post(&sem_Bloq);
+		//termino bien la instruccion, no necesita nada
 		break;
 	case 2:
+		int operacion = atoi(recibirMensaje(cpu,1));
+		procesar_operacion_privilegiada(operacion, cpu, pcb, &seBloqueo);
+		if(seBloqueo){
+			printf("el proceso %d paso de Execute a Bloqueado",pcb->PID);
+			todoSigueIgual=0;
+			queue_push(colaBloq, pcb);
+			sem_post(&sem_Bloq);
+		}
+		break;
+	case 3:
 		//termino el ansisop, va a listos
 		printf("el proceso %d paso de Execute a Terminado",pcb->PID);
 		todoSigueIgual=0;
 		queue_push(colaTerminados, pcb);
 		sem_post(&sem_Terminado);
 		break;
-	case 3:
+	case 4:
 		//imprimir
 		//agregar header cod_op
 		mostrar = recibirProtocolo(cpu);
 		send(pcb->consola, mostrar, 4, 0);
 		break;
-	case 4:
+	case 5:
 		//imprimirTexto
 		//agregar header cod_op
 		tamanio = recibirProtocolo(cpu);
@@ -553,4 +584,52 @@ void procesar_respuesta(int op,int cpu, pcb*pcb, int todoSigueIgual){
 
 	}
 
+}
+void procesar_operacion_privilegiada(int operacion, int cpu, pcb*pcb, int seBloqueo){
+	int tamanioNombre, valorAGuardar, unidadestiempo;
+	char *nombreVar, id_semaforo, id_es;
+
+	switch (operacion){
+	case 1:
+		//obtener valor de variable compartida
+		//recibo nombre de variable compartida, devuelvo su valor
+		tamanioNombre = recibirProtocolo(cpu);
+		nombreVar = recibirMensaje(cpu,tamanioNombre);
+		int valor = valor_de_esta_vatiable_compartida(nombreVar); //todo funcion de comparar variables
+		send(cpu, valor, 4, 0);
+		break;
+	case 2:
+		//grabar valor en variable compartida
+		//recibo el nombre de una variable, y un valor - guardo
+		tamanioNombre = recibirProtocolo(cpu);
+		nombreVar = recibirMensaje(cpu,tamanioNombre);
+		valorAGuardar = recibirProtocolo(cpu);
+		guardar_valor_en_variable_compartida(nombreVar);
+		break;
+	case 3:
+		//wait a un semaforo, si no puiede acceder, se bloquea
+		//recibo el identificador del semaforo
+		tamanioNombre = recibirProtocolo(cpu);
+		id_semaforo = recibirMensaje(cpu,tamanioNombre);
+		//ver como esta el semaforo asociado
+		//si esta ok => bloqueo el semaforo
+		//si esta block => bloqueo el pcb, hasta que otro proceso desbloquee el semaforo
+		break;
+	case 4:
+		//signal a un semaforo, post
+		//recibo el identificador del semaforo
+		tamanioNombre = recibirProtocolo(cpu);
+		id_semaforo = recibirMensaje(cpu,tamanioNombre);
+		//post(id_semaforo);
+		break;
+	case 5:
+		//pedido E/S, va a bloqueado
+		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
+		tamanioNombre = recibirProtocolo(cpu);
+		id_es = recibirMensaje(cpu,tamanioNombre);
+		unidadestiempo = recibirProtocolo(cpu);
+		//mandar pcb a lista bloqueo de esa E/S, con la ut
+		seBloqueo=1;
+		break;
+	}
 }
