@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
 	while (1) {
 		nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
 		if (nuevo_cliente == -1) {perror("Fallo el accept");}
-		printf("Recibi una conexion en %d!!\n", nuevo_cliente);
+		printf("Conexion entrante\n");
 		switch (comprobarCliente(nuevo_cliente)) {
 		case 0:															//Error
 			perror("No lo tengo que aceptar, fallo el handshake\n");
@@ -241,9 +241,9 @@ void comprobarOperacion(int codigoOperacion){				//Recibe el 1er byte y lo manda
 	switch(codigoOperacion){
 	case 1:							//inicializarPrograma(); 		HACER LOS RECV NECESARIOS!
 		break;
-	case 2:							//enviarBytes();
+	case 2:							//enviarBytes();usleep(datosMemoria->retardo*1000))
 		break;
-	case 3:							//almacenarBytes();
+	case 3:							//almacenarBytes();usleep(datosMemoria->retardo*1000))
 		break;
 	case 4:							//finalizarPrograma();
 		break;
@@ -381,12 +381,12 @@ int hayEspacio(int paginas){
 }
 int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 	int i=0,acum=0,offset,resto,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
-	do{
-		for (offset = 0;(offset < tamMarco) && (codigo[acum] != '\n'); offset++, acum++) {
-	//		printf("%c", codigo[acum]);
+	do{	offset=0;
+		for (;(offset < tamMarco) && (codigo[acum] != '\n')&&(codigo[acum] != '\t'); offset++, acum++) {
+			printf("%c", codigo[acum]);
 		}
-//		printf("* i=%d\n",i);
-		resto = tamMarco%offset;
+		if (offset) {resto = tamMarco%offset;
+		printf("* i=%d\n",i);
 		cantPags=offset/tamMarco;
 		a=0;
 		for(a=0;a<cantPags;a++){
@@ -408,8 +408,8 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 			traductorMarco->marco=pos;
 			i++;
 			list_add(tabla_de_paginas,traductorMarco);
-		}
-		if(codigo[acum]=='\n') acum++;											//Para que no se clave
+		}}
+		if(codigo[acum]=='\n' || codigo[acum]=='\t') acum++;											//Para que no se clave
 	}while (i < paginasNecesarias);
 
 	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
