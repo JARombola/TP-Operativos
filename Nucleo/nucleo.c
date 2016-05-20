@@ -94,19 +94,16 @@ int ultimoPID=0,tamPagina=0;
 datosConfiguracion* datosNucleo;
 
 int main(int argc, char* argv[]) {
-	int i;
-	char* literal;
 	//--------------------------------CONFIGURACION-----------------------------
 
 	datosNucleo=malloc(sizeof(datosConfiguracion));
-	int table_max_size;
 	if (!(leerConfiguracion("ConfigNucleo", &datosNucleo) || leerConfiguracion("../ConfigNucleo", &datosNucleo))){
 			printf("Error archivo de configuracion\n FIN.");return 1;}
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
 	t_dictionary *globales=crearDiccionario(datosNucleo->shared_vars);
 	t_dictionary *semaforos=crearDiccionario(datosNucleo->sem_ids);
 	t_dictionary *dispositivosES=crearDiccionario(datosNucleo->io_ids);
-	printf("%d\n",dictionary_get(globales,"!UnaVar"));	//EJEMPLO DE BUSQUEDA
+	//printf("%d\n",(int)dictionary_get(globales,"!UnaVar"));	//EJEMPLO DE BUSQUEDA
 //-----------------------------------------------------------------------------------------------------------------
 	/*t_queue* dispositivos[datosNucleo.io_ids.CANTIDAD];
 	for(i=0;i<=cant;i++){
@@ -286,8 +283,8 @@ t_dictionary* crearDiccionario(char** keys){
 	int i=0;
 	t_dictionary* diccionario=dictionary_create();
 	while(keys[i]!=NULL){
-		//printf("%s\n",keys[i]);
-		dictionary_put(diccionario,keys[i],(int)i);
+		printf("%s\n",keys[i]);
+		dictionary_put(diccionario,keys[i],(int*) i);
 		i++;
 	}
 	return diccionario;
@@ -340,7 +337,7 @@ char* recibirMensaje(int conexion, int tamanio){
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
-		return (int)-1;}
+		return "a";}
 	mensaje[tamanio]='\0';
 	return mensaje;
 }
@@ -370,9 +367,6 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	pcb* pcbNuevo = crearPCB(codigo);
 	pcbNuevo->consola=consola;
 	int i;
-	for(i=0;i<pcbNuevo->cantInstrucciones;i++){
-		printf("%d-",pcbNuevo->indiceCodigo[pcbNuevo->PC++].start);
-	}
 	printf("\n");
 	string_append(&mensajeInicial, "1");
 	string_append(&mensajeInicial, header(pcbNuevo->PID));

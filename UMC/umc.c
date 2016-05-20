@@ -29,7 +29,7 @@ typedef struct{
 }datosConfiguracion;
 
 typedef struct{
-	int proceso, pagina, marco;
+	int proceso, pagina, marco, enMemoria, modificada;
 }traductor_marco;
 
 
@@ -61,10 +61,12 @@ void atenderCpu(int);
 int hayEspacio(int paginas);
 int ponerEnMemoria(char* codigo,int id,int cantPags);
 int buscarMarcoLibre();
+//COMANDOS--------------
+void comandoMemory(traductor_marco*);
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 t_list *tabla_de_paginas;
-int totalPaginas;
+int totalPaginas, procesoActual;
 char *memoria;
 datosConfiguracion *datosMemoria;
 
@@ -72,8 +74,7 @@ int main(int argc, char* argv[]) {
 	int umc_cliente,
 		activado=1,
 		nuevo_cliente,														//Recibir conexiones
-		sin_size = sizeof(struct sockaddr_in),
-		i;
+		sin_size = sizeof(struct sockaddr_in);
 	pthread_attr_t attr;
 	pthread_t thread;
 	pthread_attr_init(&attr);
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]) {
 	pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nuevo_cliente);				//Hilo para atender al nucleo
 	pthread_create(&thread, &attr, (void*) consola, NULL);										//Hilo para atender comandos
 	listen(umc_servidor, 15);																	//Para recibir conexiones (CPU's)
-
+	int cpuRespuesta=htonl(1);
 	while (1) {
 		nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
 		if (nuevo_cliente == -1) {perror("Fallo el accept");}
@@ -137,7 +138,7 @@ int main(int argc, char* argv[]) {
 			close(nuevo_cliente);
 			break;
 		case 1:
-			send(nuevo_cliente, 1, 4, 0);								//1=CPU
+			send(nuevo_cliente, &cpuRespuesta, sizeof(int32_t), 0);								//1=CPU
 			pthread_create(&thread, &attr, (void*) atenderCpu,(void*) nuevo_cliente);
 			break;
 		}
@@ -233,7 +234,7 @@ char* recibirMensaje(int conexion, int tamanio){
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
-		return -1;}
+		return "a";}
 	return mensaje;
 }
 
@@ -286,7 +287,8 @@ void consola(){
 					printf("TLB Borrada :)\n");
 				} else {
 					if (esIgual(comando, "memoria")) {
-						printf("Memoria Limpiada :)\n");
+						list_iterate(tabla_de_paginas,(void*)comandoMemory);
+						printf("Paginas modificadas (proceso: %d)\n",procesoActual);
 					}
 				}
 			}
@@ -297,6 +299,11 @@ void consola(){
 int procesoActivo(conexion){
 	return recibirProtocolo(conexion);
 }
+void comandoMemory(traductor_marco* pagina){
+	if (pagina->proceso==procesoActual){
+		pagina->modificada=1;
+	}
+}
 
 void atenderCpu(int conexion){
 	//[PROTOCOLO]: - siempre recibo PRIMERO el ProcesoActivo (PID)
@@ -305,8 +312,8 @@ void atenderCpu(int conexion){
 	printf("CPU atendido\n");
 	int salir=0;
 	while (!salir) {
-		int proceso = procesoActivo(conexion);
-		if (proceso) {
+		procesoActual = procesoActivo(conexion);
+		if (procesoActual) {
 			int operacion = recibirProtocolo(conexion);
 			if (operacion) {
 				int paginas, offset, buffer;
@@ -349,6 +356,7 @@ void atenderNucleo(int conexion){
 					switch (operacion) {
 					case 1:												//inicializar programa
 							pid = recibirProtocolo(conexion);
+							procesoActual=pid;
 							paginas = recibirProtocolo(conexion);
 						if(1){							//todo hayEspacio(paginas) es la condicion real
 							send(conexion, "1",1,0);
@@ -356,7 +364,7 @@ void atenderNucleo(int conexion){
 							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
 							//printf("Codigo: %s-\n",codigo);
 							if (ponerEnMemoria(codigo,pid,paginas)){
-								printf("se guardo el codigo\n");
+								printf("Codigo almacenado\n");
 								/*list_iterate(tabla_de_paginas,mostrarTablaPag);
 								list_take_and_remove(tabla_de_paginas,5);
 								list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
@@ -383,10 +391,10 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 	int i=0,acum=0,offset,resto,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
 	do{	offset=0;
 		for (;(offset < tamMarco) && (codigo[acum] != '\n')&&(codigo[acum] != '\t'); offset++, acum++) {
-			printf("%c", codigo[acum]);
+//			printf("%c", codigo[acum]);
 		}
 		if (offset) {resto = tamMarco%offset;
-		printf("* i=%d\n",i);
+//		printf("* i=%d\n",i);
 		cantPags=offset/tamMarco;
 		a=0;
 		for(a=0;a<cantPags;a++){
@@ -396,6 +404,7 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 			traductorMarco->pagina=i;
 			traductorMarco->proceso=proceso;
 			traductorMarco->marco=pos;
+			traductorMarco->enMemoria=1;
 			list_add(tabla_de_paginas,traductorMarco);
 			i++;
 		}
@@ -406,14 +415,15 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 			traductorMarco->pagina=i;
 			traductorMarco->proceso=proceso;
 			traductorMarco->marco=pos;
+			traductorMarco->enMemoria=1;
 			i++;
 			list_add(tabla_de_paginas,traductorMarco);
 		}}
 		if(codigo[acum]=='\n' || codigo[acum]=='\t') acum++;											//Para que no se clave
 	}while (i < paginasNecesarias);
 
-	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
-	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
+//	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
+//	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
 	return 1;
 }
 
