@@ -398,7 +398,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 
 pcb* crearPCB(char* codigo) {
 	pcb* pcbProceso=(pcb*)malloc(sizeof(pcb));
-	printf("***CODIGO:%s\n", codigo);
+	//printf("***CODIGO:%s\n", codigo);
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
 	pcbProceso->PID=ultimoPID++;
 	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
