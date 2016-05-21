@@ -67,7 +67,7 @@ void comandoMemory(traductor_marco*);
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 t_list *tabla_de_paginas;
 int totalPaginas, procesoActual;
-char *memoria;
+char* memoria;
 datosConfiguracion *datosMemoria;
 
 int main(int argc, char* argv[]) {
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
 		printf("Error archivo de configuracion\n FIN.");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 	printf("total Marcos: %d\n",marcosTotal);
 	tabla_de_paginas = list_create();
-	memoria = malloc(marcosTotal);
+	memoria = (char*) malloc(datosMemoria->marco_size*datosMemoria->marcos);
 
 	//----------------------------------------------------------------------------SOCKETS
 
@@ -230,11 +230,12 @@ int recibirProtocolo(int conexion){
 	return atoi(protocolo);}
 
 char* recibirMensaje(int conexion, int tamanio){
-	char *mensaje=malloc(tamanio);
+	char *mensaje=malloc(tamanio+1);
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		return "a";}
+	mensaje[tamanio+1]='\0';
 	return mensaje;
 }
 
@@ -364,10 +365,9 @@ void atenderNucleo(int conexion){
 							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
 							//printf("Codigo: %s-\n",codigo);
 							if (ponerEnMemoria(codigo,pid,paginas)){
-								printf("Codigo almacenado\n");
-								/*list_iterate(tabla_de_paginas,mostrarTablaPag);
-								list_take_and_remove(tabla_de_paginas,5);
-								list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
+							//	list_iterate(tabla_de_paginas,mostrarTablaPag);
+							//	list_take_and_remove(tabla_de_paginas,5);
+							//	list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
 								free(codigo);
 							}
 						}else{
@@ -388,39 +388,42 @@ int hayEspacio(int paginas){
 	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=datosMemoria->marcos-list_size(tabla_de_paginas)));
 }
 int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
-	int i=0,acum=0,offset,resto,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
-	do{	offset=0;
-		for (;(offset < tamMarco) && (codigo[acum] != '\n')&&(codigo[acum] != '\t'); offset++, acum++) {
-//			printf("%c", codigo[acum]);
+	int i=0,acum=0,offset,resto,anterior=-1,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
+	do{anterior=acum;
+		offset=0;
+	for (offset = 0; (codigo[acum] != '\n'); offset++, acum++) {
+			printf("%c", codigo[acum]);
 		}
-		if (offset) {resto = tamMarco%offset;
-//		printf("* i=%d\n",i);
-		cantPags=offset/tamMarco;
-		a=0;
+		resto=offset%tamMarco;
+		cantPags=offset/tamMarco;				//Si esto es 0 => OFFSET=0 => Resto = 0
+		if (!offset){resto=1;}
 		for(a=0;a<cantPags;a++){
 			traductor_marco *traductorMarco =(traductor_marco*) malloc(sizeof(traductor_marco));
 			pos = buscarMarcoLibre();
-			memcpy(memoria+pos*tamMarco,codigo+(i*tamMarco),tamMarco);
+			memcpy(memoria+pos*tamMarco,codigo+anterior,tamMarco);
+			anterior+=tamMarco;
 			traductorMarco->pagina=i;
 			traductorMarco->proceso=proceso;
 			traductorMarco->marco=pos;
-			traductorMarco->enMemoria=1;
 			list_add(tabla_de_paginas,traductorMarco);
-			i++;
-		}
+			i++;}
 		if (resto || !cantPags){
 			traductor_marco *traductorMarco = (traductor_marco*)malloc(sizeof(traductor_marco));
 			pos = buscarMarcoLibre();
-			memcpy(memoria+pos*tamMarco,codigo+(i*tamMarco),resto);
+			memcpy(memoria+pos*tamMarco,codigo+anterior,resto);
+			char* espacio=string_repeat('*',tamMarco-resto);
+			memcpy(memoria+pos*tamMarco+resto,espacio,tamMarco-resto);
+			free(espacio);
 			traductorMarco->pagina=i;
 			traductorMarco->proceso=proceso;
 			traductorMarco->marco=pos;
-			traductorMarco->enMemoria=1;
 			i++;
 			list_add(tabla_de_paginas,traductorMarco);
-		}}
-		if(codigo[acum]=='\n' || codigo[acum]=='\t') acum++;											//Para que no se clave
+		}
+		acum++;
+		printf("\n");
 	}while (i < paginasNecesarias);
+	if (acum==string_length(codigo)){printf("Guardado con exito!\n");}
 
 //	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 //	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
@@ -429,6 +432,10 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 
 void mostrarTablaPag(traductor_marco* fila){
 	printf("Marco: %d, Pag: %d, Proc:%d\n",fila->marco,fila->pagina,fila->proceso);
+	char* asd=malloc(datosMemoria->marco_size+1);
+	memcpy(asd,memoria+datosMemoria->marco_size*fila->marco,datosMemoria->marco_size);
+	memcpy(asd+datosMemoria->marco_size+1,"\0",1);
+	printf("%s\n",asd);
 }
 
 int buscarMarcoLibre() {

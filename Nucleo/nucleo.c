@@ -50,6 +50,7 @@ typedef struct {
 	t_size cantEtiquetas;
 	int consola;
 	int cantInstrucciones;
+	int indiceStack;
 } pcb;
 
 typedef struct {
@@ -283,7 +284,7 @@ t_dictionary* crearDiccionario(char** keys){
 	int i=0;
 	t_dictionary* diccionario=dictionary_create();
 	while(keys[i]!=NULL){
-		printf("%s\n",keys[i]);
+	//	printf("%s\n",keys[i]);
 		dictionary_put(diccionario,keys[i],(int*) i);
 		i++;
 	}
@@ -406,20 +407,21 @@ pcb* crearPCB(char* codigo) {
 	pcbProceso->cantEtiquetas=metadata->etiquetas_size;
 	pcbProceso->etiquetas=metadata->etiquetas;
 	pcbProceso->cantInstrucciones=metadata->instrucciones_size;
+	pcbProceso->indiceStack=string_length(codigo)+1;
 	return pcbProceso;
 }
 
 int calcularPaginas(char* codigo){
 	int offset,acum=0,cantMarcos,totalMarcos=0;
 	do {offset=0;
-		for (offset = 0; codigo[acum] != '\n' && codigo[acum]!='\t'; offset++, acum++) {
-			printf("%c", codigo[acum]);											//Para controlar corte del codigo
+		for (offset = 0; codigo[acum] != '\n'; offset++, acum++) {
+//			printf("%c", codigo[acum]);											//Para controlar corte del codigo
 		}
 		cantMarcos = offset / tamPagina;
-		if (offset % tamPagina)	cantMarcos++;
+		if (offset % tamPagina || !cantMarcos)	cantMarcos++;
 		totalMarcos += cantMarcos;
-		printf("	-Cant marcos: %d | Total %d\n", cantMarcos, totalMarcos);
-		if(codigo[acum]=='\n' || codigo[acum]=='\t') acum++;
+//		printf("	-Cant marcos: %d | Total %d\n", cantMarcos, totalMarcos);
+		if(codigo[acum]=='\n') acum++;
 	} while (acum < string_length(codigo));
 	return totalMarcos;
 }
