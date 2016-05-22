@@ -5,23 +5,16 @@
  *      Author: utnso
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <commons/string.h>
 #include <commons/config.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
 #include <sys/select.h>
-#include <unistd.h>
 #include <commons/collections/dictionary.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/list.h>
 #include <parser/metadata_program.h>
 #include <semaphore.h>
 #include <pthread.h>
+#include <unistd.h>
+#include "Funciones/Comunicacion.h"
 
 
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra) 	//MACRO
@@ -68,18 +61,12 @@ sem_t sem_Listos,sem_Exec, sem_Bloq,sem_Terminado,sem_cpuDisponible;
 int autentificarUMC(int);
 int leerConfiguracion(char*, datosConfiguracion**);
 t_dictionary* crearDiccionario(char** keys);
-struct sockaddr_in crearDireccion(int puerto, char* ip);
-int conectarUMC(int, char* ip);
 int comprobarCliente(int);
-int recibirProtocolo(int);
-char* recibirMensaje(int, int);
 pcb* crearPCB(char*);
 t_list* crearIndiceDeCodigo(t_metadata_program*);
 int cortarInstrucciones(t_metadata_program*);
 int calcularPaginas(char*);
 void mostrar(int*);
-char* header(int);
-void agregarHeader(char**);
 void enviarAnsisopAUMC(int, char*,int);
 void maximoDescriptor(int* maximo, t_list* lista, fd_set *descriptores);
 void atender_Listos();
@@ -96,7 +83,14 @@ int revisarActividad(t_list*, fd_set*);
 int ultimoPID=0,tamPagina=0;
 datosConfiguracion* datosNucleo;
 
+
+
 int main(int argc, char* argv[]) {
+	fd_set descriptores;
+	cpus = list_create();
+	consolas = list_create();
+	int max_desc, nuevo_cliente,sin_size = sizeof(struct sockaddr_in) ;
+	struct sockaddr_in direccionCliente;
 	//--------------------------------CONFIGURACION-----------------------------
 
 	datosNucleo=malloc(sizeof(datosConfiguracion));
@@ -147,35 +141,24 @@ int main(int argc, char* argv[]) {
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in direccionNucleo = crearDireccion(datosNucleo->puerto_nucleo, datosNucleo->ip);
 	printf("Nucleo creado, conectando con la UMC...\n");
-	int conexionUMC = conectarUMC(datosNucleo->puerto_umc, datosNucleo->ip_umc);
+	int conexionUMC = conectar(datosNucleo->puerto_umc, datosNucleo->ip_umc);
 	tamPagina=autentificarUMC(conexionUMC);
 
-	if (!tamPagina) {
-		printf("Falló el handshake\n");
-		return -1;
-	}
+
+	if (!tamPagina) {printf("Falló el handshake\n");
+		return -1;}
+
+
 	printf("Aceptados por la umc\n");
 
-	int activado = 1;
-	setsockopt(nucleo_servidor, SOL_SOCKET, SO_REUSEADDR, &activado,
-			sizeof(activado));
-	if (bind(nucleo_servidor, (void *) &direccionNucleo,
-			sizeof(direccionNucleo))) {
-		perror("Fallo el bind");
-		return 1;
-	}
+	if(!bindear(nucleo_servidor,direccionNucleo)){
+		printf("Error en el bind, Fijate bien la proxima...!\n");
+		return 1;}
+
+	max_desc = conexionUMC;
 
 	printf("Estoy escuchando\n");
 	listen(nucleo_servidor, 100);
-
-	//ahora creo el select
-	fd_set descriptores;
-	int nuevo_cliente;
-	cpus = list_create();
-	consolas = list_create();
-	int max_desc = conexionUMC;
-	struct sockaddr_in direccionCliente;	//direccion donde guarde el cliente
-	int sin_size = sizeof(struct sockaddr_in);
 
 	//****_____________________________________________________________________________________________________________*
 	//****--------------------------------------------ACA Arranca la Magia---------------------------------------------*
@@ -215,10 +198,12 @@ int main(int argc, char* argv[]) {
 					printf("Nueva conexion\n");
 					int tamPagParaCpu = htonl(tamPagina);
 					switch (comprobarCliente(nuevo_cliente)) {
+
 					case 0:											//ERROR!!
 						perror("Falló el handshake\n");
 						close(nuevo_cliente);
 						break;
+
 					case 1:												//CPU
 						send(nuevo_cliente, &tamPagParaCpu, 4, 0);
 						list_add(cpus, (void *) nuevo_cliente);
@@ -226,6 +211,7 @@ int main(int argc, char* argv[]) {
 						pthread_create(&hiloExec, &attr, (void*)atender_Exec, (void*)nuevo_cliente);
 						printf("Acepté un nuevo cpu\n");
 						break;
+
 					case 2:							//CONSOLA, RECIBO EL CODIGO
 						send(nuevo_cliente, "1", 1, 0);
 						list_add(consolas, (void *) nuevo_cliente);
@@ -238,6 +224,7 @@ int main(int argc, char* argv[]) {
 							free(codigo);
 						}
 						break;
+
 					}
 				}
 			}
@@ -290,20 +277,7 @@ t_dictionary* crearDiccionario(char** keys){
 	}
 	return diccionario;
 }
-struct sockaddr_in crearDireccion(int puerto, char* ip) {
-	struct sockaddr_in direccion;
-	direccion.sin_family = AF_INET;
-	direccion.sin_addr.s_addr = inet_addr(ip);
-	direccion.sin_port = htons(puerto);
-	return direccion;
-}
 
-int conectarUMC(int puerto, char* ip) {
-	struct sockaddr_in direccionUMC = crearDireccion(puerto, ip);
-	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-	while (connect(conexion, (void*) &direccionUMC, sizeof(direccionUMC)));
-	return conexion;
-}
 
 int autentificarUMC(int conexion) {
 	send(conexion, "soy_el_nucleo", 13, 0);
@@ -317,48 +291,18 @@ int autentificarUMC(int conexion) {
 }
 
 int comprobarCliente(int nuevoCliente) {
-	int bufferHandshake=0;
-	recv(nuevoCliente, &bufferHandshake, 4, 0); //todo verificar si da error
-	bufferHandshake=ntohl(bufferHandshake);
-	return bufferHandshake;
-}
-
-int recibirProtocolo(int conexion){
-	char* protocolo = malloc(5);
-	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
-	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
-		free(protocolo);
-		return -1;}
-	protocolo[4]='\0';
-	return atoi(protocolo);}
-
-char* recibirMensaje(int conexion, int tamanio){
-	char* mensaje=(char*)malloc(tamanio+1);
-	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
-	if (bytesRecibidos != tamanio) {
-		perror("Error al recibir el mensaje\n");
-		free(mensaje);
-		return "a";}
-	mensaje[tamanio]='\0';
-	return mensaje;
-}
-
-char* header(int numero){										//Recibe numero de bytes, y lo devuelve en 4 bytes (Ej. recibe "2" y devuelve "0002")
-	char* longitud=string_new();
-	string_append(&longitud,string_reverse(string_itoa(numero)));
-	string_append(&longitud,"0000");
-	longitud=string_substring(longitud,0,4);
-	longitud=string_reverse(longitud);
-	return longitud;
-}
-
-void agregarHeader(char** mensaje){
-	char* head=string_new();
-	string_append(&head,header(string_length(*mensaje)));
-	*mensaje=string_reverse(*mensaje);
-	string_append(mensaje,string_reverse(head));
-	*mensaje=string_reverse(*mensaje);
-	free (head);
+	char* bufferHandshake = malloc(16);
+	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
+	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
+	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
+		free(bufferHandshake);
+		return 1;
+	} else if (string_equals_ignore_case("soy_una_consola", bufferHandshake)) {
+		free(bufferHandshake);
+		return 2;
+	}
+	free(bufferHandshake);
+	return 0;
 }
 //----------------------------------------PCB------------------------------------------------------
 
@@ -368,13 +312,12 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	pcb* pcbNuevo = crearPCB(codigo);
 	pcbNuevo->consola=consola;
 	pcbNuevo->SP = 2; 											//todo numero para probar
-	int i;
 	printf("\n");
 	string_append(&mensajeInicial, "1");
 	string_append(&mensajeInicial, header(pcbNuevo->PID));
 	string_append(&mensajeInicial, header((paginasNecesarias)));
 	string_append(&mensajeInicial, "\0");
-	//printf("%s, Long:%d\n", mensajeInicial, string_length(mensajeInicial));
+	printf("%s, Long:%d\n", mensajeInicial, string_length(mensajeInicial));
 	send(conexionUMC, mensajeInicial, string_length(mensajeInicial), 0);
 	free(mensajeInicial);
 	char* resp = malloc(2);
@@ -412,61 +355,10 @@ pcb* crearPCB(char* codigo) {
 }
 
 int calcularPaginas(char* codigo){
-	int offset,acum=0,cantMarcos,totalMarcos=0;
-	do {offset=0;
-		for (offset = 0; codigo[acum] != '\n'; offset++, acum++) {
-//			printf("%c", codigo[acum]);											//Para controlar corte del codigo
-		}
-		cantMarcos = offset / tamPagina;
-		if (offset % tamPagina || !cantMarcos)	cantMarcos++;
-		totalMarcos += cantMarcos;
-//		printf("	-Cant marcos: %d | Total %d\n", cantMarcos, totalMarcos);
-		if(codigo[acum]=='\n') acum++;
-	} while (acum < string_length(codigo));
-	return totalMarcos;
+	int totalPaginas=string_length(codigo)/tamPagina;
+	if (string_length(codigo)%tamPagina) totalPaginas++;
+	return totalPaginas;
 }
-
-int cortarInstrucciones(t_metadata_program* meta) {							//!!![[RECORDAR]]!!! NO TIENE EN CUENTA COMENTARIOS!
-	t_intructions* unaInstruccion = meta->instrucciones_serializado;
-	t_list* lineas = list_create();
-		int i;
-		for (i = 0; i < (meta->instrucciones_size); i++, unaInstruccion++) {					//Corta el codigo segun tamaño de pagina
-			int j, resto = (unaInstruccion->offset) % tamPagina;
-			for (j = 0; j < (unaInstruccion->offset) / tamPagina; j++) {
-				int* unaLinea = malloc(sizeof(int*));										//0=inicio, 1=offset
-				unaLinea[0] = unaInstruccion->start + j * tamPagina;
-				unaLinea[1] = tamPagina;
-				list_add(lineas, (int*) unaLinea);											//Guarda el PUNTERO al int
-			}
-			if (resto) {
-				int* unaLinea = malloc(sizeof(int*));
-				unaLinea[0] = unaInstruccion->start + j * tamPagina;
-				unaLinea[1] = resto;
-				list_add(lineas, (int*) unaLinea);
-			}
-		}
-	//	list_iterate(lineas,(void*)mostrar);
-	int cantPaginas=list_size(lineas);				//-1 para que empiece desde 0
-	list_clean(lineas);
-	list_destroy(lineas);
-	return cantPaginas;
-}
-
-t_list* crearIndiceDeCodigo(t_metadata_program* meta){
- 	t_list* lineas=list_create();
- 	t_intructions* unaInstruccion=meta->instrucciones_serializado;
- 	printf("\ninstrucciones:%d\n",meta->instrucciones_size); //=5
- 	int i;
- 	for (i=0;i<(meta->instrucciones_size);i++,unaInstruccion++){
- 			int* unaLinea=malloc(sizeof(int*));									//0=inicio, 1=offset
- 			unaLinea[0]=unaInstruccion->start;
- 			unaLinea[1]=unaInstruccion->offset;
- 			list_add(lineas, (int*)unaLinea);					//Guarda el PUNTERO al int
- 		}
- 	return lineas;
- 	list_clean(lineas);
- 	list_destroy(lineas);
- }
 
  void mostrar(int* sentencia){
  	printf("Inicio:%d | Offset:%d\n",sentencia[0],sentencia[1]);
@@ -743,6 +635,7 @@ int procesar_operacion_privilegiada(int operacion, int cpu, pcb*pcb, int *seBloq
 		break;
 	}
 }
+
 void eliminarCPU(int cpu){
 	printf("el cpu %d no responde o algo, se lo elimino.\n",cpu);
 	list_remove(cpus, 0); //todo diccionario para ver el index de los cpus? o recorrer lista y ver cual eliminar

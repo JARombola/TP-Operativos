@@ -13,22 +13,18 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <unistd.h>
-
+#include "Funciones/Comunicacion.h"
 
 #define PUERTO_NUCLEO 6662
 #define IP_NUCLEO "127.0.0.1"
 
 int protocolo(int nucleo);
-int conectar (int);
 int autentificar(int);
-int esperarConfirmacion(int);
-char* header(int);
-void agregarHeader(char**);
 int enviarAnsisop(FILE*, int);
 
 int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecutar (#!, ver "Nuevo")
 	printf("Consola creada. Conectando al Nucleo...\n");
-	int nucleo=conectar(PUERTO_NUCLEO);
+	int nucleo=conectar(PUERTO_NUCLEO,IP_NUCLEO);
 	if (!autentificar(nucleo)) {
 		printf("Conexion al nucleo fail, error handshake\n");
 		return -1;
@@ -72,52 +68,9 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 	return 0;
 }
 
-int conectar(int puerto){
-
-	struct sockaddr_in direccNucleo;
-	direccNucleo.sin_family = AF_INET;
-	direccNucleo.sin_addr.s_addr = inet_addr(IP_NUCLEO);				//todo modificar IP
-	direccNucleo.sin_port = htons(puerto);
-
-	int conexion =socket(AF_INET, SOCK_STREAM, 0);
-	while (connect(conexion, (void*) &direccNucleo, sizeof(direccNucleo)));
-	return conexion;
-}
-
 int autentificar(int conexion){
-	int codigo=2;
-	codigo=htonl(codigo);
-	send(conexion, &codigo, 4, 0);
-	return (esperarConfirmacion(conexion));			//ME DEVUELVE EL PUERTO DE LA UMC o 0 si hubo error
-}
-
-int esperarConfirmacion(int conexion){
-	int buffer=0;
-	int bytesRecibidos = recv(conexion, &buffer, sizeof(int32_t), 0);
-	if (bytesRecibidos <= 0) {
-		printf("Rechazado\n");
-		return 0;
-	}
-	printf("Aceptado\n");
-	return 1;
-}
-
-char* header(int numero){							//Recibe numero de bytes, y lo devuelve en 4 bytes (Ej. recibe "2" y devuelve "0002")
-	char* longitud=string_new();
-	string_append(&longitud,string_reverse(string_itoa(numero)));
-	string_append(&longitud,"0000");
-	longitud=string_substring(longitud,0,4);
-	longitud=string_reverse(longitud);
-	return longitud;
-}
-
-void agregarHeader(char** mensaje){
-	char* head=string_new();
-	string_append(&head,header(string_length(*mensaje)));
-	*mensaje=string_reverse(*mensaje);
-	string_append(mensaje,string_reverse(head));
-	*mensaje=string_reverse(*mensaje);
-	free (head);
+	send(conexion, "soy_una_consola", 15, 0);
+	return (recibirProtocolo(conexion));			//ME DEVUELVE EL PUERTO DE LA UMC o 0 si hubo error
 }
 
 int enviarAnsisop(FILE* archivo, int sockNucleo){

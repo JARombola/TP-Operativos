@@ -5,20 +5,13 @@
  *      Author: utnso
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include <sys/select.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <commons/string.h>
 #include <commons/config.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "Funciones/Comunicacion.h"
 
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
@@ -31,6 +24,10 @@ typedef struct{
 	int retardoCompactacion;
 }datosConfiguracion;
 
+typedef struct{
+	int proceso,inicio,offset;
+}traductor_marco;
+
 struct sockaddr_in crearDireccion(int puerto, char* ip);
 int comprobarCliente(int);
 int leerConfiguracion(char*, datosConfiguracion**);
@@ -39,29 +36,28 @@ char* crearArchivoSwap();
 datosConfiguracion *datosSwap;
 
 int main(int argc, char* argv[]){
+	int	umc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
 
 	datosSwap=malloc(sizeof(datosConfiguracion));
+
 	if (!(leerConfiguracion("ConfigSwap", &datosSwap)|| leerConfiguracion("../ConfigSwap", &datosSwap))) {
 		printf("Error archivo de configuracion\n FIN.");
-		return 1;
-	}
+		return 1;}
 
 	char* archivoSwap=crearArchivoSwap();
-	if (!strcmp(archivoSwap,"Fuiste")){printf("Error al crear el archivo Swap\n");return 0;}
+
+	if (string_equals_ignore_case(archivoSwap,"Fuiste")){printf("Error al crear el archivo Swap\n");return 0;}
 	//memcpy(archivoSwap,"Prueba",6);
 	munmap(archivoSwap,sizeof(archivoSwap));
 
 	struct sockaddr_in direccionServer=crearDireccion(datosSwap->puerto, datosSwap->ip);
-	int	swap_servidor=socket(AF_INET, SOCK_STREAM, 0),
-		umc_cliente;
+
 	printf("Swap OK - ");
 
-	int activado = 1;
-	setsockopt(swap_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado)); //para cerrar los binds al cerrar
-		if (bind(swap_servidor, (void *)&direccionServer, sizeof(direccionServer))){
-			perror("Fallo el bind");
-			return 1;
-		}
+	if (!bindear(swap_servidor, direccionServer)) {printf("Error en el bind, Adios!\n");
+		return 1;
+	}
+
 	printf("Esperando UMC...\n");
 	listen(swap_servidor,5);
 
@@ -70,31 +66,17 @@ int main(int argc, char* argv[]){
 	struct sockaddr_in direccionCliente;
 	int sin_size = sizeof(struct sockaddr_in);
 	do{
-	umc_cliente = accept(swap_servidor, (void *) &direccionCliente, (void *)&sin_size);
-				if (umc_cliente == -1){
-					perror("Fallo el accept");
-				}
-				printf("Recibi una conexion\n");}
-	while(!comprobarCliente(umc_cliente));						//Mientras el que se conecta no es la UMC
+	umc= accept(swap_servidor, (void *) &direccionCliente, (void *)&sin_size);
+				if (umc == -1){
+					perror("Una conexion rechazada\n");}
+	}while(!comprobarCliente(umc));						//Mientras el que se conecta no es la UMC
 	printf("UMC Conectada!\n");
 
 	//----------------Recibo datos de la UMC
 
 	while (1){
-		int protocoloUMC=0;
-			int bytesRecibidosUMC = recv(umc_cliente, &protocoloUMC, sizeof(int32_t), 0);
-			protocoloUMC=ntohl(protocoloUMC);
-				if(bytesRecibidosUMC <= 0){
-					perror("la UMC se desconecto o algo. Se la elimino\n Swap autodestruida\n");
-					close(umc_cliente);
-					return 0;
-				} else {
-					char* bufferUMC = malloc(protocoloUMC * sizeof(char) + 1);
-					bytesRecibidosUMC = recv(umc_cliente, bufferUMC, protocoloUMC, 0);
-					bufferUMC[protocoloUMC + 1] = '\0';
-					printf("UMC: %d, me llegaron %d bytes con %s\n", umc_cliente,bytesRecibidosUMC, bufferUMC);
-					free(bufferUMC);
-				}
+		//int tamCodigo=recibirProtocolo(swap_servidor);
+		//char* codigo=malloc(tamCodigo);
 	}
 	free(datosSwap);
 	return 0;
@@ -102,24 +84,17 @@ int main(int argc, char* argv[]){
 
 
 //-----------------------------------FUNCIONES-----------------------------------
-struct sockaddr_in crearDireccion(int puerto, char* ip) {
-	struct sockaddr_in direccion;
-	direccion.sin_family = AF_INET;
-	direccion.sin_addr.s_addr = inet_addr(ip);
-	direccion.sin_port = htons(puerto);
-	return direccion;
-}
-
 
 int comprobarCliente(int cliente){
 	char* bufferHandshake = malloc(11);
 	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);
 	bufferHandshake[bytesRecibidosH] = '\0'; 					//lo paso a string para comparar
-	if (strcmp("soy_la_umc", bufferHandshake)) {
-		return 0;}															//No era la UMC :/
-	send(cliente, "Hola umc", 8, 0);
-	return 1;
+	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
+		free(bufferHandshake);
+		send(cliente, "Hola umc", 8, 0);
+		return 1;}
 	free(bufferHandshake);
+	return 0;													//No era la UMC :/
 }
 
 int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
@@ -155,6 +130,6 @@ char* crearArchivoSwap(){
 	if (fd_archivo!=-1) {
 	char* archivo=(char*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
 	if (archivo!=MAP_FAILED){return archivo;}
-	}
+		}
 	return "Fuiste";
 }
