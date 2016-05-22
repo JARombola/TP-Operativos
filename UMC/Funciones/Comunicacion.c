@@ -18,7 +18,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 int conectar(int puerto,char* ip){   							//Con la swap
 	struct sockaddr_in direccion=crearDireccion(puerto, ip);
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-	while (connect(conexion, (void*) &direccion, sizeof(direccion)));
+	while(connect(conexion, (void*) &direccion, sizeof(direccion)));
 	return conexion;
 }
 
@@ -29,7 +29,9 @@ int recibirProtocolo(int conexion){
 		free(protocolo);
 		return -1;}
 	protocolo[4]='\0';
-	return atoi(protocolo);}
+	int numero=atoi(protocolo);
+	free (protocolo);
+	return numero;}
 
 char* recibirMensaje(int conexion, int tamanio){
 	char* mensaje=(char*)malloc(tamanio+1);

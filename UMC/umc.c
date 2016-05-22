@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "Funciones/Comunicacion.h"
+#include "Funciones/ArchivosLogs.h"
 
 #define esIgual(a,b) string_equals_ignore_case(a,b)
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
@@ -54,13 +55,18 @@ void comandoMemory(traductor_marco*);
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 t_list *tabla_de_paginas;
-int totalPaginas,procesoBuscar=0;
+int totalPaginas,procesoBuscar=0,conexionSwap;
 char* memoria;
 datosConfiguracion *datosMemoria;
 t_bitarray 	*espacio;
+t_log* archivoLog;
+
 
 int main(int argc, char* argv[]) {
-	int umc_cliente,nucleo,nuevo_cliente,sin_size = sizeof(struct sockaddr_in);
+
+	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
+
+	int nucleo,nuevo_cliente,sin_size = sizeof(struct sockaddr_in);
 	tabla_de_paginas = list_create();
 	pthread_attr_t attr;
 	pthread_t thread;
@@ -69,7 +75,7 @@ int main(int argc, char* argv[]) {
 
 	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
-		printf("Error archivo de configuracion\n FIN.");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
+		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 
 	memoria = (char*) malloc(marcosTotal);
 	espacio=bitarray_create(memoria,marcosTotal);
@@ -86,23 +92,26 @@ int main(int argc, char* argv[]) {
 	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc,datosMemoria->ip);
 	struct sockaddr_in direccionCliente;
 	int umc_servidor = socket(AF_INET, SOCK_STREAM, 0);
-	printf("UMC Creada. Conectando con la Swap...\n");
-	umc_cliente = conectar(datosMemoria->puerto_swap, datosMemoria->ip_swap);
+
+	registrarInfo(archivoLog,"UMC Creada. Conectando con la Swap...");
+	conexionSwap = conectar(datosMemoria->puerto_swap, datosMemoria->ip_swap);
 
 	//----------------------------------------------------------------SWAP
 
-	if (!autentificar(umc_cliente)) {
-		printf("Falló el handshake\n");
+	if (!autentificar(conexionSwap)) {
+		registrarError(archivoLog,"Falló el handShake");
 		return -1;}
 
-	printf("Conexion con la Swap Ok\n");
-	if (!bindear(umc_servidor, direccionUMC)) {printf("Error en el bind, Desaprobamos!\n");
+	registrarInfo(archivoLog,"Conexion con la Swap OK!");
+
+	if (!bindear(umc_servidor, direccionUMC)) {
+		registrarError(archivoLog,"Error en el bind, desaprobamos");
 			return 1;
 		}
 
 	//-------------------------------------------------------------------------NUCLEO
 
-	printf("Esperando nucleo...\n");
+	registrarTrace(archivoLog,"Esperando nucleo...");
 	listen(umc_servidor, 1);
 	nucleo=aceptarNucleo(umc_servidor,direccionCliente);
 
@@ -117,10 +126,10 @@ int main(int argc, char* argv[]) {
 	while (1) {
 		nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
 		if (nuevo_cliente == -1) {perror("Fallo el accept");}
-		printf("Conexion entrante\n");
+		registrarTrace(archivoLog,"Conexion entrante");
 		switch (comprobarCliente(nuevo_cliente)) {
 		case 0:															//Error
-			perror("No lo tengo que aceptar, fallo el handshake\n");
+			perror("No lo tengo que aceptar, fallo el handshake");
 			close(nuevo_cliente);
 			break;
 		case 1:
@@ -167,10 +176,10 @@ int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
 
 int autentificar(int conexion) {
 	send(conexion, "soy_la_umc", 10, 0);
-	char* bufferHandshakeSwap = malloc(10);
-	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 10, 0);
+	char* bufferHandshakeSwap = malloc(8);
+	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 9, 0);
 	if (bytesRecibidosH <= 0) {
-		printf("Error al conectarse con Swap");
+		registrarError(archivoLog,"Error al conectarse con la Swap");
 		free (bufferHandshakeSwap);
 		return 0;
 	}
@@ -202,7 +211,7 @@ int aceptarNucleo(int umc,struct sockaddr_in direccionCliente){
 	} while (comprobarCliente(nuevo_cliente) != 2);												//Espero la conexion del nucleo
 	int tamPagEnvio = ntohl(datosMemoria->marco_size);
 	send(nuevo_cliente, &tamPagEnvio, 4, 0);													//Le envio el tamaño de pagina
-	printf("Acepte al nucleo\n");
+	registrarInfo(archivoLog,"Nucleo aceptado!");
 	return nuevo_cliente;
 }
 
@@ -245,7 +254,10 @@ void consola(){
 		if (esIgual(comando, "retardo")) {
 			printf("velocidad nueva:");
 			scanf("%d", &VELOCIDAD);
-			printf("Velocidad actualizada:%d\n", VELOCIDAD);
+			char* mensaje="Velocidad actualizada";
+			string_append(&mensaje,(char*)VELOCIDAD);
+			registrarInfo(archivoLog,mensaje);
+
 		} else {
 			if (esIgual(comando, "dump")) {
 				printf("Estructuras de Memoria\n");
@@ -257,7 +269,7 @@ void consola(){
 					if (esIgual(comando, "memoria")) {
 						printf("Proceso?");
 						scanf("%d",&procesoBuscar);//todo
-						list_iterate(tabla_de_paginas,comandoMemory);
+						list_iterate(tabla_de_paginas,(void*)comandoMemory);
 						printf("Paginas modificadas (proceso: %d)\n",procesoBuscar);
 					}
 				}
@@ -274,7 +286,7 @@ void atenderCpu(int conexion){
 	//[PROTOCOLO]: - siempre recibo PRIMERO el ProcesoActivo (PID)
 	//			   - despues el codigo de operacion (2 o 3 para CPU)
 	//			   - despues se reciben Pag, offset, buffer (Long no xq es el tamaño de la pagina, no es necesario recibirlo)
-	printf("CPU atendido\n");
+	registrarTrace(archivoLog,"Nuevo CPU-");
 	int salir=0;
 	int procesoActual;
 	while (!salir) {
@@ -288,7 +300,7 @@ void atenderCpu(int conexion){
 					paginas = recibirProtocolo(conexion);
 					offset = recibirProtocolo(conexion);
 					if (paginas && offset) {
-						enviarBytes(paginas, offset, datosMemoria->marco_size);
+						enviarBytes(paginas, offset, datosMemoria->marco_size);					//todo
 					} else {
 						salir = 1;
 					}
@@ -298,7 +310,7 @@ void atenderCpu(int conexion){
 					offset = recibirProtocolo(conexion);
 					buffer = recibirProtocolo(conexion);
 					if (paginas && offset && buffer) {
-						almacenarBytes(paginas, offset, datosMemoria->marco_size, buffer);
+						almacenarBytes(paginas, offset, datosMemoria->marco_size, buffer);			//todo
 					} else {
 						salir = 1;
 					}
@@ -308,37 +320,53 @@ void atenderCpu(int conexion){
 		}
 		else {salir=1;}
 	}
-	printf("CPU %d eliminada\n",conexion);
+	registrarTrace(archivoLog,"CPU eliminada");
 }
 
 void atenderNucleo(int conexion){
-	printf("Hilo de Nucleo creado\n");
+	registrarTrace(archivoLog,"Hilo de Nucleo creado");
 		//[PROTOCOLO]: - siempre recibo PRIMERO el codigo de operacion (1 o 4) inicializar o finalizar
 		int salir=0;
 		while (!salir) {
 			int operacion = atoi(recibirMensaje(conexion,1));
 				if (operacion) {
-					int paginas, PID;
+					int cantPaginas, PID;
 					switch (operacion) {
 					case 1:												//inicializar programa
 							PID= recibirProtocolo(conexion);
-							paginas = recibirProtocolo(conexion);
-						if(hayEspacio(paginas)){							//todo hayEspacio(paginas) es la condicion real
+							cantPaginas = recibirProtocolo(conexion);
+						if(hayEspacio(cantPaginas)){									//Si tiene espacio la UMC lo guarda ella
 							send(conexion, "1",1,0);
 							int espacio_del_codigo = recibirProtocolo(conexion);
 							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
-						//	agregarHeader(&codigo);
-						//	send()
-							printf("Codigo: %s-\n",codigo);
-							if (ponerEnMemoria(codigo,PID,paginas)){
-								list_iterate(tabla_de_paginas,mostrarTablaPag);}
+							//printf("Codigo: %s-\n",codigo);
+						//	if (ponerEnMemoria(codigo,PID,cantPaginas)){
+					//			list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);}
 							//	list_take_and_remove(tabla_de_paginas,5);
 							//	list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
-								free(codigo);
-
-						}else{
-							printf("1 Ansisop rechazado, memoria insuficiente\n");
-							send(conexion, "0",1,0);}
+						//	}
+								free(codigo);}
+						else{														//Si no tiene espacio, consulta a la Swap
+							char* mensajeInicial=string_new();
+							string_append(&mensajeInicial, "1");
+							string_append(&mensajeInicial,header(PID));
+							string_append(&mensajeInicial, header(cantPaginas));
+							string_append(&mensajeInicial, "\0");
+							send(conexionSwap,mensajeInicial,string_length(mensajeInicial),0);
+							recv(conexionSwap,mensajeInicial,2,0);
+							mensajeInicial[2]='\0';
+							if(string_equals_ignore_case(mensajeInicial,"ok")){				//Si la swap tiene espacio, recibo codigo y se lo mando
+								free(mensajeInicial);
+								send(conexion, "1",1,0);
+								int espacio_del_codigo = recibirProtocolo(conexion);
+								char* codigo =recibirMensaje(conexion,espacio_del_codigo);
+								agregarHeader(&codigo);
+								send(conexionSwap,codigo,string_length(codigo),0);
+								registrarDebug(archivoLog,"1 Ansisop enviado a la Swap");
+							}
+						else{														//Si ninguna tiene espacio => rechaza
+							registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");
+							send(conexion, "0",1,0);}}
 						break;
 					case 3:
 
@@ -346,7 +374,7 @@ void atenderNucleo(int conexion){
 					}
 				}else{salir=1;}
 		}
-		printf("Nucleo en %d termino, eliminado\n",conexion);
+		registrarWarning(archivoLog,"Se desconectó el Nucleo");
 }
 
 //--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
@@ -354,7 +382,7 @@ int hayEspacio(int paginas){
 	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=datosMemoria->marcos-list_size(tabla_de_paginas)));
 }
 int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
-	int i=0,acum=0,offset,resto,anterior=-1,a,pos,tamMarco=datosMemoria->marco_size,cantPags;
+	int i=0,pos,tamMarco=datosMemoria->marco_size;
 	do{		traductor_marco* traductorMarco=malloc(sizeof(traductorMarco));
 			pos=buscarMarcoLibre();
 			memcpy(memoria+pos*tamMarco,codigo+i*tamMarco,tamMarco);
@@ -364,14 +392,11 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 			list_add(tabla_de_paginas,traductorMarco);
 			i++;
 	}while (i < paginasNecesarias);
-	printf("Guardado con exito!\n");
+	printf("Bites ocupados: %d\n",bitarray_get_max_bit(espacio));
+	registrarInfo(archivoLog,"Ansisop guardado con exito!");
 //	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 //	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
 	return 1;
-}
-
-int ponerEnMemoria2(){
-
 }
 
 void mostrarTablaPag(traductor_marco* fila){
@@ -389,6 +414,5 @@ int buscarMarcoLibre() {
 		if (!bitarray_test_bit(espacio,pos)){a=0;}
 	bitarray_set_bit(espacio,pos);}
 	printf("-\n",pos);
-	//bitarray_set_bit(espacio,pos);
 	return (pos);
 }

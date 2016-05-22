@@ -27,9 +27,12 @@ int recibirProtocolo(int conexion){
 	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
-		return -1;}
-	protocolo[4]='\0';
-	return atoi(protocolo);}
+		return -1;
+	}
+	int numero = atoi(protocolo);
+	free(protocolo);
+	return numero;
+}
 
 char* recibirMensaje(int conexion, int tamanio){
 	char* mensaje=(char*)malloc(tamanio+1);

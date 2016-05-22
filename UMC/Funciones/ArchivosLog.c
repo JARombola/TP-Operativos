@@ -1,34 +1,22 @@
-#include <commons/log.h>
+#include "ArchivosLogs.h"
 
-
-void registrarError(char* programa, char* mensaje) {
-t_log* archivoLog = log_create("Errores.log", programa, true,
-		log_level_from_string("ERROR"));
-log_error(archivoLog, mensaje);
-log_destroy(archivoLog);
+void registrarError(t_log* archivo, char* mensaje) {
+	log_error(archivo, mensaje);
 }
 
 void registrarInfo(t_log* archivo, char* mensaje) {
-log_info(archivo, mensaje);
+	log_info(archivo, mensaje);
 }
 
-void registrarTrace(char* programa, char* mensaje) {
-t_log* archivoLog = log_create("Trace.log", programa, true, log_level_from_string("TRACE"));
-log_trace(archivoLog, mensaje);
-log_destroy(archivoLog);
+void registrarTrace(t_log* archivo, char* mensaje) {
+	log_trace(archivo, mensaje);
 }
 
-void registrarDebug(char* programa, char* mensaje) {
-t_log* archivoLog = log_create("Debug.log", programa, true,
-		log_level_from_string("DEBUG"));
-log_debug(archivoLog, mensaje);
-log_destroy(archivoLog);
+void registrarDebug(t_log* archivo, char* mensaje) {
+	log_debug(archivo, mensaje);
 }
 
-void registrarWarning(char* programa, char* mensaje) {
-t_log* archivoLog = log_create("Warning.log", programa, true,
-		log_level_from_string("WARNING"));
-log_warning(archivoLog, mensaje);
-log_destroy(archivoLog);
+void registrarWarning(t_log* archivo, char* mensaje) {
+	log_warning(archivo, mensaje);
 }
 

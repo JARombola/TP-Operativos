@@ -63,8 +63,6 @@ int leerConfiguracion(char*, datosConfiguracion**);
 t_dictionary* crearDiccionario(char** keys);
 int comprobarCliente(int);
 pcb* crearPCB(char*);
-t_list* crearIndiceDeCodigo(t_metadata_program*);
-int cortarInstrucciones(t_metadata_program*);
 int calcularPaginas(char*);
 void mostrar(int*);
 void enviarAnsisopAUMC(int, char*,int);
@@ -317,7 +315,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	string_append(&mensajeInicial, header(pcbNuevo->PID));
 	string_append(&mensajeInicial, header((paginasNecesarias)));
 	string_append(&mensajeInicial, "\0");
-	printf("%s, Long:%d\n", mensajeInicial, string_length(mensajeInicial));
+	//printf("%s, Long:%d\n", mensajeInicial, string_length(mensajeInicial));
 	send(conexionUMC, mensajeInicial, string_length(mensajeInicial), 0);
 	free(mensajeInicial);
 	char* resp = malloc(2);
