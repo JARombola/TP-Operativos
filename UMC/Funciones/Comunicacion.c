@@ -18,7 +18,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 int conectar(int puerto,char* ip){   							//Con la swap
 	struct sockaddr_in direccion=crearDireccion(puerto, ip);
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-	while(connect(conexion, (void*) &direccion, sizeof(direccion)));
+	while (connect(conexion, (void*) &direccion, sizeof(direccion)));
 	return conexion;
 }
 
@@ -28,10 +28,10 @@ int recibirProtocolo(int conexion){
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
 		return -1;}
-	protocolo[4]='\0';
-	int numero=atoi(protocolo);
+	int numero = atoi(protocolo);
 	free(protocolo);
-	return numero;}
+	return numero;
+}
 
 char* recibirMensaje(int conexion, int tamanio){
 	char* mensaje=(char*)malloc(tamanio+1);
@@ -56,9 +56,8 @@ char* header(int numero){										//Recibe numero de bytes, y lo devuelve en 4 
 void agregarHeader(char** mensaje){
 	char* head=string_new();
 	string_append(&head,header(string_length(*mensaje)));
-	*mensaje=string_reverse(*mensaje);
-	string_append(mensaje,string_reverse(head));
-	*mensaje=string_reverse(*mensaje);
+	string_append(&head,*mensaje);
+	*mensaje=string_duplicate(head);
 	free (head);
 }
 
@@ -70,4 +69,3 @@ int bindear(int socket, struct sockaddr_in direccionServer){
 			}
 	return 1;				//Joya!
 }
-

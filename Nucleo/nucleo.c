@@ -306,25 +306,25 @@ int comprobarCliente(int nuevoCliente) {
 
 void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	int paginasNecesarias=calcularPaginas(codigo);
-	char* mensajeInicial = string_new();
+	char* mensaje = string_new();
 	pcb* pcbNuevo = crearPCB(codigo);
 	pcbNuevo->consola=consola;
 	pcbNuevo->SP = 2; 											//todo numero para probar
 	printf("\n");
-	string_append(&mensajeInicial, "1");
-	string_append(&mensajeInicial, header(pcbNuevo->PID));
-	string_append(&mensajeInicial, header((paginasNecesarias)));
-	string_append(&mensajeInicial, "\0");
-	//printf("%s, Long:%d\n", mensajeInicial, string_length(mensajeInicial));
-	send(conexionUMC, mensajeInicial, string_length(mensajeInicial), 0);
-	free(mensajeInicial);
+	string_append(&mensaje, "1");
+	string_append(&mensaje, header(pcbNuevo->PID));
+	string_append(&mensaje, header((paginasNecesarias)));
+	agregarHeader(&codigo);
+	string_append(&mensaje,codigo);
+	//string_append(&mensaje,"\0");
+	//printf("%s\n",codigo);
+	send(conexionUMC, mensaje, string_length(mensaje), 0);
+	free(codigo);
+	free(mensaje);
 	char* resp = malloc(2);
 	recv(conexionUMC, resp, 1, 0);
 	resp[1] = '\0';
-	if (!strcmp(resp, "1")) {
-		agregarHeader(&codigo);
-		send(conexionUMC, codigo, string_length(codigo), 0);
-		free(codigo);
+	if (string_equals_ignore_case(resp, "1")) {
 		printf("Código enviado a la UMC\nNuevo PCB en cola de listos!\n");
 		queue_push(colaListos, pcbNuevo);
 		sem_post(&sem_Listos);

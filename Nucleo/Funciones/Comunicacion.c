@@ -27,8 +27,7 @@ int recibirProtocolo(int conexion){
 	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
-		return -1;
-	}
+		return -1;}
 	int numero = atoi(protocolo);
 	free(protocolo);
 	return numero;
@@ -57,9 +56,8 @@ char* header(int numero){										//Recibe numero de bytes, y lo devuelve en 4 
 void agregarHeader(char** mensaje){
 	char* head=string_new();
 	string_append(&head,header(string_length(*mensaje)));
-	*mensaje=string_reverse(*mensaje);
-	string_append(mensaje,string_reverse(head));
-	*mensaje=string_reverse(*mensaje);
+	string_append(&head,*mensaje);
+	*mensaje=string_duplicate(head);
 	free (head);
 }
 
