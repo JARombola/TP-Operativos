@@ -63,7 +63,6 @@ t_log* archivoLog;
 
 
 int main(int argc, char* argv[]) {
-
 	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
 
 	int nucleo,nuevo_cliente,sin_size = sizeof(struct sockaddr_in);
@@ -410,9 +409,9 @@ void mostrarTablaPag(traductor_marco* fila){
 int buscarMarcoLibre() {
 	int pos,a=1;
 	for (pos = 0 ; (pos<=datosMemoria->marcos) && a ;pos++){
-		printf("%d-",bitarray_test_bit(espacio,pos));
+	//	printf("%d-",bitarray_test_bit(espacio,pos));
 		if (!bitarray_test_bit(espacio,pos)){a=0;}
 	bitarray_set_bit(espacio,pos);}
-	printf("-\n",pos);
+	//printf("-\n",pos);
 	return (pos);
 }

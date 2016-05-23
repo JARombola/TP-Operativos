@@ -8,11 +8,14 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <string.h>
 #include <commons/config.h>
 #include <commons/bitarray.h>
+#include <commons/collections/list.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "Funciones/Comunicacion.h"
+
 
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
@@ -33,11 +36,14 @@ struct sockaddr_in crearDireccion(int puerto, char* ip);
 int comprobarCliente(int);
 int leerConfiguracion(char*, datosConfiguracion**);
 char* crearArchivoSwap();
-int guardarCodigo(char**,char*);
+int guardarCodigo(char*);
+int buscarEspacioLibre(int);
 
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
 int pagsLibres;
+char* archivoSwap;
+t_list* paginas;
 
 int main(int argc, char* argv[]){
 	int	conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
@@ -48,19 +54,23 @@ int main(int argc, char* argv[]){
 		printf("Error archivo de configuracion\n FIN.");
 		return 1;}
 
-	char* archivoSwap=crearArchivoSwap();				//Devuelve el mmap del archivo iniciado con \0
+	archivoSwap=crearArchivoSwap();				//Devuelve el mmap del archivo iniciado con \0
 
-	bitArray=bitarray_create(archivoSwap,(datosSwap->tamPagina*datosSwap->cantidadPaginas)/8);			//El bitArray usa bits, y el resto usan Bytes
-
+	printf("%s\n",archivoSwap);
+	bitArray=bitarray_create(archivoSwap,datosSwap->cantidadPaginas);			//El bitArray usa bits, y el resto usan Bytes
+	int i;
+	for(i=0;i<datosSwap->cantidadPaginas;i++,bitarray_clean_bit(bitArray,i));				//Inicializa el bitArray
 	if (string_equals_ignore_case(archivoSwap,"Fuiste")){printf("Error al crear el archivo Swap\n");return 0;}
 
 	//munmap(archivoSwap,sizeof(archivoSwap));
 
 	struct sockaddr_in direccionSWAP=crearDireccion(datosSwap->puerto, datosSwap->ip);
 
-	pagsLibres=30;
+	pagsLibres=30;//datosSwap->cantidadPaginas;					//todo
 
 	printf("Swap OK - ");
+
+	paginas=list_create();
 
 	if (!bindear(swap_servidor, direccionSWAP)) {printf("Error en el bind, Adios!\n");
 		return 1;
@@ -84,7 +94,7 @@ int main(int argc, char* argv[]){
 
 	int operacion=1, cantPaginas, PID,tamCodigo;
 	char* codigo;
-
+	int posicion;
 	while (operacion){
 		operacion = atoi(recibirMensaje(conexionUmc,1));
 		switch (operacion){
@@ -92,11 +102,18 @@ int main(int argc, char* argv[]){
 				PID = recibirProtocolo(conexionUmc);
 				cantPaginas = recibirProtocolo(conexionUmc);
 				if (pagsLibres>=cantPaginas){
+					traductor_marco* nuevaFila;
 					send(conexionUmc,"ok",2,0);
 					tamCodigo=recibirProtocolo(conexionUmc);
 					codigo=recibirMensaje(conexionUmc,tamCodigo);
-					codigo[tamCodigo]='\0';
-					guardarCodigo(&archivoSwap, codigo);
+					posicion=buscarEspacioLibre(cantPaginas);
+					memcpy(archivoSwap+posicion*datosSwap->tamPagina,codigo,tamCodigo);
+					nuevaFila->inicio=posicion;
+					nuevaFila->offset=tamCodigo;
+					nuevaFila->proceso=PID;
+					list_add(paginas,nuevaFila);
+			//		printf("\n%s",archivoSwap);
+					printf("\nPagsLibres:%d\n",pagsLibres);
 					printf("Guardado!!\n");
 					free(codigo);
 				}
@@ -156,22 +173,39 @@ char* crearArchivoSwap(){
 	int fd_archivo=open(nombreArchivo,O_RDWR);
 	if (fd_archivo!=-1) {
 	char* archivo=(char*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
-	if (archivo!=MAP_FAILED){return archivo;}
+	if (archivo!=MAP_FAILED){
+		return archivo;}
 		}
 	return "Fuiste";
 }
 
-int guardarCodigo(char** archivoSwap,char* codigo){
+int buscarEspacioLibre(int cantPaginas){
+	int pos,a=1;
+	for (pos = 0 ; (pos<datosSwap->cantidadPaginas) && a ;pos++){
+		if (!bitarray_test_bit(bitArray,pos)){a=0;}
+	}
+	for(a=0;a<cantPaginas;a++){					//Marca las paginas como ocupadas
+		//printf("%d",bitarray_test_bit(bitArray,pos+a));
+		bitarray_set_bit(bitArray,pos+a);
+		//printf("%d\n",bitarray_test_bit(bitArray,pos+a));
+	}
+	pagsLibres-=a;
+	return (pos-1);
+}
+
+int guardarCodigo(char* codigo){
 	int pos,a=1;
 	printf("%s\n",codigo);
 	for (pos = -1 ; a ;pos++){
 		if (!bitarray_test_bit(bitArray,pos)){a=0;}}
-	memcpy(*archivoSwap+pos*datosSwap->tamPagina,codigo,string_length(codigo));
+	int longitud=string_length(codigo);
+	int asd=pos*datosSwap->tamPagina;
+	memcpy(archivoSwap+asd,"ASDASDASD",(int)9);
 	int fin=string_length(codigo)/datosSwap->tamPagina;
 	if (string_length(codigo)%datosSwap->tamPagina) fin++;
 	for(;pos<=fin;pos++){
 		bitarray_set_bit(bitArray,pos);
 	}
-	printf("%s %d\n",*archivoSwap,string_length(codigo));
+	printf("%s %d\n",archivoSwap,string_length(codigo));
 	return 1;
 }
