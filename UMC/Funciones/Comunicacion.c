@@ -30,7 +30,7 @@ int recibirProtocolo(int conexion){
 		return -1;}
 	protocolo[4]='\0';
 	int numero=atoi(protocolo);
-	free (protocolo);
+	free(protocolo);
 	return numero;}
 
 char* recibirMensaje(int conexion, int tamanio){

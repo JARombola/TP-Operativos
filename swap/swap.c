@@ -77,7 +77,7 @@ int main(int argc, char* argv[]){
 	}
 
 	printf("Esperando UMC...\n");
-	listen(swap_servidor,1);
+	listen(swap_servidor, 5);
 
 	//----------------------------creo cliente para umc
 
@@ -85,9 +85,9 @@ int main(int argc, char* argv[]){
 	int sin_size = sizeof(struct sockaddr_in);
 
 	do{
-		conexionUmc= accept(swap_servidor, (void *) &direccionCliente, (void *) &sin_size);
-			if (conexionUmc == -1){perror("Una conexion rechazada\n");}
-	}while(!comprobarCliente(conexionUmc));						//Mientras el que se conecta no es la UMC
+		conexionUmc= accept(swap_servidor, (void *)&direccionCliente, (void *)&sin_size);
+		if (conexionUmc == -1){perror("Una conexion rechazada\n");}
+	}while(!comprobarCliente(conexionUmc));
 	printf("UMC Conectada!\n");
 
 	//----------------Recibo datos de la UMC
@@ -102,7 +102,7 @@ int main(int argc, char* argv[]){
 				PID = recibirProtocolo(conexionUmc);
 				cantPaginas = recibirProtocolo(conexionUmc);
 				if (pagsLibres>=cantPaginas){
-					traductor_marco* nuevaFila;
+					traductor_marco* nuevaFila=malloc(sizeof(traductor_marco));
 					send(conexionUmc,"ok",2,0);
 					tamCodigo=recibirProtocolo(conexionUmc);
 					codigo=recibirMensaje(conexionUmc,tamCodigo);
@@ -113,14 +113,14 @@ int main(int argc, char* argv[]){
 					nuevaFila->proceso=PID;
 					list_add(paginas,nuevaFila);
 			//		printf("\n%s",archivoSwap);
-					printf("\nPagsLibres:%d\n",pagsLibres);
-					printf("Guardado!!\n");
+			//		printf("\nPagsLibres:%d\n",pagsLibres);
+			//		printf("Guardado!!\n");
 					free(codigo);
 				}
-
+				else {
+					send(conexionUmc,"no",2,0);
+				}
 				break;}
-
-		//char* codigo=malloc(tamCodigo);
 	}
 	free(datosSwap);
 	printf("Cayó la Umc, swap autodestruida!\n");
@@ -133,6 +133,7 @@ int main(int argc, char* argv[]){
 int comprobarCliente(int cliente){
 	char* bufferHandshake = malloc(10);
 	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);				//lo paso a string para comparar
+	bufferHandshake[bytesRecibidosH] = '\0';
 	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
 		free(bufferHandshake);
 		send(cliente, "Hola_umc", 8, 0);

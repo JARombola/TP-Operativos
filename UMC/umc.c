@@ -50,6 +50,11 @@ void atenderCpu(int);
 int hayEspacio(int paginas);
 int ponerEnMemoria(char* codigo,int id,int cantPags);
 int buscarMarcoLibre();
+int aceptarPrograma(int);
+//-----MENSAJES----
+void* buscar(int, int, int, int);
+int paginaDelProceso(traductor_marco*);
+
 //COMANDOS--------------
 void comandoMemory(traductor_marco*);
 
@@ -58,7 +63,7 @@ t_list *tabla_de_paginas;
 int totalPaginas,procesoBuscar=0,conexionSwap;
 char* memoria;
 datosConfiguracion *datosMemoria;
-t_bitarray 	*espacio;
+t_bitarray 	*bitArray;
 t_log* archivoLog;
 
 
@@ -77,12 +82,12 @@ int main(int argc, char* argv[]) {
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 
 	memoria = (char*) malloc(marcosTotal);
-	espacio=bitarray_create(memoria,marcosTotal);
+	bitArray=bitarray_create(memoria,marcosTotal);
 	int i;
-	for(i=0;i<marcosTotal;i++,bitarray_clean_bit(espacio,i)){
-	//	printf("%d - Cant %d - ",i, bitarray_test_bit(espacio,i));
-		//bitarray_set_bit(espacio,i);
-	//	printf("%d\n",bitarray_test_bit(espacio,i));
+	for(i=0;i<marcosTotal;i++,bitarray_clean_bit(bitArray,i)){
+	//	printf("%d - Cant %d - ",i, bitarray_test_bit(bitArray,i));
+		//bitarray_set_bit(bitArray,i);
+	//	printf("%d\n",bitarray_test_bit(bitArray,i));
 	}
 
 
@@ -282,93 +287,54 @@ void comandoMemory(traductor_marco* pagina){
 }
 
 void atenderCpu(int conexion){
-	//[PROTOCOLO]: - siempre recibo PRIMERO el ProcesoActivo (PID)
-	//			   - despues el codigo de operacion (2 o 3 para CPU)
-	//			   - despues se reciben Pag, offset, buffer (Long no xq es el tamaño de la pagina, no es necesario recibirlo)
-	registrarTrace(archivoLog,"Nuevo CPU-");
-	int salir=0;
-	int procesoActual;
+
+	//				[PROTOCOLO]:
+	//				- 1) Codigo de operacion (2 o 3 para CPU)
+	//			   	- 2) ID PROCESO
+	//				- 3) despues se reciben Pag, offset, buffer (Long no xq es el tamaño de la pagina, no es necesario recibirlo)
+
+	registrarTrace(archivoLog, "Nuevo CPU-");
+	int salir = 0, operacion, proceso, pagina, offset, buffer, size;
 	while (!salir) {
-		procesoActual = recibirProtocolo(conexion);
-		if (procesoActual) {
-			int operacion = recibirProtocolo(conexion);
-			if (operacion) {
-				int paginas, offset, buffer;
-				switch (operacion) {
-				case 2:
-					paginas = recibirProtocolo(conexion);
-					offset = recibirProtocolo(conexion);
-					if (paginas && offset) {
-						enviarBytes(paginas, offset, datosMemoria->marco_size);					//todo
-					} else {
-						salir = 1;
-					}
-					break;
-				case 3:
-					paginas = recibirProtocolo(conexion);
-					offset = recibirProtocolo(conexion);
-					buffer = recibirProtocolo(conexion);
-					if (paginas && offset && buffer) {
-						almacenarBytes(paginas, offset, datosMemoria->marco_size, buffer);			//todo
-					} else {
-						salir = 1;
-					}
-					break;
-				}
-			}else{salir=1;}
+		operacion = atoi(recibirMensaje(conexion, 1));
+		if (operacion) {
+			proceso = atoi(recibirMensaje(conexion,1));
+			pagina = recibirProtocolo(conexion);
+			offset = recibirProtocolo(conexion);
+			size=recibirProtocolo(conexion);
+			switch (operacion) {
+			case 2:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
+				buscar(proceso, pagina,offset,size);
+				break;
+			case 3:													//3 = Guardar Valor
+				buffer = recibirProtocolo(conexion);
+
+				break;
+			}
+		} else {
+			salir = 1;
 		}
-		else {salir=1;}
 	}
-	registrarTrace(archivoLog,"CPU eliminada");
+	registrarTrace(archivoLog, "CPU eliminada");
 }
 
 void atenderNucleo(int conexion){
-	registrarTrace(archivoLog,"Hilo de Nucleo creado");
+	registrarInfo(archivoLog,"Hilo de Nucleo creado");
 		//[PROTOCOLO]: - siempre recibo PRIMERO el codigo de operacion (1 o 4) inicializar o finalizar
 		int salir=0;
 		while (!salir) {
 			int operacion = atoi(recibirMensaje(conexion,1));
 				if (operacion) {
-					int cantPaginas, PID;
 					switch (operacion) {
 					case 1:												//inicializar programa
-							PID= recibirProtocolo(conexion);
-							cantPaginas = recibirProtocolo(conexion);
-						if(hayEspacio(cantPaginas)){									//Si tiene espacio la UMC lo guarda ella
-							send(conexion, "1",1,0);
-							int espacio_del_codigo = recibirProtocolo(conexion);
-							char* codigo =recibirMensaje(conexion,espacio_del_codigo);
-							//printf("Codigo: %s-\n",codigo);
-						//	if (ponerEnMemoria(codigo,PID,cantPaginas)){
-					//			list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);}
-							//	list_take_and_remove(tabla_de_paginas,5);
-							//	list_iterate(tabla_de_paginas,mostrarTablaPag);					PARA PROBAR BUSQUEDA DE MARCOS VACIOS*/
-						//	}
-								free(codigo);}
-						else{														//Si no tiene espacio, consulta a la Swap
-							char* mensajeInicial=string_new();
-							string_append(&mensajeInicial, "1");
-							string_append(&mensajeInicial,header(PID));
-							string_append(&mensajeInicial, header(cantPaginas));
-							string_append(&mensajeInicial, "\0");
-							send(conexionSwap,mensajeInicial,string_length(mensajeInicial),0);
-							recv(conexionSwap,mensajeInicial,2,0);
-							mensajeInicial[2]='\0';
-							if(string_equals_ignore_case(mensajeInicial,"ok")){				//Si la swap tiene espacio, recibo codigo y se lo mando
-								free(mensajeInicial);
-								send(conexion, "1",1,0);
-								int espacio_del_codigo = recibirProtocolo(conexion);
-								char* codigo =recibirMensaje(conexion,espacio_del_codigo);
-								agregarHeader(&codigo);
-								send(conexionSwap,codigo,string_length(codigo),0);
-								registrarDebug(archivoLog,"1 Ansisop enviado a la Swap");
-							}
-						else{														//Si ninguna tiene espacio => rechaza
+							if(aceptarPrograma(conexion)){
+								send(conexion,"1",1,0);}
+							else{
 							registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");
-							send(conexion, "0",1,0);}}
+							send(conexion, "0",1,0);}
 						break;
-					case 3:
 
+					case 4:
 						break;
 					}
 				}else{salir=1;}
@@ -377,6 +343,15 @@ void atenderNucleo(int conexion){
 }
 
 //--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
+void* buscar(int proceso, int pag, int off, int size){
+		return 1;
+}
+/*
+int paginaDelProceso(traductor_marco* fila){
+	if ((fila->proceso==proceso) && (fila->pagina==pag)){
+	return 1;
+}*/
+
 int hayEspacio(int paginas){
 	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=datosMemoria->marcos-list_size(tabla_de_paginas)));
 }
@@ -391,7 +366,7 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 			list_add(tabla_de_paginas,traductorMarco);
 			i++;
 	}while (i < paginasNecesarias);
-	printf("Bites ocupados: %d\n",bitarray_get_max_bit(espacio));
+	printf("Bites ocupados: %d\n",bitarray_get_max_bit(bitArray));
 	registrarInfo(archivoLog,"Ansisop guardado con exito!");
 //	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 //	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
@@ -409,9 +384,31 @@ void mostrarTablaPag(traductor_marco* fila){
 int buscarMarcoLibre() {
 	int pos,a=1;
 	for (pos = 0 ; (pos<=datosMemoria->marcos) && a ;pos++){
-	//	printf("%d-",bitarray_test_bit(espacio,pos));
-		if (!bitarray_test_bit(espacio,pos)){a=0;}
-	bitarray_set_bit(espacio,pos);}
+	//	printf("%d-",bitarray_test_bit(bitArray,pos));
+		if (!bitarray_test_bit(bitArray,pos)){a=0;}
+	bitarray_set_bit(bitArray,pos);}
 	//printf("-\n",pos);
 	return (pos);
+}
+
+int aceptarPrograma(int conexion) {
+	int espacio_del_codigo, PID, cantPaginas;
+	char* mjeInicial=recibirMensaje(conexion,8);
+	espacio_del_codigo = recibirProtocolo(conexion);
+	char* codigo = recibirMensaje(conexion, espacio_del_codigo);
+	//printf("Codigo: %s-\n",codigo);
+	agregarHeader(&codigo);
+	char* programa = string_new();
+	string_append(&programa, "1");
+	string_append(&programa, mjeInicial);
+	string_append(&programa, codigo);
+	free(mjeInicial);
+	send(conexionSwap, programa, string_length(programa), 0);
+	free(programa);
+	char*respuesta = malloc(3);
+	recv(conexionSwap, respuesta, 2, 0);
+	respuesta[2] = '\0';
+	int aceptado = string_equals_ignore_case(respuesta, "ok");
+	free(respuesta);
+	return aceptado;
 }
