@@ -51,7 +51,7 @@ typedef struct{
 	int ut;
 }pcbParaES;
 
-t_list *cpus, *consolas;
+t_list *cpus, *consolas, *listConsolasParaEliminarPCB;
 
 //estructuras para planificacion
 pthread_attr_t attr;
@@ -76,6 +76,7 @@ void atender_Bloq_SEM(int posicion);
 void atender_Terminados();
 void atenderOperacion(int op,int cpu);
 void procesar_operacion_privilegiada(int operacion, int cpu);
+int ese_PCB_hay_que_eliminarlo(int consola);
 int revisarActividad(t_list*, fd_set*);
 
 
@@ -91,6 +92,7 @@ int main(int argc, char* argv[]) {
 	fd_set descriptores;
 	cpus = list_create();
 	consolas = list_create();
+	listConsolasParaEliminarPCB= list_create();
 	int max_desc, nuevo_cliente,sin_size = sizeof(struct sockaddr_in) ;
 	struct sockaddr_in direccionCliente;
 	pthread_attr_init(&attr);
@@ -171,9 +173,9 @@ int main(int argc, char* argv[]) {
 		}
 		socketARevisar = revisarActividad(consolas, &descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
-			printf("Se desconecto una consola, eliminada\n");
+			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
+			list_add(listConsolasParaEliminarPCB,(void *) socketARevisar);
 			close(socketARevisar);
-			//todo eliminar pcb
 		}
 		else {
 			socketARevisar = revisarActividad(cpus, &descriptores);
@@ -428,49 +430,54 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 //--------------------------------------------PLANIFICACION----------------------------------------------------
 
 void atender_Ejecuciones(){
-	 printf("Se creo el hilo para ejecutar programas, esperando..\n");
+	 printf("[HILO EJECUCIONES]: Se creo el hilo para ejecutar programas, esperando..\n");
 	 while(1){
 		 sem_wait(&sem_Listos);
-		 printf("se activo el semaforo listo y lo frene, voy a ver los cpus disponibles\n");
+		 printf("[HILO EJECUCIONES]: se activo el semaforo listo y lo frene, voy a ver los cpus disponibles\n");
 		 pcb* pcbListo = malloc(sizeof(pcb));
 		 pcbListo = queue_pop(colaListos);
+		 if(ese_PCB_hay_que_eliminarlo(pcbListo->consola)){
+			 printf("La consola del proceso %d no existe mas, se lo eliminara\n",pcbListo->PID);
+			 //todo avisar umc de eliminar este proceso
+		 }else{
 		 int paso=1;
-		 while(paso){
-			if(!queue_is_empty(colaCPUs)){
-				printf("el proceso %d paso de Listo a Execute\n",pcbListo->PID);
-				int cpu = queue_pop(colaCPUs); //saco el socket de ese cpu disponible
-			 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //todo serializar pcbListo (agregar quantum y quantum_sleep)
-				//send(cpu, pcbSerializado, tamanioSerializado, 0);
-				paso=0;
-			}
+		 	 while(paso){
+		 		 if(!queue_is_empty(colaCPUs)){
+					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->PID);
+					int cpu = queue_pop(colaCPUs); //saco el socket de ese cpu disponible
+			 	 	//todo serializar pcbListo (agregar quantum y quantum_sleep)
+					//send(cpu, pcbSerializado, tamanioSerializado, 0);
+					paso=0;
+				}
+		 	 }
 		 }
+		 free(pcbListo);
 	 }
-	 //free(pcbListo);
  }
  void atender_Bloq_ES(int posicion){
-	 printf("se creo el hilo %d de E/S\n",posicion);
+	 printf("[HILO DE E/S nro %d]: se creo el hilo %d de E/S\n",posicion,posicion);
 	 int miSLEEP = dispositivosSleeps[posicion];
 	 while(1){
 	 	 sem_wait(&semaforosES[posicion]);
 	 	 pcbParaES* pcbBloqueando = queue_pop(colasES[posicion]);
-	 	 printf("saque el pcb nro %d y va a esperar %d ut\n", pcbBloqueando->pcb->PID,pcbBloqueando->ut);
+	 	 printf("[HILO DE E/S nro %d]: saque el pcb nro %d y va a esperar %d ut\n", posicion, pcbBloqueando->pcb->PID,pcbBloqueando->ut);
 	 	 usleep(miSLEEP*pcbBloqueando->ut);
-	 	 sleep(5);
 		 queue_push(colaListos, pcbBloqueando->pcb);
+		 printf("[HILO DE E/S nro %d]: el pcb %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->PID);
 		 sem_post(&sem_Listos);
 	 }
  }
  void atender_Bloq_SEM(int posicion){
-	 printf("se creo el hilo %d de Semaforos de variables globales\n",posicion);
+	 printf("[HILO DE SEMAFORO nro %d]: se creo el hilo %d de Semaforos de variables globales\n",posicion,posicion);
 	 while(1){
 		 sem_wait(&semaforosGlobales[posicion]);
 		 if(!queue_is_empty(colaCPUs)){
 			 pcb* pcbBloqueando = queue_pop(colasSEM[posicion]);
 		 	 queue_push(colaListos, pcbBloqueando);
 		 	 sem_post(&sem_Listos);
-		 	 printf("el proceso %d paso de Bloqueado a Listo\n",pcbBloqueando->PID);
+		 	 printf("[HILO DE SEMAFORO nro %d]: el proceso %d paso de Bloqueado a Listo\n",posicion, pcbBloqueando->PID);
 		 }else{
-			 printf("no hay ningun pcb para desbloquear\n");
+			 printf("[HILO DE SEMAFORO nro %d]: no hay ningun pcb para desbloquear\n",posicion);
 		 }
 	 }
 
@@ -596,4 +603,17 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		queue_push(colaCPUs, &cpu);
 		break;
 	}
+}
+int ese_PCB_hay_que_eliminarlo(int consola){
+	int buscarIgual(int elemLista){
+		if(consola==elemLista){
+			return 1;
+		}else{
+			return 0;
+		}
+	}
+	if(list_find(listConsolasParaEliminarPCB,(void*)buscarIgual)){
+		list_remove_by_condition(listConsolasParaEliminarPCB,(void*)buscarIgual);
+		return 1;
+	}return 0;
 }
