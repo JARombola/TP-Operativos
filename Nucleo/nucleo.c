@@ -27,7 +27,7 @@ typedef struct {
 	int quantum;
 	int quantum_sleep;
 	char** sem_ids;
-	char** sem_init;		//TRANSFORMAR CON (atoi)
+	char** sem_init;		//TRANSFORMAR CON (atoi) - gracias (:
 	char** io_ids;
 	char** io_sleep;		//LO MISMO
 	char** shared_vars;
@@ -46,41 +46,45 @@ typedef struct {
 	int indiceStack;
 } pcb;
 
-typedef struct {
-	char *nombre;
-	int valor;
-}variableGlobarl;
+typedef struct{
+	pcb* pcb;
+	int ut;
+}pcbParaES;
 
-t_list *cpus, *consolas, *variablesGlobales;
+t_list *cpus, *consolas;
 
 //estructuras para planificacion
+pthread_attr_t attr;
+pthread_t thread;
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
-t_queue *colaListos, *colaExec, *colaBloq, *colaTerminados;
-sem_t sem_Listos,sem_Exec, sem_Bloq,sem_Terminado,sem_cpuDisponible;
+t_queue *colaListos, *colaExec, *colaBloq, *colaTerminados, *colaCPUs;
+sem_t sem_Listos,sem_Terminado;
 
 int autentificarUMC(int);
 int leerConfiguracion(char*, datosConfiguracion**);
-t_dictionary* crearDiccionario(char** keys);
+t_dictionary* crearDiccionarioGlobales(char** keys);
+t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO);
 int comprobarCliente(int);
 pcb* crearPCB(char*);
 int calcularPaginas(char*);
 void mostrar(int*);
 void enviarAnsisopAUMC(int, char*,int);
 void maximoDescriptor(int* maximo, t_list* lista, fd_set *descriptores);
-void atender_Listos();
-void atender_Exec(int cpu);
-void atender_Bloq();
+void atender_Ejecuciones();
+void atender_Bloq_ES(int posicion);
+void atender_Bloq_SEM(int posicion);
 void atender_Terminados();
-int  mandar_instruccion_a_CPU(int cpu, pcb*pcb, int *todoSigueIgual);
-int procesar_respuesta(int op,int cpu, pcb*pcb, int *todoSigueIgual);
-int procesar_operacion_privilegiada(int operacion, int cpu, pcb*pcb, int *seBloqueo);
-void eliminarCPU(int cpu);
+void atenderOperacion(int op,int cpu);
+void procesar_operacion_privilegiada(int operacion, int cpu);
 int revisarActividad(t_list*, fd_set*);
 
 
 int ultimoPID=0,tamPagina=0;
 datosConfiguracion* datosNucleo;
-
+t_dictionary *globales,*semaforos,*dispositivosES;
+int *dispositivosSleeps, *globalesValores;
+sem_t *semaforosES,*semaforosGlobales;
+t_queue **colasES,**colasSEM;
 
 
 int main(int argc, char* argv[]) {
@@ -89,51 +93,39 @@ int main(int argc, char* argv[]) {
 	consolas = list_create();
 	int max_desc, nuevo_cliente,sin_size = sizeof(struct sockaddr_in) ;
 	struct sockaddr_in direccionCliente;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);//todo agregar el destroy
+
 	//--------------------------------CONFIGURACION-----------------------------
 
 	datosNucleo=malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigNucleo", &datosNucleo) || leerConfiguracion("../ConfigNucleo", &datosNucleo))){
 			printf("Error archivo de configuracion\n FIN.");return 1;}
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
-	t_dictionary *globales=crearDiccionario(datosNucleo->shared_vars);
-	t_dictionary *semaforos=crearDiccionario(datosNucleo->sem_ids);
-	t_dictionary *dispositivosES=crearDiccionario(datosNucleo->io_ids);
+	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
+	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
+	dispositivosES = crearDiccionarioSEMyES(datosNucleo->io_ids,datosNucleo->io_sleep,1);
 	//printf("%d\n",(int)dictionary_get(globales,"!UnaVar"));	//EJEMPLO DE BUSQUEDA
-//-----------------------------------------------------------------------------------------------------------------
-	/*t_queue* dispositivos[datosNucleo.io_ids.CANTIDAD];
-	for(i=0;i<=cant;i++){
-	dispositivos[i]=queue_create();}
 
-	variablesGlobales = list_create();
-	for(int i=0;i<=sizeof(*datosMemoria->shared_vars);i++){
-		variableGlobarl vg;
-		vg->nombre = datosMemoria->shared_vars[i];
-		vg->valor = 0;
-		list_add(variablesGlobales, vg);
-	}
-	*/
 	//---------------------------------PLANIFICACION PCB-----------------------------------
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);//todo agregar el destroy
-	pthread_t hiloListos, hiloExec, hiloBloq, hiloTerminados;
 
 	sem_init(&sem_Listos, 0, 0);
-	sem_init(&sem_Exec, 0, 0);
-	sem_init(&sem_Bloq, 0, 0);
 	sem_init(&sem_Terminado, 0, 0);
-	sem_init(&sem_cpuDisponible, 0, 0);
 
 	colaListos=queue_create();
-	colaExec=queue_create();
-	colaBloq=queue_create();
 	colaTerminados=queue_create();
+	colaCPUs=queue_create();
 
-	pthread_create(&hiloListos, &attr, (void*)atender_Listos, NULL);
-	pthread_create(&hiloBloq, &attr, (void*)atender_Bloq, NULL);		//un hilo por cada e/s, y por parametro el sleep?
-	pthread_create(&hiloTerminados, &attr, (void*)atender_Terminados, NULL);
+	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
 
-
+	//-----------------------------------pcb para probar bloqueo de E/S
+	pcb*pcbprueba=malloc(sizeof(pcb));
+	pcbprueba->PID=5;
+	pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
+	pcbParaBloquear->pcb = pcbprueba;
+	pcbParaBloquear->ut = 6;
+	queue_push(colasES[1], pcbParaBloquear);
+	sem_post(&semaforosES[1]);
 
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -158,10 +150,11 @@ int main(int argc, char* argv[]) {
 	printf("Estoy escuchando\n");
 	listen(nucleo_servidor, 100);
 
+	int socketARevisar;
+
 	//****_____________________________________________________________________________________________________________*
 	//****--------------------------------------------ACA Arranca la Magia---------------------------------------------*
 	//****_____________________________________________________________________________________________________________*
-
 	while (1) {
 
 		FD_ZERO(&descriptores);
@@ -176,53 +169,62 @@ int main(int argc, char* argv[]) {
 			perror("Error en el select");
 			//exit(EXIT_FAILURE);
 		}
-		if (revisarActividad(consolas, &descriptores)) {								//Reviso actividad en consolas
+		socketARevisar = revisarActividad(consolas, &descriptores);
+		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto una consola, eliminada\n");
+			close(socketARevisar);
+			//todo eliminar pcb
 		}
-																						//saque la actividad de los cpus, porque se comunica con los hilos de planificacion
 		else {
-				if (FD_ISSET(conexionUMC, &descriptores)) {								//Me mando algo la UMC
-					if (recibirProtocolo(conexionUMC) == -1) {
-						printf("Murio la UMC, bye\n");
-						return 0;
-					}
-				}else{
-				if (FD_ISSET(nucleo_servidor, &descriptores)) { //aceptar cliente
-					nuevo_cliente = accept(nucleo_servidor,
-							(void *) &direccionCliente, (void *) &sin_size);
-					if (nuevo_cliente == -1) {
-						perror("Fallo el accept");
-					}
-					printf("Nueva conexion\n");
-					int tamPagParaCpu = htonl(tamPagina);
-					switch (comprobarCliente(nuevo_cliente)) {
+			socketARevisar = revisarActividad(cpus, &descriptores);
+			if (socketARevisar) {								//Reviso actividad en cpus
+				printf("Se desconecto una CPU, eliminada\n");
+				close(socketARevisar);
+				//todo eliminar pcb si no termino bien el quantum
 
-					case 0:											//ERROR!!
-						perror("Falló el handshake\n");
-						close(nuevo_cliente);
-						break;
-
-					case 1:												//CPU
-						send(nuevo_cliente, &tamPagParaCpu, 4, 0);
-						list_add(cpus, (void *) nuevo_cliente);
-						sem_post(&sem_cpuDisponible);
-						pthread_create(&hiloExec, &attr, (void*)atender_Exec, (void*)nuevo_cliente);
-						printf("Acepté un nuevo cpu\n");
-						break;
-
-					case 2:							//CONSOLA, RECIBO EL CODIGO
-						send(nuevo_cliente, "1", 1, 0);
-						list_add(consolas, (void *) nuevo_cliente);
-						printf("Acepté una nueva consola\n");
-						int tamanio = recibirProtocolo(nuevo_cliente);
-						if (tamanio > 0) {
-							char* codigo = (char*) recibirMensaje(nuevo_cliente,
-									tamanio);//printf("--Codigo:%s--\n",codigo);
-							enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
-							free(codigo);
+			}
+			else {
+					if (FD_ISSET(conexionUMC, &descriptores)) {					//Me mando algo la UMC
+						if (recibirProtocolo(conexionUMC) == -1) {
+							printf("Murio la UMC, bye\n");
+							return 0;
 						}
-						break;
+					}else{
+					if (FD_ISSET(nucleo_servidor, &descriptores)) { 			//aceptar cliente
+						nuevo_cliente = accept(nucleo_servidor,
+								(void *) &direccionCliente, (void *) &sin_size);
+						if (nuevo_cliente == -1) {
+							perror("Fallo el accept");
+						}
+						printf("Nueva conexion\n");
+						int tamPagParaCpu = htonl(tamPagina);
+						switch (comprobarCliente(nuevo_cliente)) {
 
+						case 0:											//ERROR!!
+							perror("Falló el handshake\n");
+							close(nuevo_cliente);
+							break;
+
+						case 1:												//CPU
+							send(nuevo_cliente, &tamPagParaCpu, 4, 0);
+							printf("Acepté un nuevo cpu\n");
+							queue_push(colaCPUs,&nuevo_cliente);
+							break;
+
+						case 2:							//CONSOLA, RECIBO EL CODIGO
+							send(nuevo_cliente, "1", 1, 0);
+							list_add(consolas, (void *) nuevo_cliente);
+							printf("Acepté una nueva consola\n");
+							int tamanio = recibirProtocolo(nuevo_cliente);
+							if (tamanio > 0) {
+								char* codigo = (char*) recibirMensaje(nuevo_cliente,
+										tamanio);//printf("--Codigo:%s--\n",codigo);
+								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
+								free(codigo);
+							}
+							break;
+
+						}
 					}
 				}
 			}
@@ -265,13 +267,46 @@ int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
 		}
 	}
 }
-t_dictionary* crearDiccionario(char** keys){
+t_dictionary* crearDiccionarioGlobales(char** keys){
 	int i=0;
 	t_dictionary* diccionario=dictionary_create();
 	while(keys[i]!=NULL){
-	//	printf("%s\n",keys[i]);
 		dictionary_put(diccionario,keys[i],(int*) i);
 		i++;
+	}
+	globalesValores=malloc(i * sizeof(uint32_t)); //deberia estar arriba del i-- ?
+	i--;
+	for(;i>=0;i--){
+		globalesValores[i]=0;
+	}
+	return diccionario;
+}
+t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
+	int i=0;
+	t_dictionary* diccionario=dictionary_create();
+	while(keys[i]!=NULL){
+		dictionary_put(diccionario,keys[i],(int*) i);
+		i++;
+	}
+	i--; //me pase, voy a la ultima que tiene algo
+	if(esIO){
+		dispositivosSleeps = malloc((i+1)*sizeof(uint32_t));
+		semaforosES = malloc((i+1)*sizeof(sem_t));
+		colasES = malloc((i+1)*sizeof(t_queue));
+		for(;i>=0;i--){
+			dispositivosSleeps[i] = atoi(init[i]);		//vector de ints con los sleeps
+			sem_init(&semaforosES[i], 0, 0);			//vector con los semaforos de cada e/s
+			colasES[i] = queue_create();				//vector de colas
+			pthread_create(&thread, &attr, (void*)atender_Bloq_ES, (void*)i);
+		}
+	}else{
+		colasSEM = malloc((i+1)*sizeof(t_queue));
+		semaforosGlobales=malloc((i+1)*sizeof(sem_t));
+		for(;i>=0;i--){
+			sem_init(&semaforosGlobales[i], 0, atoi(init[i]) );		//vector de semaforos inicializados
+			colasSEM[i] = queue_create();						//vector de colas
+			pthread_create(&thread, &attr, (void*)atender_Bloq_SEM, (void*)i);
+		}
 	}
 	return diccionario;
 }
@@ -380,263 +415,185 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 		int componente = (int) list_get(lista, i);
 		if (FD_ISSET(componente, descriptores)) {
 			int protocolo = recibirProtocolo(componente);
-			if (protocolo == -1) {							//Se desconecto o algo
+			if (protocolo <= 0) {							//Se desconecto o algo, saque (== -1) porque el cpu me mandaba 0 al desconectarar
 				list_remove(lista, i);
-				close(componente);
-				return 1;
-			} else {							//Me mandaron un mje
-				char* bufferConsola = malloc(protocolo + 1);
-				char* mensaje = recibirMensaje(componente, protocolo);
-				free(bufferConsola);
-				printf("mensaje de consola: %s", mensaje);
-				free(mensaje);
+				return componente;
+			} else {							//el cpu me mando un mensaje, la consola nunca lo va a hacer
+				atenderOperacion(protocolo, componente);
 			}
 		}
 	}
 	return 0;
 }
 //--------------------------------------------PLANIFICACION----------------------------------------------------
- void atender_Listos(){
+
+void atender_Ejecuciones(){
+	 printf("Se creo el hilo para ejecutar programas, esperando..\n");
 	 while(1){
-	 printf("entro al hilo para listos, esperando..\n");
-	 sem_wait(&sem_Listos);
-	 printf("se activo el semaforo listo y lo frene, voy a ver los cpus\n");
-	 pcb* pcbListo = malloc(sizeof(pcb));
-	 pcbListo = queue_pop(colaListos);
-	 int paso=1;
-	 while(paso){
-		 int value;
-		 sem_getvalue(&sem_cpuDisponible, &value);
-		 if(value>0 ){
-			 printf("el proceso %d paso de Listo a Execute\n",pcbListo->PID);
-			 queue_push(colaExec, pcbListo);
-			 sem_post(&sem_Exec);
-			 paso=0;
+		 sem_wait(&sem_Listos);
+		 printf("se activo el semaforo listo y lo frene, voy a ver los cpus disponibles\n");
+		 pcb* pcbListo = malloc(sizeof(pcb));
+		 pcbListo = queue_pop(colaListos);
+		 int paso=1;
+		 while(paso){
+			if(!queue_is_empty(colaCPUs)){
+				printf("el proceso %d paso de Listo a Execute\n",pcbListo->PID);
+				int cpu = queue_pop(colaCPUs); //saco el socket de ese cpu disponible
+			 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 //todo serializar pcbListo (agregar quantum y quantum_sleep)
+				//send(cpu, pcbSerializado, tamanioSerializado, 0);
+				paso=0;
+			}
 		 }
-	 }
 	 }
 	 //free(pcbListo);
  }
- void atender_Exec(int cpu){
+ void atender_Bloq_ES(int posicion){
+	 printf("se creo el hilo %d de E/S\n",posicion);
+	 int miSLEEP = dispositivosSleeps[posicion];
 	 while(1){
-	 sem_wait(&sem_Exec);
-	 sem_wait(&sem_cpuDisponible);
-	 pcb* pcbExec = malloc(sizeof(pcb));
-	 pcbExec = queue_pop(colaExec);
-	 printf("se activo el sem execute, el proceso %d se va a ejecutar\n",pcbExec->PID);
-	 int i,todoSigueIgual=1;
-	 for(i=0; i < datosNucleo->quantum; i++){
-		 printf("%d. le voy a mandar una instruccion al cpu\n",i);
-		 int mandoBien = mandar_instruccion_a_CPU(cpu,pcbExec,&todoSigueIgual);
-		 	 if(!mandoBien){
-		 		 printf("hubo un error en la ejecucion, no se completo la instruccion y desaparecio el cpu\n");
-		 		 printf("el proceso %d paso de Execute a Listo\n",pcbExec->PID);
-		 		 queue_push(colaListos, pcbExec);
-		 		 sem_post(&sem_Listos);
-		 		 i = datosNucleo->quantum;
-		 		 todoSigueIgual=0;
-		 	 }else{
-		 		 printf("%d. le mande una instruccion al cpu\n",i);
-		 		 pcbExec->PC++;
-		 		 usleep(datosNucleo->quantum_sleep);
-		 		 if(!todoSigueIgual){						//todo esto no esta funcionando
-		 			 i = datosNucleo->quantum; //el pcb paso a otro estado
-		 	 	 	 sem_post(&sem_cpuDisponible);
-		 		 }
-		 	 }
-	  }
-		 	if(todoSigueIgual){
-		 		printf("el proceso %d paso de Execute a Listo\n",pcbExec->PID);
-	 		 	queue_push(colaListos, pcbExec);
-	 		 	sem_post(&sem_Listos);
-	 	 	 	sem_post(&sem_cpuDisponible);
-		 	}
-
-
+	 	 sem_wait(&semaforosES[posicion]);
+	 	 pcbParaES* pcbBloqueando = queue_pop(colasES[posicion]);
+	 	 printf("saque el pcb nro %d y va a esperar %d ut\n", pcbBloqueando->pcb->PID,pcbBloqueando->ut);
+	 	 usleep(miSLEEP*pcbBloqueando->ut);
+	 	 sleep(5);
+		 queue_push(colaListos, pcbBloqueando->pcb);
+		 sem_post(&sem_Listos);
 	 }
-	// free(pcbExec);
-
  }
- void atender_Bloq(){
-	 //varias colas?... cola para wait y para las e/s
-	 /*obtener_valor [identificador de variable compartida]
-		grabar_valor [identificador de variable compartida] [valor a grabar]
-		wait [identificador de semáforo]
-		signal [identificador de semáforo]
-		entrada_salida [identificador de dispositivo] [unidades de tiempo a utilizar]
-	  */
+ void atender_Bloq_SEM(int posicion){
+	 printf("se creo el hilo %d de Semaforos de variables globales\n",posicion);
+	 while(1){
+		 sem_wait(&semaforosGlobales[posicion]);
+		 if(!queue_is_empty(colaCPUs)){
+			 pcb* pcbBloqueando = queue_pop(colasSEM[posicion]);
+		 	 queue_push(colaListos, pcbBloqueando);
+		 	 sem_post(&sem_Listos);
+		 	 printf("el proceso %d paso de Bloqueado a Listo\n",pcbBloqueando->PID);
+		 }else{
+			 printf("no hay ningun pcb para desbloquear\n");
+		 }
+	 }
+
  }
  void atender_Terminados(){
-	 sem_wait(&sem_Terminado);
-	 pcb* pcbTerminado = (pcb*) malloc(sizeof(pcb));
-	 pcbTerminado = queue_pop(colaTerminados);
-	//todo avisar umc y consola que termino el programa
-	 free(pcbTerminado);
+	 while(1){
+		 sem_wait(&sem_Terminado);
+	 	 pcb* pcbTerminado = (pcb*) malloc(sizeof(pcb));
+	 	 pcbTerminado = queue_pop(colaTerminados);
+	 	 //todo avisar umc y consola que termino el programa
+	 	 free(pcbTerminado);
+	 }
  }
 
-int mandar_instruccion_a_CPU(int cpu, pcb *pcb, int *todoSigueIgual){
-	char* Instruccion = string_new();
-	string_append(&Instruccion, "1");
-	string_append(&Instruccion, header(pcb->PID));
-	string_append(&Instruccion, header(pcb->PC));
-	string_append(&Instruccion, header(pcb->SP));
-	string_append(&Instruccion, "\0");
-	int enviados = send(cpu, Instruccion, string_length(Instruccion), 0);
-	free(Instruccion);
-	if(enviados==-1){
-		printf("error del send\n");
-	 	sem_post(&sem_cpuDisponible);
-		eliminarCPU(cpu);
-		todoSigueIgual=0;
-		return 0;
-	}else{
-		printf("mande %d bytes de instruccion, esperando respuesta..\n",enviados);
 
-
-		int operacion=0;
-		int recibidos = recv(cpu, &operacion, 4, 0);
-		if(recibidos == -1){
-			printf("error en el recv\n");
- 	 	 	sem_post(&sem_cpuDisponible);
-			eliminarCPU(cpu);
-			todoSigueIgual=0;
-			return 0;
-		}else{
-		operacion=ntohl(operacion);
-
-		printf("recibi la respuesta codigo: %d\n",operacion);
-		int procesoBien = procesar_respuesta(operacion, cpu, pcb, todoSigueIgual);
-			if (!procesoBien){
-				return 0;
-			}else{
-				return 1;
-			}
-		}
-	}
-}
-int procesar_respuesta(int op,int cpu, pcb*pcb, int *todoSigueIgual){
-		int mostrar, tamanio, seBloqueo=0,operacion;
+void atenderOperacion(int op,int cpu){
+		int tamanio, consola, operacion;
 		char* texto;
+		pcb*pcbDesSerializado; //lo pongo aca para tenerlo de prueba
 	switch (op){
-	case 0:
-		printf("el cpu me mando algo mal, se rompio algo(?\n");
-		todoSigueIgual=0;
-	 	sem_post(&sem_cpuDisponible);
-		eliminarCPU(cpu);
-		return 0;
-		break;
 	case 1:
-		//termino bien la instruccion, no necesita nada
-		printf("el cpu me devolvio la instruccion, no necesita nada\n");
-		return 1;
+		//termino bien el quantum, no necesita nada
+		//pcb*pcb = desSerializar();
+		printf("el cpu termino su quantum, no necesita nada\n");
+ 		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->PID);
+		queue_push(colaCPUs, &cpu);
+		queue_push(colaListos, pcbDesSerializado);
+		sem_post(&sem_Listos);
 		break;
 	case 2:
 		//me pide una operacion privilegiada
-		operacion = atoi(recibirMensaje(cpu,1));
-		int procesoBien = procesar_operacion_privilegiada(operacion, cpu, pcb, &seBloqueo);
-		if(!procesoBien){
-			todoSigueIgual=0;
- 	 	 	sem_post(&sem_cpuDisponible);
-			eliminarCPU(cpu);//todo este hara falta?
-			return 0;
-		}else{
-			if(seBloqueo){
-				printf("el proceso %d paso de Execute a Bloqueado\n",pcb->PID);
-				todoSigueIgual=0;
-				queue_push(colaBloq, pcb);
-				sem_post(&sem_Bloq);
-			}
-			return 1;
-		}
+		operacion = recibirProtocolo(cpu);
+		procesar_operacion_privilegiada(operacion, cpu);
 		break;
 	case 3:
 		//termino el ansisop, va a listos
-		printf("el proceso %d paso de Execute a Terminado\n",pcb->PID);
-		todoSigueIgual=0;
-		queue_push(colaTerminados, pcb);
+		//pcb*pcb = desserializar();
+		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->PID);
+		queue_push(colaCPUs, &cpu);
+		queue_push(colaTerminados, pcbDesSerializado);
 		sem_post(&sem_Terminado);
-		return 1;
+
 		break;
 	case 4:
-		//imprimir
-		//agregar header cod_op
-		mostrar = recibirProtocolo(cpu);
-		send(pcb->consola, mostrar, 4, 0);
-		return 1;
-		break;
-	case 5:
-		//imprimirTexto
-		//agregar header cod_op
+		//imprimir o imprimirTexto
+		consola = recibirProtocolo(cpu);
 		tamanio = recibirProtocolo(cpu);
-		texto = recibirMensaje(cpu, tamanio);
-		//send(pcb->consola, concatentar headers,(tamanio+4);
-		return 1;
+		texto = recibirMensaje(cpu, tamanio);   //texto o valor
+		send(consola, texto,(tamanio+4),0); //agregar header a texto
 		break;
 
 	}
 
 }
-int procesar_operacion_privilegiada(int operacion, int cpu, pcb*pcb, int *seBloqueo){
-	int tamanioNombre, valorAGuardar, unidadestiempo,valor;
-	char *nombreVar, id_semaforo, id_es;
+void procesar_operacion_privilegiada(int operacion, int cpu){
+	int tamanioNombre, posicion, unidadestiempo,valor;
+	char *identificador;
+	pcb*pcbDesSerializado; //lo pongo aca para tenerlo de prueba
 
 	switch (operacion){
 	case 0:
 		printf("el cpu mando mal la operacion privilegiada, todo mal\n");
-		return 0;
+
 		break;
 	case 1:
 		//obtener valor de variable compartida
 		//recibo nombre de variable compartida, devuelvo su valor
 		tamanioNombre = recibirProtocolo(cpu);
-		nombreVar = recibirMensaje(cpu,tamanioNombre);
-//		valor = valor_de_esta_variable_compartida(nombreVar); //todo funcion de comparar variables
-		send(cpu, valor, 4, 0);
-		return 1;
+		identificador = recibirMensaje(cpu,tamanioNombre);
+		posicion = (int)dictionary_get(globales,identificador);
+		valor = globalesValores[posicion];
+		send(cpu, header(valor), 4, 0);
 		break;
 	case 2:
 		//grabar valor en variable compartida
-		//recibo el nombre de una variable, y un valor - guardo
+		//recibo el nombre de una variable y un valor -> guardo
 		tamanioNombre = recibirProtocolo(cpu);
-		nombreVar = recibirMensaje(cpu,tamanioNombre);
-		valorAGuardar = recibirProtocolo(cpu);
-	//	guardar_valor_en_variable_compartida(nombreVar);
-		return 1;
+		identificador = recibirMensaje(cpu,tamanioNombre);
+		valor = recibirProtocolo(cpu);
+		posicion = (int)dictionary_get(globales,identificador);
+		globalesValores[posicion] = valor;
 		break;
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea
 		//recibo el identificador del semaforo
 		tamanioNombre = recibirProtocolo(cpu);
-		id_semaforo = recibirMensaje(cpu,tamanioNombre);
-		//ver como esta el semaforo asociado
-		//si esta ok => bloqueo el semaforo
-		//si esta block => bloqueo el pcb, hasta que otro proceso desbloquee el semaforo
-		return 1;
+		identificador = recibirMensaje(cpu,tamanioNombre);
+		posicion = (int)dictionary_get(semaforos,identificador);
+		sem_getvalue(&semaforosGlobales[posicion],valor);
+		if(valor){					//si es mas de 0, semaforo libre
+			send(cpu, "ok", 2, 0);
+			sem_wait(&semaforosGlobales[posicion]);
+		}else{						//si es 0, semaforo bloqueado
+			send(cpu, "no", 2, 0);
+			//pcb*pcb = desserializar();
+			queue_push(colasSEM[posicion], pcbDesSerializado);
+			sem_post(&semaforosGlobales[posicion]);
+			queue_push(colaCPUs, &cpu);
+		}
 		break;
 	case 4:
 		//signal a un semaforo, post
 		//recibo el identificador del semaforo
 		tamanioNombre = recibirProtocolo(cpu);
-		id_semaforo = recibirMensaje(cpu,tamanioNombre);
+		identificador = recibirMensaje(cpu,tamanioNombre);
+		posicion = (int)dictionary_get(semaforos,identificador);
+		sem_post(&semaforosGlobales[posicion]);
 		//post(id_semaforo);
-		return 1;
 		break;
 	case 5:
 		//pedido E/S, va a bloqueado
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
 		tamanioNombre = recibirProtocolo(cpu);
-		id_es = recibirMensaje(cpu,tamanioNombre);
+		identificador = recibirMensaje(cpu,tamanioNombre);
 		unidadestiempo = recibirProtocolo(cpu);
-		//mandar pcb a lista bloqueo de esa E/S, con la ut
-		seBloqueo=1;
-		return 1;
+		posicion = (int)dictionary_get(dispositivosES,identificador);
+		//pcb*pcb = desserializar();
+		pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
+		pcbParaBloquear->pcb = pcbDesSerializado;
+		pcbParaBloquear->ut = unidadestiempo;
+		queue_push(colasES[posicion], pcbParaBloquear);
+		sem_post(&semaforosES[posicion]);
+		queue_push(colaCPUs, &cpu);
 		break;
 	}
-}
-
-void eliminarCPU(int cpu){
-	printf("el cpu %d no responde o algo, se lo elimino.\n",cpu);
-	list_remove(cpus, 0); //todo diccionario para ver el index de los cpus? o recorrer lista y ver cual eliminar
-	close(cpu);
-	sem_wait(&sem_cpuDisponible);
 }
