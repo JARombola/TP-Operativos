@@ -10,7 +10,6 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <commons/bitarray.h>
-#include <commons/collections/node.h>
 #include <commons/collections/list.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -53,17 +52,15 @@ int buscarMarcoLibre();
 int aceptarPrograma(int);
 //-----MENSAJES----
 void* buscar(int, int, int, int);
-int paginaDelProceso(traductor_marco*);
 
 //COMANDOS--------------
 void comandoMemory(traductor_marco*);
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 t_list *tabla_de_paginas;
-int totalPaginas,procesoBuscar=0,conexionSwap;
+int totalPaginas,procesoBuscar=0,conexionSwap, *vectorPaginas;
 char* memoria;
 datosConfiguracion *datosMemoria;
-t_bitarray 	*bitArray;
 t_log* archivoLog;
 
 
@@ -81,13 +78,19 @@ int main(int argc, char* argv[]) {
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 
+	vectorPaginas=(int*) malloc(datosMemoria->marcos*4);
 	memoria = (char*) malloc(marcosTotal);
-	bitArray=bitarray_create(memoria,marcosTotal);
-	int i;
-	for(i=0;i<marcosTotal;i++,bitarray_clean_bit(bitArray,i)){
-	//	printf("%d - Cant %d - ",i, bitarray_test_bit(bitArray,i));
-		//bitarray_set_bit(bitArray,i);
-	//	printf("%d\n",bitarray_test_bit(bitArray,i));
+/*	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=1 bs=100","ASD",20,20);
+		system(instruccion);
+		char* nombreArchivo=string_new();
+		string_append(&nombreArchivo,"ASD");
+		int fd_archivo=open(nombreArchivo,O_RDWR);
+
+		char* archivo=(char*) mmap(NULL ,400,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
+	bitArray=bitarray_create(archivo,400);*/
+	int j;
+	for (j=0;j<datosMemoria->marcos;j++){
+		vectorPaginas[j]=0;
 	}
 
 
@@ -261,7 +264,6 @@ void consola(){
 			char* mensaje="Velocidad actualizada";
 			string_append(&mensaje,(char*)VELOCIDAD);
 			registrarInfo(archivoLog,mensaje);
-
 		} else {
 			if (esIgual(comando, "dump")) {
 				printf("Estructuras de Memoria\n");
@@ -295,6 +297,8 @@ void atenderCpu(int conexion){
 
 	registrarTrace(archivoLog, "Nuevo CPU-");
 	int salir = 0, operacion, proceso, pagina, offset, buffer, size;
+	char* respuesta;
+	traductor_marco* fila;
 	while (!salir) {
 		operacion = atoi(recibirMensaje(conexion, 1));
 		if (operacion) {
@@ -304,11 +308,14 @@ void atenderCpu(int conexion){
 			size=recibirProtocolo(conexion);
 			switch (operacion) {
 			case 2:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
-				buscar(proceso, pagina,offset,size);
+				fila=buscar(proceso, pagina,offset,size);
+				if (fila!=-1){
+																	//todo
+				}
 				break;
 			case 3:													//3 = Guardar Valor
 				buffer = recibirProtocolo(conexion);
-
+				guardar(proceso,pagina,offset,size,buffer);				//todo
 				break;
 			}
 		} else {
@@ -343,14 +350,20 @@ void atenderNucleo(int conexion){
 }
 
 //--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
-void* buscar(int proceso, int pag, int off, int size){
+traductor_marco* buscar(int proceso, int pag, int off, int size){
+	int paginaDelProceso(traductor_marco* fila){
+		if ((fila->proceso==proceso) && (fila->pagina==pag)){
 		return 1;
+		}
+	return 0;
+	}
+	traductor_marco* encontrada=list_find(tabla_de_paginas,(int)paginaDelProceso);
+	if (encontrada!=NULL){return encontrada;}
+	encontrada->pagina=-1;
+	return encontrada;
 }
-/*
-int paginaDelProceso(traductor_marco* fila){
-	if ((fila->proceso==proceso) && (fila->pagina==pag)){
-	return 1;
-}*/
+
+
 
 int hayEspacio(int paginas){
 	return ((paginas<=datosMemoria->marco_x_proc) && (paginas<=datosMemoria->marcos-list_size(tabla_de_paginas)));
@@ -359,14 +372,13 @@ int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
 	int i=0,pos,tamMarco=datosMemoria->marco_size;
 	do{		traductor_marco* traductorMarco=malloc(sizeof(traductorMarco));
 			pos=buscarMarcoLibre();
-			memcpy(memoria+pos*tamMarco,codigo+i*tamMarco,tamMarco);
+			memcpy(memoria+pos*tamMarco,codigo+4+i*tamMarco,tamMarco);
 			traductorMarco->pagina=i;
 			traductorMarco->proceso=proceso;
 			traductorMarco->marco=pos;
 			list_add(tabla_de_paginas,traductorMarco);
 			i++;
 	}while (i < paginasNecesarias);
-	printf("Bites ocupados: %d\n",bitarray_get_max_bit(bitArray));
 	registrarInfo(archivoLog,"Ansisop guardado con exito!");
 //	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 //	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
@@ -382,12 +394,11 @@ void mostrarTablaPag(traductor_marco* fila){
 }
 
 int buscarMarcoLibre() {
-	int pos,a=1;
-	for (pos = 0 ; (pos<=datosMemoria->marcos) && a ;pos++){
-	//	printf("%d-",bitarray_test_bit(bitArray,pos));
-		if (!bitarray_test_bit(bitArray,pos)){a=0;}
-	bitarray_set_bit(bitArray,pos);}
-	//printf("-\n",pos);
+	int pos=0;
+	for(pos=0;vectorPaginas[pos];pos++);
+	printf("pos :%d ",pos);
+	vectorPaginas[pos]=1;
+	printf("-%d\n",pos);
 	return (pos);
 }
 
@@ -402,6 +413,7 @@ int aceptarPrograma(int conexion) {
 	string_append(&programa, "1");
 	string_append(&programa, mjeInicial);
 	string_append(&programa, codigo);
+	ponerEnMemoria(codigo,0,21);
 	free(mjeInicial);
 	send(conexionSwap, programa, string_length(programa), 0);
 	free(programa);

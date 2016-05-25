@@ -36,7 +36,7 @@ struct sockaddr_in crearDireccion(int puerto, char* ip);
 int comprobarCliente(int);
 int leerConfiguracion(char*, datosConfiguracion**);
 char* crearArchivoSwap();
-int guardarCodigo(char*);
+int guardarCodigo(int,int,int);
 int buscarEspacioLibre(int);
 
 datosConfiguracion *datosSwap;
@@ -91,10 +91,7 @@ int main(int argc, char* argv[]){
 	printf("UMC Conectada!\n");
 
 	//----------------Recibo datos de la UMC
-
-	int operacion=1, cantPaginas, PID,tamCodigo;
-	char* codigo;
-	int posicion;
+	int operacion=1, PID, cantPaginas;
 	while (operacion){
 		operacion = atoi(recibirMensaje(conexionUmc,1));
 		switch (operacion){
@@ -102,20 +99,12 @@ int main(int argc, char* argv[]){
 				PID = recibirProtocolo(conexionUmc);
 				cantPaginas = recibirProtocolo(conexionUmc);
 				if (pagsLibres>=cantPaginas){
-					traductor_marco* nuevaFila=malloc(sizeof(traductor_marco));
-					send(conexionUmc,"ok",2,0);
-					tamCodigo=recibirProtocolo(conexionUmc);
-					codigo=recibirMensaje(conexionUmc,tamCodigo);
-					posicion=buscarEspacioLibre(cantPaginas);
-					memcpy(archivoSwap+posicion*datosSwap->tamPagina,codigo,tamCodigo);
-					nuevaFila->inicio=posicion;
-					nuevaFila->offset=tamCodigo;
-					nuevaFila->proceso=PID;
-					list_add(paginas,nuevaFila);
+					if (guardarCodigo(conexionUmc, cantPaginas,PID)){
+						printf("1 ansisop guardado!\n");
+					}
 			//		printf("\n%s",archivoSwap);
 			//		printf("\nPagsLibres:%d\n",pagsLibres);
 			//		printf("Guardado!!\n");
-					free(codigo);
 				}
 				else {
 					send(conexionUmc,"no",2,0);
@@ -180,6 +169,21 @@ char* crearArchivoSwap(){
 	return "Fuiste";
 }
 
+int guardarCodigo(int conexionUmc, int cantPaginas, int PID){
+	traductor_marco* nuevaFila = malloc(sizeof(traductor_marco));
+	int tamCodigo = recibirProtocolo(conexionUmc);
+	char* codigo = recibirMensaje(conexionUmc, tamCodigo);
+	send(conexionUmc, "ok", 2, 0);
+	int posicion = buscarEspacioLibre(cantPaginas);
+	memcpy(archivoSwap + posicion * datosSwap->tamPagina, codigo, tamCodigo);
+	nuevaFila->inicio = posicion;
+	nuevaFila->offset = cantPaginas;
+	nuevaFila->proceso = PID;
+	list_add(paginas, nuevaFila);
+	free(codigo);
+	return 1;
+}
+
 int buscarEspacioLibre(int cantPaginas){
 	int pos,a=1;
 	for (pos = 0 ; (pos<datosSwap->cantidadPaginas) && a ;pos++){
@@ -192,21 +196,4 @@ int buscarEspacioLibre(int cantPaginas){
 	}
 	pagsLibres-=a;
 	return (pos-1);
-}
-
-int guardarCodigo(char* codigo){
-	int pos,a=1;
-	printf("%s\n",codigo);
-	for (pos = -1 ; a ;pos++){
-		if (!bitarray_test_bit(bitArray,pos)){a=0;}}
-	int longitud=string_length(codigo);
-	int asd=pos*datosSwap->tamPagina;
-	memcpy(archivoSwap+asd,"ASDASDASD",(int)9);
-	int fin=string_length(codigo)/datosSwap->tamPagina;
-	if (string_length(codigo)%datosSwap->tamPagina) fin++;
-	for(;pos<=fin;pos++){
-		bitarray_set_bit(bitArray,pos);
-	}
-	printf("%s %d\n",archivoSwap,string_length(codigo));
-	return 1;
 }
