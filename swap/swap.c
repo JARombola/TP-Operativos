@@ -38,6 +38,7 @@ int leerConfiguracion(char*, datosConfiguracion**);
 char* crearArchivoSwap();
 int guardarCodigo(int,int,int);
 int buscarEspacioLibre(int);
+int guardarPagina(int, int, char*);
 
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
@@ -91,12 +92,13 @@ int main(int argc, char* argv[]){
 	printf("UMC Conectada!\n");
 
 	//----------------Recibo datos de la UMC
-	int operacion=1, PID, cantPaginas;
+	int operacion=1, PID, cantPaginas, pagina;
+	char* contenido;
 	while (operacion){
 		operacion = atoi(recibirMensaje(conexionUmc,1));
+		PID = recibirProtocolo(conexionUmc);
 		switch (operacion){
 		case 1:															//Almacenar codigo, PROTOCOLO: [1° PID, 2° Cant paginas (4 bytes c/u))]
-				PID = recibirProtocolo(conexionUmc);
 				cantPaginas = recibirProtocolo(conexionUmc);
 				if (pagsLibres>=cantPaginas){
 					if (guardarCodigo(conexionUmc, cantPaginas,PID)){
@@ -109,7 +111,12 @@ int main(int argc, char* argv[]){
 				else {
 					send(conexionUmc,"no",2,0);
 				}
-				break;}
+				break;
+		case 2:															//Guarda pagina
+				pagina=recibirProtocolo(conexionUmc);
+				contenido=recibirMensaje(conexionUmc,datosSwap->tamPagina);
+				guardarPagina(PID, pagina, contenido);
+		}
 	}
 	free(datosSwap);
 	printf("Cayó la Umc, swap autodestruida!\n");
