@@ -132,3 +132,4 @@ int recibirProtocolo(int conexion){
 	protocolo[4] = '\0';
 	return atoi(protocolo);
 }
+

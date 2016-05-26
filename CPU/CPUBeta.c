@@ -14,10 +14,7 @@ char AUTENTIFICACION[100];
 char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionCPU.txt";
 char IP_NUCLEO[50];
 char IP_UMC[50];
-
-struct PCB{
-
-};
+int quantum = 1;
 
 int main(){
 
@@ -26,7 +23,12 @@ int main(){
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
 	conectarseAlNucleo();
-	if (nucleo < 0) return -1;
+	if (nucleo < 0) return -1;//		if (pcb == NULL){
+	//		quantum = esperarQuantum(nucleo);
+	//		if(quantum<0) return -1;
+	//		if (procesarCodigo(nucleo, umc,pcb)<0){
+	//			return -1;
+	//		}
 
 	conectarseALaUMC();
 	if (umc < 0) return -1;
@@ -101,11 +103,13 @@ void conectarseALaUMC(){
 int procesarPeticion(){
 	int quantum;
 	while(1){
-		pcb = esperarRespuesta(nucleo);
-		if (pcb == NULL){
-		quantum = esperarQuantum(nucleo);
-		if(quantum<0) return -1;
-		if (procesarCodigo(nucleo, umc,pcb)<0) return -1;
+		//pcb = esperarRespuesta(nucleo);
+//		if (pcb == NULL){
+//		quantum = esperarQuantum(nucleo);
+//		if(quantum<0) return -1;
+//		if (procesarCodigo(nucleo, umc,pcb)<0){
+//			return -1;
+//		}
 	}
 }
 

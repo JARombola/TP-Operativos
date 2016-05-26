@@ -241,3 +241,47 @@ u_int32_t valorInstruccion(char * char_meta,int subindice,int indice){
 	invertir(aux);
 	return atoi(aux);
 }
+
+char* toStringList(t_list* lista, char simbol){
+	int i;
+	char* char_list = malloc(5*sizeof(char));
+	char* elemento;
+	char barra[2];
+	barra[0] = simbol;
+	barra[1] = '\0';
+	int longitud;
+	strcpy(char_list,barra);
+	for (i=0; i< list_size(lista);i++){
+		elemento = list_get(lista,i);
+		longitud = strlen(elemento);
+		char_list = realloc(char_list,((strlen(elemento)+longitud+1)*sizeof(char)));
+		strcat(char_list,elemento);
+		strcat(char_list,barra);
+	}
+	return char_list;
+}
+
+t_list* fromStringList(char* char_list, char simbol){
+	t_list* lista;
+	lista = list_create();
+	char* char_aux;
+	int i;
+	int subindice =0;
+	int indice=0;
+	for (i=0; i<strlen(char_list);i++){
+		subindice = indice;
+		if (char_list[i] == simbol){
+			indice = i;
+			if (i!=0){
+				char_aux = malloc((indice-subindice)*sizeof(char));
+				strcpy(char_aux,char_list);
+				char_aux[indice] = '\0';
+				invertir(char_aux);
+				char_aux[indice-subindice-1]='\0';
+				invertir(char_aux);
+				list_add(lista,char_aux);
+			}
+		}
+	}
+
+}

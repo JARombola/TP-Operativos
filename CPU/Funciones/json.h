@@ -21,5 +21,9 @@ void invertir(char* palabra);
 char* valorStringMetadata(char *char_meta);
 t_intructions* valorInstruccionMeta(char* char_meta, int tamanio);
 u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
+//PCB fromStringPCB(char* char_pcb);
+//char* toStringPCB(PCB pcb);
+char* toStringList(t_list* lista, char simbol);
+t_list* fromStringList(char* char_list, char simbol);
 
 #endif								

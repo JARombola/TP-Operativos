@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int tienePermiso(char* autentificacion);
 int conectar(int puerto,char* ip, char* autor);
@@ -22,8 +23,8 @@ void enviarMensaje(int conexion, char* mensaje);
 int esperarConexion(int servidor,char* cliente);
 char* esperarRespuesta(int conexion);
 int aceptar(int servidor);
-char* header(int numero);
+char* header(int numero);	
+int recibirProtocolo(int conexion);
 void enviarMensajeConProtocolo(int conexion, char* mensaje, int protocolo);
-
 #endif								
 
