@@ -38,12 +38,13 @@ int leerConfiguracion(char*, datosConfiguracion**);
 char* crearArchivoSwap();
 int guardarCodigo(int,int,int);
 int buscarEspacioLibre(int);
-int guardarPagina(int, int, char*);
+int guardarPagina(int, int, void*);
+int buscar(int, int);
 
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
 int pagsLibres;
-char* archivoSwap;
+void* archivoSwap;
 t_list* paginas;
 
 int main(int argc, char* argv[]){
@@ -57,10 +58,8 @@ int main(int argc, char* argv[]){
 
 	archivoSwap=crearArchivoSwap();				//Devuelve el mmap del archivo iniciado con \0
 
-	printf("%s\n",archivoSwap);
-	bitArray=bitarray_create(archivoSwap,datosSwap->cantidadPaginas);			//El bitArray usa bits, y el resto usan Bytes
-	int i;
-	for(i=0;i<datosSwap->cantidadPaginas;i++,bitarray_clean_bit(bitArray,i));				//Inicializa el bitArray
+	bitArray=bitarray_create((char*)archivoSwap,datosSwap->cantidadPaginas);			//El bitArray usa bits, y el resto usan Bytes
+
 	if (string_equals_ignore_case(archivoSwap,"Fuiste")){printf("Error al crear el archivo Swap\n");return 0;}
 
 	//munmap(archivoSwap,sizeof(archivoSwap));
@@ -116,7 +115,13 @@ int main(int argc, char* argv[]){
 				pagina=recibirProtocolo(conexionUmc);
 				contenido=recibirMensaje(conexionUmc,datosSwap->tamPagina);
 				guardarPagina(PID, pagina, contenido);
+				break;
+		case 3:
+				pagina=recibirProtocolo(conexionUmc);
+				buscar(PID,pagina);
+				break;
 		}
+
 	}
 	free(datosSwap);
 	printf("Cayó la Umc, swap autodestruida!\n");
@@ -165,11 +170,11 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 char* crearArchivoSwap(){
 	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=1 bs=100",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
-	char* nombreArchivo=string_new();
-	string_append(&nombreArchivo,datosSwap->nombre_swap);
-	int fd_archivo=open(nombreArchivo,O_RDWR);
+//	char* nombreArchivo=string_new();
+//	string_append(&nombreArchivo,datosSwap->nombre_swap);
+	int fd_archivo=open(datosSwap->nombre_swap,O_RDWR);
 	if (fd_archivo!=-1) {
-	char* archivo=(char*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
+	void* archivo=(void*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
 	if (archivo!=MAP_FAILED){
 		return archivo;}
 		}
@@ -191,6 +196,8 @@ int guardarCodigo(int conexionUmc, int cantPaginas, int PID){
 	return 1;
 }
 
+int guardarPagina(int PID, int pagina,void* contenido){return 1;}
+
 int buscarEspacioLibre(int cantPaginas){
 	int pos,a=1;
 	for (pos = 0 ; (pos<datosSwap->cantidadPaginas) && a ;pos++){
@@ -204,3 +211,9 @@ int buscarEspacioLibre(int cantPaginas){
 	pagsLibres-=a;
 	return (pos-1);
 }
+
+int buscar(int pid, int pag){
+	return 1;
+}
+
+
