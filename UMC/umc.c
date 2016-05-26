@@ -81,17 +81,9 @@ int main(int argc, char* argv[]) {
 	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
-	datosMemoria->algoritmo=0;														//todo CAMBIAR ALGORITMO
+	datosMemoria->algoritmo=1;														//todo CAMBIAR ALGORITMO
 	vectorPaginas=(int*) malloc(datosMemoria->marcos*4);
 	memoria = (void*) malloc(marcosTotal);
-/*	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=1 bs=100","ASD",20,20);
-		system(instruccion);
-		char* nombreArchivo=string_new();
-		string_append(&nombreArchivo,"ASD");
-		int fd_archivo=open(nombreArchivo,O_RDWR);
-
-		char* archivo=(char*) mmap(NULL ,400,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
-	bitArray=bitarray_create(archivo,400);*/
 	int j;
 	for (j=0;j<datosMemoria->marcos;j++){
 		vectorPaginas[j]=0;
@@ -393,17 +385,21 @@ int ponerEnMemoria2(void* datos,int proceso,int pag, int size){
 	return 1;
 }
 
+void crearTabla(int pag, int proceso, int marco){
+	traductor_marco* traductorMarco=malloc(sizeof(traductor_marco));
+	traductorMarco->pagina=pag;
+	traductorMarco->proceso=proceso;
+	traductorMarco->marco=marco;
+	traductorMarco->modificada=0;
+	list_add(tabla_de_paginas,traductorMarco);
+}
+
 int ponerEnMemoria(char* codigo,int proceso,int paginasNecesarias){
-	int i=0,pos,tamMarco=datosMemoria->marco_size;
-	do{		traductor_marco* traductorMarco=malloc(sizeof(traductor_marco));
-			pos=buscarMarcoLibre(proceso);
-			memcpy(memoria+pos*tamMarco,codigo+4+i*tamMarco,tamMarco);
-			traductorMarco->pagina=i;
-			traductorMarco->proceso=proceso;
-			traductorMarco->marco=pos;
-			traductorMarco->modificada=0;
-			traductorMarco->enMemoria=1;
-			list_add(tabla_de_paginas,traductorMarco);
+	int i=0,marco,tamMarco=datosMemoria->marco_size;
+	do{
+			marco=buscarMarcoLibre(proceso);
+			memcpy(memoria+marco*tamMarco,codigo+4+i*tamMarco,tamMarco);
+			crearTabla(i,proceso,marco);
 			i++;
 	}while (i < paginasNecesarias);
 	registrarInfo(archivoLog,"Ansisop guardado con exito!");
@@ -426,12 +422,12 @@ int buscarMarcoLibre(int pid) {
 		return(marco->proceso==pid);
 	}
 	int marcoDelProceso(traductor_marco* marco){
-		return(marco->proceso==pid);
+		return(marco->proceso==pid && marco->marco>=0);				//está en memoria
 	}
 	int marcoPosicion(traductor_marco* marco){
 			return(marco->marco==pos);
 	}
-	void eliminarMarco(traductor_marco* marco){
+	void borrarLista(traductor_marco* marco){
 		free(marco);
 	}
 
@@ -448,60 +444,65 @@ int buscarMarcoLibre(int pid) {
 				return pos;}
 		}
 	}
-	unClock* marcoClock=malloc(sizeof(unClock));
-	if (datosMemoria->algoritmo) {									//Clock mejorado, busco el clock del proceso
-		marcoClock =(unClock*)list_find(tablaClocks,(void*)clockDelProceso);
-		pos=marcoClock->clock;
-	}										//CLOCK SIMPLE=0
+	if (cantMarcos){							//Si tiene marcos => hay que reemplazarle uno, SINO no hay espacio
 
-	traductor_marco* datosMarco = malloc(sizeof(traductor_marco));
-	do {
-		if (!datosMemoria->algoritmo) {						//busco directamente el proximo marco de ese proceso sin recorrer todos los demas
-			datosMarco = list_find(tabla_de_paginas, (void*) marcoDelProceso);
-			pos = datosMarco->marco;
-		} else {
-			if (pos >= 5) {
-				pos = 0;
-			}
-			datosMarco = list_find(tabla_de_paginas, (void*) marcoPosicion);
-		}
+		traductor_marco* datosMarco = malloc(sizeof(traductor_marco));
+		t_list* listaFiltrada=list_filter(tabla_de_paginas,(void*)marcoDelProceso);				//Filtro los marcos de ESE proceso
 
-		if (datosMarco->proceso==pid) {
-			if (vectorPaginas[pos] == 1){															//Se va de la UMC
-				if (datosMarco->modificada) {														//Estaba modificada => se la mando a la swap
-					char* mje = malloc(datosMemoria->marco_size + 10);
-					memcpy(mje, "2", 1);															//2 = guardar pagina
-					memcpy(mje + 1, header(datosMarco->proceso), 4);
-					memcpy(mje + 5, header(datosMarco->pagina), 4);
-					memcpy(mje + 9,	memoria	+ datosMarco->marco	* datosMemoria->marco_size,	datosMemoria->marco_size);
-					memcpy(mje + 9 + datosMemoria->marco_size, "\0", 1);
-					send(conexionSwap, mje, string_length(mje), 0);
-					free(mje);
+		int i=0, encontrado=0;
+		unClock* marcoClock=malloc(sizeof(unClock));
+		if (datosMemoria->algoritmo) {									//Clock mejorado, busco el clock del proceso
+			marcoClock =(unClock*)list_find(tablaClocks,(void*)clockDelProceso);
+			pos=marcoClock->clock;
+			for(i=0;!encontrado;i++){										//Busco de los filtrados, el que se corresponde con el clock
+				datosMarco=list_get(listaFiltrada,i);
+				if (datosMarco->marco==pos){
+					encontrado=1;
+					i--;
 				}
-				vectorPaginas[pos] = 2;
-				printf("Marco eliminado: %d\n",pos);
+			}
+		}										//CLOCK SIMPLE=0
+		do {	if(i==list_size(listaFiltrada)){i=0;}
+			datosMarco = list_get(listaFiltrada,i);						//Chequeo c/u para ver cual sacar
+			pos=datosMarco->marco;
+				if (vectorPaginas[pos] == 1){															//Se va de la UMC
+					if (datosMarco->modificada) {														//Estaba modificada => se la mando a la swap
+						char* mje = malloc(datosMemoria->marco_size + 10);
+						memcpy(mje, "2", 1);															//2 = guardar pagina
+						memcpy(mje + 1, header(datosMarco->proceso), 4);
+						memcpy(mje + 5, header(datosMarco->pagina), 4);
+						memcpy(mje + 9,	memoria	+ datosMarco->marco	* datosMemoria->marco_size,	datosMemoria->marco_size);
+						memcpy(mje + 9 + datosMemoria->marco_size, "\0", 1);
+						send(conexionSwap, mje, string_length(mje), 0);
+						free(mje);
+					}
+					vectorPaginas[pos] = 2;
+					printf("Marco eliminado: %d\n",pos);
+					list_remove_by_condition(tabla_de_paginas,(void*)marcoPosicion);
+					if (datosMemoria->algoritmo) {														//Elimino de la lista
+						list_remove_by_condition(tablaClocks,(void*)clockDelProceso);
+						datosMarco=list_find(listaFiltrada,(void*)marcoDelProceso);
+						marcoClock->clock=datosMarco->marco;
+						list_add(tablaClocks,marcoClock);
+					}
+					free(datosMarco);
+					list_clean(listaFiltrada);
+					return pos;													//La nueva posicion libre
+				}
+				else {vectorPaginas[pos]--;
+			if (!datosMemoria->algoritmo) {									//Clock comun => saco y pongo al final de la lista
 				list_remove_by_condition(tabla_de_paginas,(void*)marcoPosicion);
-				if (datosMemoria->algoritmo) {
-					list_remove_by_condition(tablaClocks,(void*)clockDelProceso);
-					datosMarco=list_find(tabla_de_paginas,(void*)marcoDelProceso);
-					marcoClock->clock=datosMarco->marco;
-					list_add(tablaClocks,marcoClock);
+				list_add(tabla_de_paginas, datosMarco);}
 				}
-				free(datosMarco);
-				return pos;													//La nueva posicion libre
-			}
-			else {vectorPaginas[pos]--;}
-		}
-		if (!datosMemoria->algoritmo) {									//Clock comun => saco y pongo al final de la lista
-			list_remove_by_condition(tabla_de_paginas,(void*)marcoPosicion);
-			list_add(tabla_de_paginas, datosMarco);}
-		}while (++pos);
+			}while (++i);
+	}
+	return -1;
 }
 
 
 int marcosAsignados(int pid, int operacion){
 	int marcosDelProceso(traductor_marco* marco){
-		return (marco->proceso==pid);
+		return (marco->proceso==pid && marco->marco>=0);
 	}
  return (list_count_satisfying(tabla_de_paginas,(void*)marcosDelProceso));
 }
@@ -510,17 +511,19 @@ int marcosAsignados(int pid, int operacion){
 
 int inicializarPrograma(int conexion) {
 	int espacio_del_codigo;
-	char* mjeInicial=recibirMensaje(conexion,8);							//PID + PaginasNecesarias
+	int PID=recibirProtocolo(conexion);							//PID + PaginasNecesarias
+	int paginasNecesarias=recibirProtocolo(conexion);
 	espacio_del_codigo = recibirProtocolo(conexion);
 	char* codigo = recibirMensaje(conexion, espacio_del_codigo);			//CODIGO
 	//printf("Codigo: %s-\n",codigo);
+
 	agregarHeader(&codigo);
 	char* programa = string_new();
 	string_append(&programa, "1");
-	string_append(&programa, mjeInicial);
+	//string_append(&programa, mjeInicial);
 	string_append(&programa, codigo);
-	ponerEnMemoria(codigo,0,21);
-	free(mjeInicial);
+	ponerEnMemoria(codigo,PID,paginasNecesarias);
+//	free(mjeInicial);
 	send(conexionSwap, programa, string_length(programa), 0);
 	free(programa);
 	return esperarRespuestaSwap();
