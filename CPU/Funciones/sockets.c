@@ -1,0 +1,135 @@
+#include "sockets.h"
+
+int conectar(int puerto,char* ip, char* autor){
+
+	struct sockaddr_in direccServ;
+	direccServ.sin_family = AF_INET;
+	direccServ.sin_addr.s_addr = INADDR_ANY;
+	direccServ.sin_port = htons(puerto);
+
+	int conexion = socket(AF_INET, SOCK_STREAM, 0);
+
+	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
+
+	if (autentificar(conexion,autor)){
+		return -1;
+	}
+
+	return conexion;
+}
+void enviarMensaje(int conexion, char* mensaje){
+	char* mensajeReal = malloc ((strlen(mensaje)+4)*sizeof(char));
+	uint32_t longitud = strlen(mensaje);
+	strcpy(mensajeReal,header(longitud));
+	strcat(mensajeReal,mensaje);
+	send(conexion,mensajeReal,strlen(mensajeReal),0);
+}
+
+void enviarMensajeConProtocolo(int conexion, char* mensaje, int protocolo){
+	char* mensajeReal = malloc ((strlen(mensaje)+4)*sizeof(char));
+	uint32_t longitud = strlen(mensaje)+1;
+	strcpy(mensajeReal,header(protocolo));
+	strcat(mensajeReal,header(longitud));
+	strcat(mensajeReal,mensaje);
+	send(conexion,mensajeReal,strlen(mensajeReal),0);
+}
+
+int autentificar(int conexion, char* autor){
+	enviarMensaje(conexion,autor);;
+	if (esperarConfirmacion(conexion)){
+		return 1;
+	}
+	return 0;
+}
+
+int esperarConfirmacion(int conexion){
+
+	char* bufferHandshake = malloc(sizeof(int));
+	int bytesRecibidos = recv(conexion, bufferHandshake, 2, 0);
+
+	if (bytesRecibidos <= 0) {
+		printf("Rechazado\n");
+		return 1;
+	}
+	printf("Aceptado\n");
+	return 0;
+}
+
+int crearServidor(int puerto){
+	struct sockaddr_in direccionServidor;
+	direccionServidor.sin_family = AF_INET;
+	direccionServidor.sin_addr.s_addr = INADDR_ANY;
+	direccionServidor.sin_port = htons(puerto);
+
+	int servidor = socket(AF_INET, SOCK_STREAM, 0);
+
+	int activador = 1;
+	setsockopt(servidor,SOL_SOCKET,SO_REUSEADDR, &activador, sizeof(activador));
+
+	if (bind(servidor,(void*) &direccionServidor, sizeof(direccionServidor))){
+		return -1;
+	}
+
+	listen(servidor,SOMAXCONN);
+	return servidor;
+}
+
+
+int esperarConexion(int servidor,char* autentificacion){
+	int cliente = aceptar(servidor);
+
+	if (cliente <= 0){
+		return -1;
+		printf("Error de conexion\n");
+	}
+
+	autentificacion = esperarRespuesta(cliente);
+
+	if (!(tienePermiso(autentificacion))){
+		close(cliente);
+		return 0;
+	}
+
+	send(cliente,"ok",2,0);
+	return cliente;
+}
+
+char* esperarRespuesta(int conexion){
+	char header[5];
+	char* buffer;
+	int bytes= recv(conexion, header,4,0);
+	header[4]= '\0';
+	uint32_t tamanioPaquete = atoi(header);
+	if (bytes<=0){
+		buffer = NULL;
+	}else{
+		buffer = malloc(tamanioPaquete);
+		recv(conexion,buffer,tamanioPaquete,0);
+		buffer[tamanioPaquete] = '\0';
+	}
+	return buffer;
+}
+
+int aceptar(int servidor){
+	struct sockaddr_in direccionCliente;
+	unsigned int tamanioDireccion = sizeof(struct sockaddr_in);
+	int cliente = accept(servidor, (void*) &direccionCliente, &tamanioDireccion);
+	return cliente;
+}
+
+char* header(int numero){										
+	char* longitud=string_new();
+	string_append(&longitud,string_reverse(string_itoa(numero)));
+	string_append(&longitud,"0000");
+	longitud=string_substring(longitud,0,4);
+	longitud=string_reverse(longitud);
+	return longitud;
+}
+
+int recibirProtocolo(int conexion){
+	char protocolo[5];
+	int bytes= recv(conexion, &protocolo,4,0);
+	protocolo[4] = '\0';
+	return atoi(protocolo);
+}
+

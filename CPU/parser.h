@@ -3,6 +3,36 @@
 #include <stdio.h>
 #include <string.h>
 #include <parser/parser.h>
+#include <commons/collections/list.h>
+#include "Funciones/json.h"
+#include "Funciones/sockets.h"
+
+
+typedef struct{
+	int pag;
+	int off;
+	int size;
+}Pagina;
+
+typedef struct{
+	char id;
+	Pagina pag;
+}Vars;
+
+typedef struct{
+	char pos;
+	t_list* args; //Lista de Pagina
+	t_list* vars; //Lista de Vars
+	int retPos;
+	Pagina retvar;
+}Stack;
+
+typedef struct{
+	int id;
+	t_metadata_program pc;
+	t_list* stack; //lista de Stack
+	int indice_stack;
+}PCB;
 
 static const int CONTENIDO_VARIABLE = 20;
 static const int POSICION_MEMORIA = 0x10;
@@ -11,64 +41,32 @@ void parsear(char* instruccion);
 
 int nucleo;
 int umc;
-int pcb;
+PCB pcb;
 int finalizado;
+int CODIGO_IMPRESION = 0;
+int CODIGO_ASIGNACION_UMC = 0;
+int CODIGO_ASIGNACION_NUCLEO = 0;
+int CODIGO_FINALIZACION = 0;
+int CODIGO_DESREFERENCIA_UMC = 0;
+int CODIGO_DESREFERENCIA_NUCLEO = 0;
+int TAMANIO_PAGINA = 1;
 
-t_puntero definirVariable(t_nombre_variable variable) {
-	printf("definir la variable %c\n", variable);
-	char mensaje[100] = "Espacio Libre, id:" + pcb.id;
-	enviarMensaje(umc, mensaje);
-	char* resp = esperarRespuesta(umc);
-	char pagina [54];
-	char desplazamiento [10];
-	parsearRespuesta(resp, pagina, desplazamiento);
-	// ponerlo en el pbc
-	strcat(pagina,desplazamiento);
-	return  pagina;
-}
+t_puntero definirVariable(t_nombre_variable variable);
+t_puntero obtenerPosicionVariable(t_nombre_variable variable);
+t_valor_variable dereferenciar(t_puntero pagina);
+void asignar(t_puntero pagina, t_valor_variable variable);
+void imprimir(t_valor_variable valor);
+void imprimirTexto(char* texto);
+void finalizar() ;
+void llamadasSinRetorno(char* texto);
 
-t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
-	printf("Obtener posicion de %c\n", variable);
-	char* pagina[54] = //pcb.pagina + pcb.desplazamiento
-	return pagina;
-}
+Vars crearVariable(char variable);
+Vars cargarVariable(char variable);
+Pagina obtenerPagDisponible();
+Pagina fromIntegerPagina(int int_pagina);
+int toIntegerPagina(Pagina pagina);
+void sumarEnLasVariables(Vars* var);
 
-t_valor_variable dereferenciar(t_puntero puntero) { //nose que es esto
-	printf("Dereferenciar %d y su valor es: [VALOR]\n", puntero);
-	return CONTENIDO_VARIABLE;
-}
-
-void asignar(t_puntero puntero, t_valor_variable variable) {
-	printf("Asignando en %d el valor [VALOR]\n", puntero);
-	char mensaje[100] = "Asignar:" +/*pcb.pagina*/ +"/"+/*pcb.desplazamiento*/+"/"+ valor;
-	enviarMensaje(umc,mensaje);
-}
-
-void imprimir(t_valor_variable valor)
-{
-	printf("Imprimir %d \n", valor);
-	char mensaje[100] = "Imprimi:" + itoa(valor);
-	enviarMensaje(nucleo,mensaje);
-}
-
-void imprimirTexto(char* texto) { 
-	printf("ImprimirTexto: %s \n", texto);
-	char mensaje[100] = "Imprimi:" + texto;
-	enviarMensaje(nucleo,mensaje);
-}
-
-void finalizar() {
-	printf("Finalizado \n");
-	finalizado = 1;
-}
-void llamasSinRetorno(char* texto) {
-	if ( (strcmp(_string_trim(texto),"begin") == 0) || (strcmp(_string_trim(texto),"begin\n") == 0) ){
-		printf("Inicio de Programa\n");
-		return;
-	}
-    printf("Llamada a la funcion: %s \n", texto);
-    saltoDeLinea(); // VER AK COMO SE HACER
-}
 
 AnSISOP_funciones functions = {
 		.AnSISOP_definirVariable		= definirVariable,
@@ -77,15 +75,15 @@ AnSISOP_funciones functions = {
 		.AnSISOP_asignar				= asignar,
 		.AnSISOP_imprimir				= imprimir,
 		.AnSISOP_imprimirTexto			= imprimirTexto,
-		.AnSISOP_finalizar              = finalizar,
-		.AnSISOP_llamarSinRetorno       = llamasSinRetorno,
+		.AnSISOP_finalizar				 = finalizar,
+		.AnSISOP_llamarSinRetorno       = llamadasSinRetorno,
 };
 AnSISOP_kernel kernel_functions = {};
-//---------------------------------------
 
 void parsear(char* instruccion){
 	analizadorLinea(strdup(instruccion), &functions, &kernel_functions);
 }
 
-
-
+int tienePermiso(char* autentificacion){
+	return 1;
+}
