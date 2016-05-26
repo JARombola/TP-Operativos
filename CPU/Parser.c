@@ -6,7 +6,7 @@ t_puntero definirVariable(t_nombre_variable variable) {
 	sumarEnLasVariables(&var);
 	return  &(var);
 }
-/*
+
 t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	printf("Obtener posicion de %c\n", variable);
 	t_list* variables = list_get(pcb.stack,(list_size(pcb.stack))-1);
@@ -14,14 +14,17 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	int i;
 	for(i = 0; i< list_size(variables)-1; i++){
 		var = (Vars*) list_get(variables,i);
-		if ( (*var).id == variable  ){
-			return ((int) &((*var).pag));
+		if ( var->id == variable  ){
+			return (var);
 		}
 	}
-	Pagina pag = crearPaginaNegativa();
-	return ((int) &pag);
+	Pagina pagina;
+	pagina.pag = -1;
+	var->pag = pagina;
+	var->id = variable;
+	return (var);
 }
-*/
+
 t_valor_variable dereferenciar(t_puntero var) {
 	Vars* variable =var;
 	int valor;
@@ -75,15 +78,20 @@ void finalizar() {
 	enviarMensajeConProtocolo(nucleo, char_pcb, CODIGO_FINALIZACION);
 }
 
-void llamadasSinRetorno(char* texto) { // nose como hacer esto
+void llamadasSinRetorno(char* texto){
 	if ( (strcmp(_string_trim(texto),"begin") == 0) || (strcmp(_string_trim(texto),"begin\n") == 0) ){
 		printf("Inicio de Programa\n");
+		Stack* stack;
+		stack->args = list_create();
+		stack->vars = list_create();
+		stack
+		list_add(pcb.stack, stack);
 		return;
 	}
     printf("Llamada a la funcion: %s \n", texto);
     saltoDeLinea(0,texto);
-}*/
-
+}
+*/
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------
 
 Vars crearVariable(char variable){
