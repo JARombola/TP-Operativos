@@ -139,5 +139,4 @@ int procesarCodigo(){
 
 void saltoDeLinea(int cantidad, char* nombre){
 	int a = 4;
-	printf("HOLA %d\n ",a);
 }

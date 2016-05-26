@@ -70,12 +70,14 @@ void imprimirTexto(char* texto) {
 	printf("ImprimirTexto: %s \n", texto);
 	enviarMensajeConProtocolo(nucleo,texto, CODIGO_IMPRESION);
 }
-/*
+
 void finalizar() {
 	printf("Finalizado \n");
-	char* char_pcb = toStringPCB(pcb);
-	finalizado = 1;
-	enviarMensajeConProtocolo(nucleo, char_pcb, CODIGO_FINALIZACION);
+	int tamanioStack = list_size(pcb.stack);
+	list_remove(pcb.stack,tamanioStack-1);
+	if (tamanioStack == 1){
+		finalizado = 1;
+	}
 }
 
 void llamadasSinRetorno(char* texto){
@@ -84,14 +86,13 @@ void llamadasSinRetorno(char* texto){
 		Stack* stack;
 		stack->args = list_create();
 		stack->vars = list_create();
-		stack
 		list_add(pcb.stack, stack);
 		return;
 	}
     printf("Llamada a la funcion: %s \n", texto);
     saltoDeLinea(0,texto);
 }
-*/
+
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------
 
 Vars crearVariable(char variable){
@@ -139,6 +140,10 @@ void sumarEnLasVariables(Vars* var){
 	t_list* variables = stackActual->vars;
 	list_add(variables,var);
 }
+void saltoDeLinea(int cantidad, char* nombre){
+	int a = 4;
+}
+
 
 
 

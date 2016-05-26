@@ -66,6 +66,7 @@ Pagina obtenerPagDisponible();
 Pagina fromIntegerPagina(int int_pagina);
 int toIntegerPagina(Pagina pagina);
 void sumarEnLasVariables(Vars* var);
+void saltoDeLinea(int cantidad, char* nombre);
 
 
 AnSISOP_funciones functions = {

@@ -1,4 +1,4 @@
-#include <stdlib.h>
+/*#include <stdlib.h>
 #include <stdio.h>
 #include <commons/string.h>
 #include <arpa/inet.h>
@@ -135,6 +135,6 @@ int procesarPeticion(char* pcb, int nucleo, int umc){
 //	char * instrucciones = parsear(linea);
 //	ejecutar(instrucciones);
 	return 0;
-}
+}*/
 
 
