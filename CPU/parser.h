@@ -20,7 +20,6 @@ typedef struct{
 }Vars;
 
 typedef struct{
-	char pos;
 	t_list* args; //Lista de Pagina
 	t_list* vars; //Lista de Vars
 	int retPos;
@@ -66,6 +65,7 @@ Pagina obtenerPagDisponible();
 Pagina fromIntegerPagina(int int_pagina);
 int toIntegerPagina(Pagina pagina);
 void sumarEnLasVariables(Vars* var);
+void saltoDeLinea(int cantidad, char* nombre);
 
 
 AnSISOP_funciones functions = {

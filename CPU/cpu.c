@@ -1,4 +1,4 @@
-#include <stdlib.h>
+/*#include <stdlib.h>
 #include <stdio.h>
 #include <commons/string.h>
 #include <arpa/inet.h>
@@ -28,7 +28,7 @@ char* esperarRespuesta(int conexion);
  *Se autentifica con un "soy_un_cpu"
  *
  *La logica se encuentra en "pocesarPeticion"
- */
+ *//*
 int main() {
 
 	printf("CPU Estable\n");
@@ -86,7 +86,7 @@ int main() {
 		send(umc, &longitud, sizeof(int32_t), 0);
 		send(umc, pcb, strlen(pcb), 0);
 		*/
-	}
+	}/*
 	return 0;
 }
 
@@ -135,6 +135,6 @@ int procesarPeticion(char* pcb, int nucleo, int umc){
 //	char * instrucciones = parsear(linea);
 //	ejecutar(instrucciones);
 	return 0;
-}
+}*/
 
 
