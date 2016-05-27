@@ -7,7 +7,6 @@ void conectarseALaUMC();
 int procesarPeticion();
 int esperarQuantum();
 int procesarCodigo();
-void saltoDeLinea(int cantidad, char* nombre);
 
 int PUERTO_NUCLEO;
 char AUTENTIFICACION[100];
@@ -66,7 +65,7 @@ int levantarArchivoDeConfiguracion(){
 	}
 	buscar(archivoJson,"IP_UMC", IP_UMC);
 	if (IP_NUCLEO == NULL){
-		printf("Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
+		printf("Error: No se ha encontvoid saltoDeLinea(int cantidad, char* nombre)rado la IP de la UMC en el archivo de Configuracion \n");
 		return -1;
 	}
 
@@ -103,13 +102,11 @@ void conectarseALaUMC(){
 int procesarPeticion(){
 	int quantum;
 	while(1){
-		//pcb = esperarRespuesta(nucleo);
-//		if (pcb == NULL){
-//		quantum = esperarQuantum(nucleo);
-//		if(quantum<0) return -1;
-//		if (procesarCodigo(nucleo, umc,pcb)<0){
-//			return -1;
-//		}
+		pcb = fromStrinPCB(esperarRespuesta(nucleo));
+		quantum = esperarQuantum(nucleo);
+		if(quantum>0){
+			(procesarCodigo(nucleo, umc,pcb)<0);
+		}
 	}
 }
 
@@ -135,8 +132,4 @@ int procesarCodigo(){
 		saltoDeLinea(1,NULL);
 	}
 	printf("Finalizado el Proceso de Codigo...\n");
-}
-
-void saltoDeLinea(int cantidad, char* nombre){
-	int a = 4;
 }

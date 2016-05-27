@@ -28,7 +28,7 @@ char* esperarRespuesta(int conexion);
  *Se autentifica con un "soy_un_cpu"
  *
  *La logica se encuentra en "pocesarPeticion"
- */
+ *//*
 int main() {
 
 	printf("CPU Estable\n");
@@ -86,7 +86,7 @@ int main() {
 		send(umc, &longitud, sizeof(int32_t), 0);
 		send(umc, pcb, strlen(pcb), 0);
 		*/
-	}
+	}/*
 	return 0;
 }
 

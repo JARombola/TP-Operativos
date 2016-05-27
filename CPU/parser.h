@@ -20,7 +20,6 @@ typedef struct{
 }Vars;
 
 typedef struct{
-	char pos;
 	t_list* args; //Lista de Pagina
 	t_list* vars; //Lista de Vars
 	int retPos;
