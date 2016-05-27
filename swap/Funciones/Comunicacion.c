@@ -34,14 +34,14 @@ int recibirProtocolo(int conexion){
 	return numero;
 }
 
-char* recibirMensaje(int conexion, int tamanio){
-	char* mensaje=(char*)malloc(tamanio+1);
+void* recibirMensaje(int conexion, int tamanio){
+	void* mensaje=(void*)malloc(tamanio+1);
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
 		return "a";}
-	mensaje[tamanio]='\0';
+	memcpy(mensaje+tamanio,"\0",1);
 	return mensaje;
 }
 

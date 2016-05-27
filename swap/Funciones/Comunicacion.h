@@ -18,7 +18,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip);
 int bindear(int socket, struct sockaddr_in direccionServer);
 int conectar(int puerto,char* ip);
 int recibirProtocolo(int conexion);
-char* recibirMensaje(int conexion, int longitud);
+void* recibirMensaje(int conexion, int longitud);
 char* header(int numero);							//Recibe numero de bytes, y lo devuelve en 4 bytes (Ej. recibe "2" y devuelve "0002"
 void agregarHeader(char** mensaje);
 
