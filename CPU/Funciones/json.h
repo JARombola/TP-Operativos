@@ -69,5 +69,12 @@ char* toStringStack(Stack stack);
 t_list* fromStringListStack(char* char_stack);
 char* toStringListStack(t_list* lista_stack);
 
+char* toStringListPagina(t_list* list_page);
+t_list* fromStringListPage(char* char_page);
+
+char* toStringPagina(Pagina page);
+Pagina* fromStringPagina(char* char_page);
+
+char* toStringListVariables(t_list* lista);
 
 #endif								

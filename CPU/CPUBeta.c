@@ -5,6 +5,7 @@ void conectarseAlNucleo();
 void conectarseALaUMC();
 int procesarPeticion();
 int procesarCodigo();
+char* pedirLinea();
 
 int PUERTO_NUCLEO;
 char AUTENTIFICACION[100];
@@ -119,6 +120,7 @@ int procesarPeticion(){
 				if (procesarCodigo()<0) return -1;
 			}
 			free(pcb_char);
+		}
 	}
 }
 
@@ -139,4 +141,8 @@ int procesarCodigo(){
 	}
 	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
+}
+
+char* pedirLinea(){
+
 }
