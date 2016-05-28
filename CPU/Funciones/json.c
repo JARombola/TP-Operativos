@@ -1,5 +1,9 @@
 #include "json.h"
 
+/*
+ * Simbolos no validos como separador: '?', '#', '!'
+ */
+
 char* toJsonArchivo(FILE* archivo){
 	char linea[200];
 	char* ansisop = malloc(200*sizeof(char));
@@ -79,9 +83,11 @@ void buscar(char* archivo, char* key, char*value){
 }
 
 
-char* toStringInstruccion(t_intructions instruccion){
+char* toStringInstruccion(t_intructions instruccion,char separador){
 	char* char_instruccion =  malloc(10*sizeof(char));
-	char barra[2] = "/";
+	char barra[2];
+	barra[0] = separador;
+	barra[1] = '\0';
 	strcpy(char_instruccion, barra);
 	char num[10];
 	sprintf(num,"%d!", instruccion.start);
@@ -91,61 +97,63 @@ char* toStringInstruccion(t_intructions instruccion){
 	return char_instruccion;
 }
 
-char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
+char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio,char separador){
 	char* char_instrucciones= malloc(10*tamanio*sizeof(char)) ;
-	char barra[2] = "&";
+	char barra[2];
+	barra[0] = separador;
+	barra[1] ='\0';
 	strcpy(char_instrucciones,barra);
 	char* char_instruccion;
 	int i;
 	for (i = 0 ; i< tamanio; i++){
-		char_instruccion = toStringInstruccion(instrucciones[i]);
+		char_instruccion = toStringInstruccion(instrucciones[i],'#');
 		strcat(char_instrucciones, char_instruccion);
 	}
 	char_instrucciones[(strlen(char_instrucciones))] = '\0';
 	return char_instrucciones;
 }
 
-char* toStringMetadata(t_metadata_program meta){
+char* toStringMetadata(t_metadata_program meta, char separador){
 	char* char_meta = malloc((meta.instrucciones_size*10)+30+(strlen(meta.etiquetas)) *sizeof(char));
 	char num[10];
-	sprintf(num,"%d&", meta.instruccion_inicio);
+	sprintf(num,"%d%c", meta.instruccion_inicio,separador);
 	strcpy(char_meta,num);
-	sprintf(num,"%d&", meta.instrucciones_size);
+	sprintf(num,"%d%c", meta.instrucciones_size,separador);
 	strcat(char_meta,num);
-	sprintf(num,"%d&", meta.etiquetas_size);
+	sprintf(num,"%d%c", meta.etiquetas_size,separador);
 	strcat(char_meta,num);
-	sprintf(num,"%d&", meta.cantidad_de_funciones);
+	sprintf(num,"%d%c", meta.cantidad_de_funciones,separador);
 	strcat(char_meta,num);
-	sprintf(num,"%d&", meta.cantidad_de_etiquetas);
+	sprintf(num,"%d%c", meta.cantidad_de_etiquetas,separador);
 	strcat(char_meta,num);
 	strcat(char_meta,meta.etiquetas);
 
-	char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
+	char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size,'?'));
 	strcat(char_meta, char_instrucciones);
 	free(char_instrucciones);
 	return char_meta;
 }
 
-t_metadata_program fromStringMetadata(char* char_meta){
+t_metadata_program fromStringMetadata(char* char_meta,char separador){
 	t_metadata_program meta;
-		meta.instruccion_inicio = valorMetadata(char_meta,0);
-		meta.instrucciones_size = valorMetadata(char_meta,1);
-		meta.etiquetas_size = valorMetadata(char_meta,2);
-		meta.cantidad_de_funciones = valorMetadata(char_meta,3);
-		meta.cantidad_de_etiquetas = valorMetadata(char_meta,4);
-		meta.etiquetas = valorStringMetadata(char_meta);
+		meta.instruccion_inicio = valorMetadata(char_meta,0,separador);
+		meta.instrucciones_size = valorMetadata(char_meta,1,separador);
+		meta.etiquetas_size = valorMetadata(char_meta,2,separador);
+		meta.cantidad_de_funciones = valorMetadata(char_meta,3,separador);
+		meta.cantidad_de_etiquetas = valorMetadata(char_meta,4,separador);
+		meta.etiquetas = valorStringMetadata(char_meta,separador);
 		meta.instrucciones_serializado = valorInstruccionMeta(char_meta,meta.instrucciones_size);
 	return meta;
 }
 
-u_int32_t valorMetadata(char*char_meta,int indice){
+u_int32_t valorMetadata(char*char_meta,int indice, char separador){
 	int cont = 0;
 	int i = 0;
 	int key = 0;
 	int subkey;
 	while(cont<= indice){
 		subkey = key;
-		if (char_meta[i]=='&'){
+		if (char_meta[i]==separador){
 			cont++;
 			key = i;
 		}
@@ -172,7 +180,7 @@ void invertir(char* palabra){
 		palabra[j]=temporal;
 	}
 }
-char* valorStringMetadata(char *char_meta){
+char* valorStringMetadata(char *char_meta, char separador){
 	int i;
 	int key =0;
 	int subindice;
@@ -180,7 +188,7 @@ char* valorStringMetadata(char *char_meta){
 
 	for (i=0;key<=5;i++){
 		subindice= indice;
-		if (char_meta[i]=='&'){
+		if (char_meta[i]==separador){
 			key ++;
 			indice = i;
 		}
@@ -283,5 +291,7 @@ t_list* fromStringList(char* char_list, char simbol){
 			}
 		}
 	}
-
+	return lista;
 }
+
+PCB fromStringPCB(char* char_pcb);
