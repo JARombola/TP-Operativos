@@ -6,6 +6,7 @@
 #include <commons/collections/queue.h>
 #include <parser/metadata_program.h>
 
+
 typedef struct{
 	int pag;
 	int off;
@@ -32,13 +33,15 @@ typedef struct{
 	t_list* stack; // Lista de Stack
 }PCB;
 
-
-char* toJsonArchivo(FILE* archivo);
 void filtrar(char* linea);
 void eliminarComentarios(char* linea);
-void eliminarSaltosDeLinea(char* linea);
+char* toSubString(char* string, int inicio, int fin);
 void sacarEspacios(char* linea);
 void buscar(char* archivo, char* key, char* valor);
+void invertir(char* palabra);
+t_intructions* valorInstruccionMeta(char* char_meta, int tamanio);
+u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
+
 
 char* toStringInstruccion(t_intructions instruccion, char separador);
 
@@ -47,14 +50,24 @@ char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio,char se
 char* toStringMetadata(t_metadata_program meta, char separador);
 t_metadata_program fromStringMetadata(char* char_meta,char separador);
 
-u_int32_t valorMetadata(char*char_meta,int indice, char separador);
-void invertir(char* palabra);
-char* valorStringMetadata(char *char_meta, char separador);
-t_intructions* valorInstruccionMeta(char* char_meta, int tamanio);
-u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
 PCB fromStringPCB(char* char_pcb);
 char* toStringPCB(PCB pcb);
+
 char* toStringList(t_list* lista, char simbol);
 t_list* fromStringList(char* char_list, char simbol);
+
+char* valorStringMetadata(char *char_meta, char separador);
+u_int32_t valorMetadata(char*char_meta,int indice, char separador);
+
+char* toStringInt(int numero);
+
+char* toJsonArchivo(FILE* archivo);
+
+Stack* fromStringStack(char* char_stack);
+char* toStringStack(Stack stack);
+
+t_list* fromStringListStack(char* char_stack);
+char* toStringListStack(t_list* lista_stack);
+
 
 #endif								

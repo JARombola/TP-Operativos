@@ -1,7 +1,7 @@
 #include "json.h"
 
 /*
- * Simbolos no validos como separador: '?', '#', '!'
+ * Simbolos no validos como separador: '?', '#', '!','&',$','/','¿','-'
  */
 
 char* toJsonArchivo(FILE* archivo){
@@ -293,5 +293,93 @@ t_list* fromStringList(char* char_list, char simbol){
 	}
 	return lista;
 }
+char* toStringPCB(PCB pcb){
+	char* char_pcb;
+	char* char_id;
+	char_id = toStringInt(pcb.id);
+	char *char_metadata;
+	char_metadata = toStringMetadata(pcb.indices,'&');
+	char* char_paginas_codigo;
+	char_paginas_codigo = toStringInt(pcb.paginas_codigo);
+	char* char_pc;
+	char_pc = toStringInt(pcb.pc);
+	char* char_stack;
+	char_stack = toStringListStack(pcb.stack);
+	char_pcb = malloc((5+strlen(char_metadata)+5+5+strlen(char_stack)+10)*sizeof(char));
+	strcpy(char_pcb,char_id);
+	strcat(char_pcb, toStringInt(strlen(char_metadata)));
+	strcat(char_pcb,char_metadata);
+	strcat(char_pcb, char_paginas_codigo);
+	strcat(char_pcb, char_pc);
+	strcat(char_pcb,char_stack);
+	return char_pcb;
+}
+PCB fromStringPCB(char* char_pcb){
+	PCB pcb;
+	pcb.id = atoi(toSubString(char_pcb,0,3));
+	int tamanioMeta = atoi(toSubString(char_pcb,4,7));
+	pcb.indices = fromStringMetadata(toSubString(char_pcb,8,(8+tamanioMeta-1)),'&');
+	pcb.paginas_codigo = atoi(toSubString(char_pcb,8+tamanioMeta,8+tamanioMeta+3));
+	pcb.pc = atoi(toSubString(char_pcb,8+tamanioMeta+4, 8+ tamanioMeta+4 +3));
+	pcb.stack = fromStringListStack(toSubString(char_pcb,tamanioMeta+16,strlen(char_pcb)));
+	return pcb;
+}
 
-PCB fromStringPCB(char* char_pcb);
+char* toSubString(char* string, int inicio, int fin){
+	char * subString = malloc((fin+2)*sizeof(char));
+	strcpy(subString,string);
+	subString[fin+1] = '\0';
+	invertir(subString);
+	subString[(fin-inicio)+1]='\0';
+	invertir(subString);
+	char* final = malloc(strlen(subString)*sizeof(char));
+	strcpy(final,subString);
+	free(subString);
+	return final;
+}
+
+char* toStringInt(int numero){
+	char* longitud=string_new();
+	string_append(&longitud,string_reverse(string_itoa(numero)));
+	string_append(&longitud,"0000");
+	longitud=string_substring(longitud,0,4);
+	longitud=string_reverse(longitud);
+	return longitud;
+}
+
+t_list* fromStringListStack(char* char_stack){
+	int i;
+	int indice = 1;
+	int subIndice;
+	t_list* lista_stack = list_create();
+	for(i=1; i<strlen(char_stack);i++){
+		int subIndice = indice;
+		if (char_stack[i]=='-'){
+			indice = i-1;
+			list_add(lista_stack, fromStringStack(subString(char_stack,subIndice,indice)));
+			indice = i+1;
+		}
+	}
+	return lista_stack;
+}
+
+char* toStringListStack(t_list* lista_stack){
+	int i;
+	char* char_lista_stack = malloc(sizeof(char));
+	char_lista_stack[0] = '\0';
+	Stack* stack;
+	char barra[2] = "-";
+	char* char_stack;
+	for (i=0; i<list_size(lista_stack);i++){
+		stack = list_get(lista_stack,i);
+		char_stack = toString(*stack);
+		char_lista_stack = realloc(char_lista_stack, (strlen(char_lista_stack)+ strlen(char_stack)+2)*sizeof(char));
+		strcat(char_lista_stack,barra);
+		strcat(char_lista_stack,char_stack);
+		free(char_stack);
+	}
+}
+
+char* toStringStack(Stack stack){
+
+}

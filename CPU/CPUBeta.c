@@ -1,4 +1,3 @@
-#include "Funciones/sockets.h"
 #include "parser.h"
 
 int levantarArchivoDeConfiguracion();
@@ -116,7 +115,7 @@ int procesarPeticion(){
 			if (*pcb_char == NULL){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
-				pcb = fromStrinPCB(pcb_char);
+				pcb = fromStringPCB(pcb_char);
 				if (procesarCodigo()<0) return -1;
 			}
 			free(pcb_char);
@@ -134,7 +133,7 @@ int procesarCodigo(){
 			perror("Error: Error de conexion con la UMC \n");
 			return -1;
 		}
-		if (parsear(linea)<0) return -1;
+		parsear(linea);
 		quantum--;
 		saltoDeLinea(1,NULL);
 	}
