@@ -1,7 +1,7 @@
 #include "json.h"
 
 /*
- * Simbolos no validos como separador: '?', '#', '!','&',$','/','¿','-','_','*'
+ * Simbolos no validos como separador: '?', '#', '!','&',$','/','¿','-','_','*','+'
  */
 
 char* toJsonArchivo(FILE* archivo){
@@ -336,10 +336,11 @@ char* toSubString(char* string, int inicio, int fin){
 	invertir(subString);
 	subString[(fin-inicio)+1]='\0';
 	invertir(subString);
-	char* final = malloc(strlen(subString)*sizeof(char));
-	strcpy(final,subString);
-	free(subString);
-	return final;
+//	char* final = malloc(strlen(subString)*sizeof(char));
+//	strcpy(final,subString);
+//	free(subString);
+//	return final;
+	return subString;
 }
 
 char* toStringInt(int numero){
@@ -360,7 +361,7 @@ t_list* fromStringListStack(char* char_stack){
 		subIndice = indice;
 		if (char_stack[i]=='-'){
 			indice = i-1;
-			list_add(lista_stack, fromStringStack(subString(char_stack,subIndice,indice)));
+			list_add(lista_stack, fromStringStack(toSubString(char_stack,subIndice,indice)));
 			indice = i+1;
 		}
 	}
@@ -392,12 +393,45 @@ char* toStringStack(Stack stack){
 	char* char_ret_var = toStringPagina(stack.retVar);
 	char* char_var_list = toStringListVariables(stack.vars);
 	char_stack = malloc((strlen(char_args)+strlen(char_retpos)+strlen(char_ret_var)+strlen(char_var_list)+10)*sizeof(char));
-	sprintf(char_stack,"%s_%s_%s_%s",char_args,char_retpos,char_ret_var,char_var_list);
+	sprintf(char_stack,"%s_%s_%s_%s_",char_args,char_retpos,char_ret_var,char_var_list);
 	free(char_args);
 	free(char_retpos);
 	free(char_ret_var);
 	free(char_var_list);
 	return char_stack;
+}
+
+Stack* fromStringStack(char* char_stack){
+	Stack* stack = malloc(sizeof(Stack));
+	int i;
+	int indice =0;
+	int subIndice;
+	int nivel =0;
+	char* subString;
+	for(i=0; i<strlen(char_stack);i++){
+		subIndice = indice;
+		if (char_stack[i]=='_'){
+			indice = i-1;
+			nivel++;
+			subString = toSubString(char_stack,subIndice,indice);
+			switch (nivel){
+			case 1:
+				stack->args = fromStringListPage(subString);
+				break;
+			case 2:
+				stack->retPos = atoi(subString);
+				break;
+			case 3:
+				stack->retVar = *fromStringPagina(subString);
+				break;
+			case 4:
+				stack->vars = fromStringListVariables(subString);
+				break;
+			}
+			indice = i+1;
+		}
+	}
+	return stack;
 }
 
 char* toStringListPagina(t_list* lista_page){
@@ -411,24 +445,28 @@ char* toStringListPagina(t_list* lista_page){
 		page = list_get(lista_page,i);
 		char_page = toStringPagina(*page);
 		char_lista_page = realloc(char_lista_page, (strlen(char_lista_page)+ strlen(char_page)+2)*sizeof(char));
-		strcat(char_lista_page,barra);
 		strcat(char_lista_page,char_page);
+		strcat(char_lista_page,barra);
 		free(char_page);
 	}
 	return char_lista_page;
 
 }
-fromStringPagina
+
 t_list* fromStringListPage(char* char_list_page){
 	int i;
-	int indice = 1;
+	int indice = 0;
 	int subIndice;
+	char* subString;
+	Pagina* pag;
 	t_list* lista_page = list_create();
-	for(i=1; i<strlen(char_list_page);i++){
+	for(i=0; i<strlen(char_list_page);i++){
 		subIndice = indice;
 		if (char_list_page[i]=='*'){
 			indice = i-1;
-			list_add(lista_page, fromStringPagina(toSubString(char_list_page,subIndice,indice)));
+			subString = toSubString(char_list_page,subIndice,indice);
+			pag = fromStringPagina(subString);
+			list_add(lista_page, pag);
 			indice = i+1;
 		}
 	}
@@ -440,22 +478,70 @@ char* toStringPagina(Pagina page){
 	char* char_page= malloc(15*sizeof(char));
 	char* off = toStringInt(page.off);
 	char* pag = toStringInt(page.pag);
-	char* size = toStringInt(page.size);
+	char* size = toStringInt(page.tamanio);
 	sprintf(char_page,"%s%s%s",off,pag,size);
 	return char_page;
 }
 
 Pagina* fromStringPagina(char* char_page){
-	Pagina page;
-	page.off = atoi(toSubString(char_page,0,3));
-	page.pag = atoi(toSubString(char_page,4,7));
-	page.off = atoi(toSubString(char_page,8,11));
-	free(char_page);
-	return &page;
+	printf("a\n");
+	Pagina* page = malloc(sizeof(Pagina));
+	page->off = atoi(toSubString(char_page,0,3));
+	page->pag = atoi(toSubString(char_page,4,7));
+	page->tamanio = atoi(toSubString(char_page,8,11));
+	return page;
 }
 
 char* toStringListVariables(t_list* lista){
-	char* char_lista;
-
-	return char_lista;
+	int i;
+	char* char_lista_var = malloc(sizeof(char));
+	char_lista_var[0] = '\0';
+	Variable* variable;
+	char* char_var;
+	char barra[2] = "+";
+	for (i=0; i<list_size(lista);i++){
+		variable = list_get(lista,i);
+		char_var = toStringVariable(*variable);
+		char_lista_var = realloc(char_lista_var, (strlen(char_lista_var)+ strlen(char_var)+2)*sizeof(char));
+		strcat(char_lista_var,char_var);
+		strcat(char_lista_var,barra);
+		free(char_var);
+	}
+	return char_lista_var;
 }
+
+t_list* fromStringListVariables(char* char_list){
+	int i;
+	int indice = 1;
+	int subIndice;
+	t_list* lista_var = list_create();
+	for(i=1; i<strlen(char_list);i++){
+		subIndice = indice;
+		if (char_list[i]=='+'){
+			indice = i-1;
+			list_add(lista_var, fromStringVariable(toSubString(char_list,subIndice,indice)));
+			indice = i+1;
+		}
+	}
+	free(char_list);
+	return lista_var;
+}
+
+char* toStringVariable(Variable variable){
+	char* pagina = toStringPagina(variable.pagina);
+	char* char_variable = malloc((strlen(pagina)+2)*sizeof(char));
+	strcpy(char_variable,pagina);
+	char_variable[strlen(pagina)]=variable.id;
+	char_variable[strlen(pagina)+1]='\0';
+	free(pagina);
+	return char_variable;
+}
+
+Variable* fromStringVariable(char* char_variable){
+	Variable* variable = malloc(sizeof(Variable));
+	variable->pagina = *(fromStringPagina(toSubString(char_variable,0,strlen(char_variable)-2)));
+	variable->id = char_variable[strlen(char_variable)-1];
+	return variable;
+}
+
+

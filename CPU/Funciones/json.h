@@ -10,7 +10,7 @@
 typedef struct{
 	int pag;
 	int off;
-	int size;
+	int tamanio;
 }Pagina;
 
 typedef struct{
@@ -76,5 +76,9 @@ char* toStringPagina(Pagina page);
 Pagina* fromStringPagina(char* char_page);
 
 char* toStringListVariables(t_list* lista);
+t_list* fromStringListVariables(char* char_list);
+
+char* toStringVariable(Variable variable);
+Variable* fromStringVariable(char* char_variable);
 
 #endif								
