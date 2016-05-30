@@ -18,6 +18,7 @@ char* toJsonArchivo(FILE* archivo){
 		ansisop = realloc(ansisop, (strlen(ansisop)+200)* sizeof(char));
 		strcpy(ansisop, final);
 	}
+	free(ansisop);
 	fclose(archivo);
 	return final;
 }
@@ -97,52 +98,58 @@ char* toStringInstruccion(t_intructions instruccion,char separador){
 	return char_instruccion;
 }
 
-char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio,char separador){
+char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 	char* char_instrucciones= malloc(10*tamanio*sizeof(char)) ;
-	char barra[2];
-	barra[0] = separador;
-	barra[1] ='\0';
-	strcpy(char_instrucciones,barra);
-	char* char_instruccion;
 	int i;
 	for (i = 0 ; i< tamanio; i++){
-		char_instruccion = toStringInstruccion(instrucciones[i],'#');
-		strcat(char_instrucciones, char_instruccion);
+		strcat(char_instrucciones, toStringInt(instrucciones->offset));
+		strcat(char_instrucciones, toStringInt(instrucciones->start));
 	}
-	char_instrucciones[(strlen(char_instrucciones))] = '\0';
 	return char_instrucciones;
 }
 
-char* toStringMetadata(t_metadata_program meta, char separador){
-	char* char_meta = malloc((meta.instrucciones_size*10)+30+(strlen(meta.etiquetas)) *sizeof(char));
-	char num[10];
-	sprintf(num,"%d%c", meta.instruccion_inicio,separador);
-	strcpy(char_meta,num);
-	sprintf(num,"%d%c", meta.instrucciones_size,separador);
-	strcat(char_meta,num);
-	sprintf(num,"%d%c", meta.etiquetas_size,separador);
-	strcat(char_meta,num);
-	sprintf(num,"%d%c", meta.cantidad_de_funciones,separador);
-	strcat(char_meta,num);
-	sprintf(num,"%d%c", meta.cantidad_de_etiquetas,separador);
-	strcat(char_meta,num);
-	strcat(char_meta,meta.etiquetas);
+t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio){
+	t_intructions* instrucciones = malloc(tamanio*sizeof(t_intructions));
+	int i;
+	for (i=0;i<tamanio;i++){
+		instrucciones[i].offset = atoi(string_substring(char_instrucciones,i*8+4,4));
+		instrucciones[i].start = atoi(string_substring(char_instrucciones,i*8,4));
+	}
+	return instrucciones;
+}
 
-	char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size,'?'));
-	strcat(char_meta, char_instrucciones);
-	free(char_instrucciones);
+char* toStringMetadata(t_metadata_program meta, char separador){
+	char* char_meta;
+	if (meta.etiquetas == NULL){
+		char_meta = malloc(((meta.instrucciones_size*10)+30) *sizeof(char));
+	}else{
+		char_meta = malloc((meta.instrucciones_size*10)+30+(strlen(meta.etiquetas)) *sizeof(char));
+	}
+	strcpy(char_meta,toStringInt(meta.instruccion_inicio));
+	strcat(char_meta,toStringInt(meta.instrucciones_size));
+	strcat(char_meta,toStringInt(meta.etiquetas_size));
+	strcat(char_meta,toStringInt(meta.cantidad_de_funciones));
+	strcat(char_meta,toStringInt(meta.cantidad_de_etiquetas));
+	if (meta.etiquetas != NULL){
+		strcat(char_meta,meta.etiquetas);
+	}
+	if (meta.instrucciones_size!=0){
+		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
+		strcat(char_meta, char_instrucciones);
+		free(char_instrucciones);
+	}
 	return char_meta;
 }
 
 t_metadata_program fromStringMetadata(char* char_meta,char separador){
 	t_metadata_program meta;
-		meta.instruccion_inicio = valorMetadata(char_meta,0,separador);
-		meta.instrucciones_size = valorMetadata(char_meta,1,separador);
-		meta.etiquetas_size = valorMetadata(char_meta,2,separador);
-		meta.cantidad_de_funciones = valorMetadata(char_meta,3,separador);
-		meta.cantidad_de_etiquetas = valorMetadata(char_meta,4,separador);
-		meta.etiquetas = valorStringMetadata(char_meta,separador);
-		meta.instrucciones_serializado = valorInstruccionMeta(char_meta,meta.instrucciones_size);
+		meta.instruccion_inicio = atoi(toSubString(char_meta,0,3));
+		meta.instrucciones_size = atoi(toSubString(char_meta,4,7));
+		meta.etiquetas_size = atoi(toSubString(char_meta,8,11));
+		meta.cantidad_de_funciones = atoi(toSubString(char_meta,12,15));
+		meta.cantidad_de_etiquetas = atoi(toSubString(char_meta,16,19));
+		meta.etiquetas = toSubString(char_meta,20,(20+meta.etiquetas_size-1));
+		meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,24),meta.instrucciones_size);
 	return meta;
 }
 
@@ -159,15 +166,7 @@ u_int32_t valorMetadata(char*char_meta,int indice, char separador){
 		}
 		i++;
 	}
-	char* aux = malloc((key)*sizeof(char));
-	strcpy(aux,char_meta);
-	aux[key] = '\0';
-	invertir(aux);
-	int aux_int = atoi(aux);
-	sprintf(aux,"%d", aux_int);
-	aux[key-subkey] = '\0';
-	invertir(aux);
-	return atoi(aux);
+	return atoi(toSubString(char_meta,subkey,key));
 }
 
 void invertir(char* palabra){
@@ -247,7 +246,9 @@ u_int32_t valorInstruccion(char * char_meta,int subindice,int indice){
 	invertir(aux);
 	aux[key-subkey-1]='\0';
 	invertir(aux);
-	return atoi(aux);
+	int result = atoi(aux);
+	free(aux);
+	return result;
 }
 
 char* toStringList(t_list* lista, char simbol){
@@ -288,6 +289,7 @@ t_list* fromStringList(char* char_list, char simbol){
 				char_aux[indice-subindice-1]='\0';
 				invertir(char_aux);
 				list_add(lista,char_aux);
+				free(char_aux);
 			}
 		}
 	}
@@ -325,22 +327,13 @@ PCB fromStringPCB(char* char_pcb){
 	pcb.indices = fromStringMetadata(toSubString(char_pcb,8,(8+tamanioMeta-1)),'&');
 	pcb.paginas_codigo = atoi(toSubString(char_pcb,8+tamanioMeta,8+tamanioMeta+3));
 	pcb.pc = atoi(toSubString(char_pcb,8+tamanioMeta+4, 8+ tamanioMeta+4 +3));
-	pcb.stack = fromStringListStack(toSubString(char_pcb,tamanioMeta+16,strlen(char_pcb)));
+	char * subString = toSubString(char_pcb,tamanioMeta+16,strlen(char_pcb));
+	pcb.stack = fromStringListStack(subString);
 	return pcb;
 }
 
 char* toSubString(char* string, int inicio, int fin){
-	char * subString = malloc((fin+2)*sizeof(char));
-	strcpy(subString,string);
-	subString[fin+1] = '\0';
-	invertir(subString);
-	subString[(fin-inicio)+1]='\0';
-	invertir(subString);
-//	char* final = malloc(strlen(subString)*sizeof(char));
-//	strcpy(final,subString);
-//	free(subString);
-//	return final;
-	return subString;
+	return (string_substring(string,inicio,1+fin-inicio));
 }
 
 char* toStringInt(int numero){
@@ -354,14 +347,15 @@ char* toStringInt(int numero){
 
 t_list* fromStringListStack(char* char_stack){
 	int i;
-	int indice = 1;
+	int indice = 0;
 	int subIndice;
 	t_list* lista_stack = list_create();
-	for(i=1; i<strlen(char_stack);i++){
+	for(i=0; i<strlen(char_stack);i++){
 		subIndice = indice;
 		if (char_stack[i]=='-'){
 			indice = i-1;
-			list_add(lista_stack, fromStringStack(toSubString(char_stack,subIndice,indice)));
+			Stack* stack = fromStringStack(toSubString(char_stack,subIndice,indice));
+			list_add(lista_stack,stack);
 			indice = i+1;
 		}
 	}
@@ -379,8 +373,8 @@ char* toStringListStack(t_list* lista_stack){
 		stack = list_get(lista_stack,i);
 		char_stack = toStringStack(*stack);
 		char_lista_stack = realloc(char_lista_stack, (strlen(char_lista_stack)+ strlen(char_stack)+2)*sizeof(char));
-		strcat(char_lista_stack,barra);
 		strcat(char_lista_stack,char_stack);
+		strcat(char_lista_stack,barra);
 		free(char_stack);
 	}
 	return char_lista_stack;
@@ -470,7 +464,6 @@ t_list* fromStringListPage(char* char_list_page){
 			indice = i+1;
 		}
 	}
-	free(char_list_page);
 	return lista_page;
 }
 
@@ -484,7 +477,6 @@ char* toStringPagina(Pagina page){
 }
 
 Pagina* fromStringPagina(char* char_page){
-	printf("a\n");
 	Pagina* page = malloc(sizeof(Pagina));
 	page->off = atoi(toSubString(char_page,0,3));
 	page->pag = atoi(toSubString(char_page,4,7));

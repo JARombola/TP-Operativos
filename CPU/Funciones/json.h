@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <commons/collections/queue.h>
 #include <parser/metadata_program.h>
+#include <commons/string.h>
 
 
 typedef struct{
@@ -35,6 +36,7 @@ typedef struct{
 
 void filtrar(char* linea);
 void eliminarComentarios(char* linea);
+void eliminarSaltosDeLinea(char* linea);
 char* toSubString(char* string, int inicio, int fin);
 void sacarEspacios(char* linea);
 void buscar(char* archivo, char* key, char* valor);
@@ -45,7 +47,8 @@ u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
 
 char* toStringInstruccion(t_intructions instruccion, char separador);
 
-char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio,char separador);
+char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio);
+t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio);
 
 char* toStringMetadata(t_metadata_program meta, char separador);
 t_metadata_program fromStringMetadata(char* char_meta,char separador);
