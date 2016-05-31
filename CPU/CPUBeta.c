@@ -1,12 +1,11 @@
-#include "Funciones/sockets.h"
 #include "parser.h"
 
 int levantarArchivoDeConfiguracion();
 void conectarseAlNucleo();
 void conectarseALaUMC();
 int procesarPeticion();
-int esperarQuantum();
 int procesarCodigo();
+char* pedirLinea();
 
 int PUERTO_NUCLEO;
 char AUTENTIFICACION[100];
@@ -15,19 +14,19 @@ char IP_NUCLEO[50];
 char IP_UMC[50];
 int quantum = 1;
 
-int main(){
 
+/*
+ * Precondiciones el Quantum me tiene que venir junto con el PCB como protocolo;
+ * Si el protocolo es 0 interpreto que debo finalizar;
+ */
+
+int main(){
 	printf("CPU estable...\n");
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
 	conectarseAlNucleo();
-	if (nucleo < 0) return -1;//		if (pcb == NULL){
-	//		quantum = esperarQuantum(nucleo);
-	//		if(quantum<0) return -1;
-	//		if (procesarCodigo(nucleo, umc,pcb)<0){
-	//			return -1;
-	//		}
+	if (nucleo < 0) return -1;
 
 	conectarseALaUMC();
 	if (umc < 0) return -1;
@@ -45,7 +44,7 @@ int levantarArchivoDeConfiguracion(){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
 	}
-	char* archivoJson =toJson(archivoDeConfiguracion);
+	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
 	buscar(archivoJson,"PURTO_NUCLEO", puertoDelNucleo);
 	PUERTO_NUCLEO = atoi(puertoDelNucleo);
@@ -101,22 +100,28 @@ void conectarseALaUMC(){
 
 int procesarPeticion(){
 	int quantum;
+	char* pcb_char;
+
 	while(1){
-		pcb = fromStrinPCB(esperarRespuesta(nucleo));
-		quantum = esperarQuantum(nucleo);
-		if(quantum>0){
-			(procesarCodigo(nucleo, umc,pcb)<0);
+		quantum = recibirProtocolo(nucleo);
+		if (quantum <= 0){
+			if (quantum == 0){
+				close(nucleo);
+				close(umc);
+				return 0;
+			}
+			perror("Error: Error de conexion con el nucleo\n");
+		}else{
+			pcb_char = esperarRespuesta(nucleo);
+			if (*pcb_char == NULL){
+				perror("Error: Error de conexion con el nucleo\n");
+			}else{
+				pcb = fromStringPCB(pcb_char);
+				if (procesarCodigo()<0) return -1;
+			}
+			free(pcb_char);
 		}
 	}
-}
-
-int esperarQuantum(){
-	char* resp = esperarRespuesta(nucleo);
-	if (resp == NULL){
-		printf("Error: Se ha desconectado el Nucleo \n");
-		return -1;
-	}
-	return (atoi(resp));
 }
 
 int procesarCodigo(){
@@ -124,12 +129,20 @@ int procesarCodigo(){
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
 	while ((quantum>0) && (!(finalizado))){
-		linea = pedirLinea(umc,pcb);
+		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
-		if (*linea == NULL) return -1;
+		if (*linea == NULL){
+			perror("Error: Error de conexion con la UMC \n");
+			return -1;
+		}
 		parsear(linea);
 		quantum--;
 		saltoDeLinea(1,NULL);
 	}
 	printf("Finalizado el Proceso de Codigo...\n");
+	return 0;
+}
+
+char* pedirLinea(){
+
 }

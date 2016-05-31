@@ -7,32 +7,6 @@
 #include "Funciones/json.h"
 #include "Funciones/sockets.h"
 
-
-typedef struct{
-	int pag;
-	int off;
-	int size;
-}Pagina;
-
-typedef struct{
-	char id;
-	Pagina pag;
-}Vars;
-
-typedef struct{
-	t_list* args; //Lista de Pagina
-	t_list* vars; //Lista de Vars
-	int retPos;
-	Pagina retvar;
-}Stack;
-
-typedef struct{
-	int id;
-	t_metadata_program pc;
-	t_list* stack; //lista de Stack
-	int indice_stack;
-}PCB;
-
 static const int CONTENIDO_VARIABLE = 20;
 static const int POSICION_MEMORIA = 0x10;
 
