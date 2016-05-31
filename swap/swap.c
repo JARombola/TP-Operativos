@@ -164,7 +164,7 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 	}
 }
 char* crearArchivoSwap(){
-	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=1 bs=100",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
+	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=1 bs=400",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
 //	char* nombreArchivo=string_new();
 //	string_append(&nombreArchivo,datosSwap->nombre_swap);
