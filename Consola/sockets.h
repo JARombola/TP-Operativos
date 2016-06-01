@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int tienePermiso(char* autentificacion){return 1;}
+/*int tienePermiso(char* autentificacion){return 1;}
 int conectar(int puerto, char* autor);
 int autentificar(int conexion, char* autor);
 int esperarConfirmacion(int conexion);
@@ -123,4 +123,4 @@ int aceptar(int servidor){
 	int cliente = accept(servidor, (void*) &direccionCliente, &tamanioDireccion);
 	return cliente;
 }
-
+*/
