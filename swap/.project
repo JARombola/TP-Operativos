@@ -3,6 +3,7 @@
 	<name>Swap</name>
 	<comment></comment>
 	<projects>
+		<project>so-commons-library</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

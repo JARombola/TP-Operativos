@@ -155,7 +155,7 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 			(*datos)->nombre_swap =nombreSwap;
 			(*datos)->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
 			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAM_PAGINA");
-			(*datos)->retardoAcceso = buscarint(archivoConfiguracion, "RETARDO_ACCESO");
+			(*datos)->retardoAcceso = buscarInt(archivoConfiguracion, "RETARDO_ACCESO");
 			(*datos)->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
 			char* ip=string_new();
 			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
