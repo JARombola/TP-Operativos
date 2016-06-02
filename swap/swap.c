@@ -25,6 +25,7 @@ typedef struct{
 	char* nombre_swap;
 	int cantidadPaginas;
 	int tamPagina;
+	int retardoAcceso;
 	int retardoCompactacion;
 }datosConfiguracion;
 
@@ -145,7 +146,7 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 		return 0;
 	} else {
 		int cantidadKeys = config_keys_amount(archivoConfiguracion);
-		if (cantidadKeys < 6) {
+		if (cantidadKeys < 7) {
 			return 0;
 		} else {
 			(*datos)->puerto = buscarInt(archivoConfiguracion, "PUERTO");
@@ -154,6 +155,7 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 			(*datos)->nombre_swap =nombreSwap;
 			(*datos)->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
 			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAM_PAGINA");
+			(*datos)->retardoAcceso = buscarint(archivoConfiguracion, "RETARDO_ACCESO");
 			(*datos)->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
 			char* ip=string_new();
 			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
