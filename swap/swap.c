@@ -253,10 +253,19 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 
 int compactar(){
 	int pos=0, i,contador=0,compactado=0,inicio=0;
+	int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
+		return (marco1->inicio<marco2->inicio);
+	}
+	int proximoProceso(traductor_marco* proceso){
+		if (proceso->inicio>=i*datosSwap->tamPagina){
+			return 1;
+		}
+		return 0;
+	}
+	list_sort(tablaPaginas,inicioMenorMayor);
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		if (!bitarray_test_bit(bitArray,i)){
-			do{				;
-			}while(bitarray_test_bit(bitArray,i));
+				traductor_marco* procesoAMover=list_find(tablaPaginas,proximoProceso);
 		}
 	}
 	return 1;
