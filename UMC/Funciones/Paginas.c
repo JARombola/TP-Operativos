@@ -121,8 +121,9 @@ int buscarMarcoLibre(int pid) {
 		t_list* listaFiltrada = list_filter(tabla_de_paginas,
 				(void*) marcoDelProceso);														//Filtro los marcos de ESE proceso
 
-		int i = 0;
+		int i = 0,primeraVuelta=0,modificada=0;
 		if (datosMemoria->algoritmo) {
+			primeraVuelta=1;
 			list_sort(listaFiltrada,(void*)menorMayor);				//CLOCK MEJORADO
 			if (list_all_satisfy(listaFiltrada, (void*) marcoNuevo)) {								//Si son todas pags nuevas arranco x la primera (FIFO)
 				i = 0;
@@ -139,13 +140,19 @@ int buscarMarcoLibre(int pid) {
 				}
 			}
 		}
+		int cont=0;
 		do {traductor_marco* datosMarco = malloc(sizeof(traductor_marco));
 			if (i == list_size(listaFiltrada)) {													//Para que pegue la vuelta
 				i = 0;
 			}
+			if (cont==list_size(listaFiltrada)){primeraVuelta=0;}
 			datosMarco = list_get(listaFiltrada, i);												//Chequeo c/u para ver cual sacar
 			pos = datosMarco->marco;
-			if (vectorMarcos[pos] == 1) {														//Se va de la UMC
+			if (datosMemoria->algoritmo){
+				if (primeraVuelta){modificada=datosMarco->modificada;}
+				else{modificada=0;}
+			}
+			if (vectorMarcos[pos] == 1 && !modificada) {														//Se va de la UMC
 				if (datosMarco->modificada) {														//Estaba modificada => se la mando a la swap
 					char* mje = string_new();
 					string_append(&mje, "1");
@@ -166,13 +173,9 @@ int buscarMarcoLibre(int pid) {
 				list_replace(tabla_de_paginas, (int) marcoPosicion, datosMarco);*/
 				list_clean(listaFiltrada);
 				return pos;}																					//La nueva posicion libre
-			else {
-				vectorMarcos[pos]--;
-				if (!datosMemoria->algoritmo) {																//Clock comun => saco y pongo al final de la lista
-					list_remove_and_destroy_by_condition(tabla_de_paginas,(void*) marcoPosicion,(void*)eliminarEntrada);
-					list_add(tabla_de_paginas, datosMarco);
-				}
-			}
+			if(!primeraVuelta){
+			vectorMarcos[pos]--;}
+			cont++;
 		} while (++i);
 	}
 	return -1;																						//No hay marcos para darle

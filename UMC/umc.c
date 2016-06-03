@@ -70,7 +70,9 @@ int main(int argc, char* argv[]) {
 	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
-	datosMemoria->algoritmo=1;														//todo CAMBIAR ALGORITMO
+	////////////////////////////////////////////////
+	datosMemoria->algoritmo=0;														//todo CAMBIAR ALGORITMO
+	///////////////////////////////////////////////////
 	vectorMarcos=(int*) malloc(datosMemoria->marcos*sizeof(int*));
 	memoria = (void*) malloc(marcosTotal);
 	int j;
