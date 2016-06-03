@@ -36,10 +36,13 @@ typedef struct{
 struct sockaddr_in crearDireccion(int puerto, char* ip);
 int comprobarCliente(int);
 int leerConfiguracion(char*, datosConfiguracion**);
-char* crearArchivoSwap();
+void* crearArchivoSwap();
 int guardarDatos(int,int,int);
 int buscarEspacioLibre(int);
 void* buscar(int, int);
+int compactar();
+int eliminarProceso(int);
+void verMarcos();
 
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
@@ -48,6 +51,7 @@ void* archivoSwap;
 t_list* tablaPaginas;
 
 int main(int argc, char* argv[]){
+
 	int	conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
 
 	datosSwap=malloc(sizeof(datosConfiguracion));
@@ -56,9 +60,15 @@ int main(int argc, char* argv[]){
 		printf("Error archivo de configuracion\n FIN.");
 		return 1;}
 
-	archivoSwap=crearArchivoSwap();				//Devuelve el mmap del archivo iniciado con \0
 
-	bitArray=bitarray_create((char*)archivoSwap,datosSwap->cantidadPaginas);			//El bitArray usa bits, y el resto usan Bytes
+	if(!crearArchivoSwap()){
+		printf("Error al crear archivo Swap\n");
+	}
+	verMarcos();
+/*	memcpy(archivoSwap,"be",2);
+	verMarcos();*/
+
+
 
 	if (string_equals_ignore_case(archivoSwap,"Fuiste")){printf("Error al crear el archivo Swap\n");return 0;}
 
@@ -102,23 +112,25 @@ int main(int argc, char* argv[]){
 					guardarDatos(conexionUmc,cantPaginas, PID);
 					send(conexionUmc, "ok", 2, 0);
 
-					printf("\n%s\n",(char*)archivoSwap);}
+					printf("\n%s\n",(char*)archivoSwap);
 			//		printf("\nPagsLibres:%d\n",pagsLibres);
 			//		printf("Guardado!!\n");
+					verMarcos();
+				}
 				else {
 					send(conexionUmc,"no",2,0);
 				}
 				break;
-		case 2:
+		case 2:																//enviar pagina a la UMC
 				pagina=recibirProtocolo(conexionUmc);
 				void* datos=buscar(PID,pagina);
 				send(conexionUmc,datos,datosSwap->tamPagina,0);
-				printf("\n1-----%s\n",(char*)archivoSwap);
-				free(datos);
-				printf("\n2*******%s\n",(char*)archivoSwap);
 				break;
-		}
 
+		case 3:																//eliminar ansisop
+				eliminarProceso(PID);
+				verMarcos();
+		}
 	}
 	free(datosSwap);
 	printf("Cayó la Umc, swap autodestruida!\n");
@@ -165,18 +177,16 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 		}
 	}
 }
-char* crearArchivoSwap(){
-	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=1 bs=400",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
+void* crearArchivoSwap(){
+	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
-//	char* nombreArchivo=string_new();
-//	string_append(&nombreArchivo,datosSwap->nombre_swap);
 	int fd_archivo=open(datosSwap->nombre_swap,O_RDWR);
-	if (fd_archivo!=-1) {
-	void* archivo=(void*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_SHARED,(int)fd_archivo,0);
-	if (archivo!=MAP_FAILED){
-		return archivo;}
-		}
-	return "Fuiste";
+	archivoSwap=(void*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_PRIVATE,(int)fd_archivo,0);
+	char* archivoBitArray=(char*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_PRIVATE,(int)fd_archivo,0);
+	bitArray=bitarray_create((char*)archivoBitArray,datosSwap->cantidadPaginas);			//El bitArray usa bits, y el resto usan Bytes
+	if (archivoSwap==MAP_FAILED){
+		return 0;}
+	return 1;
 }
 
 
@@ -228,13 +238,16 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 		}
 	}
 	if (contador<cantPaginas){
-		compactar();
+		compactar();							//todo agregar semaforo
 		compactado=0;
 	}else{compactado=1;}
 	}while(!compactado);
+
 	for(i=pos;i<pos+contador;i++){
 		bitarray_set_bit(bitArray,i);
+		//printf("Pos %d - Ocupado: %d\n",i,bitarray_test_bit(bitArray,i));
 	}
+	//printf("----\n");
 	return pos;
 }
 
@@ -270,8 +283,35 @@ void* buscar(int pid, int pag){
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
 	int pos=datosProceso->inicio+(datosSwap->tamPagina*pag);
 	memcpy(pagina,archivoSwap+pos,datosSwap->tamPagina);
-	printf("PAG %d - Datos:  %s-\n",pos,(char*)pagina);
+	memcpy(pagina+datosSwap->tamPagina,"\0",1);
+	printf("PAG %d - Datos:  %s-\n",pos/datosSwap->tamPagina,(char*)pagina);
 	return pagina;
+}
+
+int eliminarProceso(int pid){
+	int entradaDelProceso(traductor_marco* entrada){
+		return (entrada->proceso==pid);
+	}
+	void eliminarEntrada(traductor_marco* entrada){
+		free(entrada);
+	}
+	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)entradaDelProceso);
+	int posicion=datosProceso->inicio/datosSwap->tamPagina;
+	int i;
+	for(i=0;i<datosProceso->paginas;i++){
+		bitarray_clean_bit(bitArray,posicion);
+		posicion++;
+	}
+	free(datosProceso);
+	list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)eliminarEntrada);
+	return 1;
+}
+void verMarcos(){
+	int i;
+	printf("Estado de los marcos: \n");
+	for(i=0;i<datosSwap->cantidadPaginas;i++){
+		printf("Pos %d | Ocupado:%d\n",i,bitarray_test_bit(bitArray,i));
+	}
 }
 
 

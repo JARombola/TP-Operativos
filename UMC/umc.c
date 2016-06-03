@@ -30,7 +30,7 @@ int aceptarNucleo(int,struct sockaddr_in);
 //COMPLETAR...........................................................
 void* enviarBytes(int proceso,int pagina,int offset,int size);
 int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
-void finalizarPrograma(int);
+int finalizarPrograma(int);
 void consola();
 void atenderNucleo(int);
 void atenderCpu(int);
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
 
 	//-------------------------------------------------------------------Funcionamiento de la UMC
 
-	pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nucleo);				//Hilo para atender al nucleo
+	pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nucleo);						//Hilo para atender al nucleo
 	pthread_create(&thread, &attr, (void*) consola, NULL);										//Hilo para atender comandos
 	listen(umc_servidor, 100);																	//Para recibir conexiones (CPU's)
 	int cpuRespuesta=htonl(1);
@@ -237,7 +237,7 @@ void* enviarBytes(int proceso,int pagina,int offset,int size){
 		memcpy(mje,memoria+posicion+offset,size);
 		return mje;
 	}
-	return 0;				//No existe la pag
+	return "-1";				//No existe la pag
 }
 
 
@@ -245,9 +245,13 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 	int buscarMarco(traductor_marco* fila){
 			return (fila->proceso==proceso && fila->pagina==pagina);}
 	void modificada(traductor_marco* fila){
-		if(buscarMarco(fila)){fila->modificada=1;}}
+		if(buscarMarco(fila)){fila->modificada=1;}
+	}
 
 	int posicion=buscar(proceso,pagina);
+	if(posicion==-1){								//no existe la pagina
+		return -1;
+	}
 	posicion+=offset;
 	memcpy(memoria+posicion,&buffer,size);
 	list_iterate(tabla_de_paginas,(void*)modificada);
@@ -255,10 +259,6 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 	return posicion;
 }
 
-
-void finalizarPrograma(int PID){
-
-}
 //--------------------------------------------HILOS------------------------
 void consola(){
 	int procesoBuscar;
@@ -278,8 +278,7 @@ void consola(){
 				int pos=buscar(0,VELOCIDAD);
 				void* mje=malloc(16);
 				memcpy(mje,memoria+pos,15);
-				memcpy(mje+15
-						, "\0",1);
+				memcpy(mje+15, "\0",1);
 				printf("%s\n",mje);//todo
 				free(mje);
 				/*printf("Estructuras de Memoria\n");
@@ -300,13 +299,16 @@ void consola(){
 					printf("TLB Borrada :)\n");
 				} else {
 					if (esIgual(comando, "memoria")) {
+						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
+						finalizarPrograma(0);
+						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);/*
 						printf("Proceso?");
 						scanf("%d",&procesoBuscar);//todo
 						void comandoMemory(traductor_marco* pagina){
 							if(pagina->proceso==procesoBuscar)pagina->modificada=1;
 						}
 						list_iterate(tabla_de_paginas,(void*)comandoMemory);
-						printf("Paginas modificadas (proceso: %d)\n",procesoBuscar);
+						printf("Paginas modificadas (proceso: %d)\n",procesoBuscar);*/
 					}
 				}
 			}
@@ -342,7 +344,9 @@ void atenderCpu(int conexion){
 			case 3:													//3 = Guardar Valor
 				recv(conexion,&buffer,sizeof(int),0);
 				buffer=ntohl(buffer);
-				almacenarBytes(proceso,pagina,offset,size,buffer);				//todo
+				if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
+					send(conexion,"-1",1,0);
+				}
 				break;
 			}
 		} else {
@@ -352,24 +356,32 @@ void atenderCpu(int conexion){
 	registrarTrace(archivoLog, "CPU eliminada");
 }
 
-void atenderNucleo(int conexion){
+
+void atenderNucleo(int nucleo){
 	registrarInfo(archivoLog,"Hilo de Nucleo creado");
 		//[PROTOCOLO]: - siempre recibo PRIMERO el codigo de operacion (1 o 4) inicializar o finalizar
-		int salir=0;
+		int salir=0,guardar,procesoEliminar;
 		while (!salir) {
-			int operacion = atoi(recibirMensaje(conexion,1));
+			int operacion = atoi(recibirMensaje(nucleo,1));
 				if (operacion) {
 					switch (operacion) {
 					case 1:												//inicializar programa
-							if(inicializarPrograma(conexion)){
-								send(conexion,"1",1,0);
-							list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
-					}else{
+							guardar=inicializarPrograma(nucleo);
+							if (guardar){							//1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
+							guardar=htonl(guardar);
+							send(nucleo,&guardar,sizeof(int),0);
+					}else{												//no lo aceptó la swap (adios ansisop)
+							guardar=htonl(guardar);
 							registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");
-							send(conexion, "0",1,0);}
+							send(nucleo, &guardar,sizeof(int),0);}
 						break;
 
-					case 4:
+					case 4:												//Finalizar programa
+							recv(nucleo,&procesoEliminar,sizeof(int),0);
+							procesoEliminar=ntohl(procesoEliminar);
+							if(finalizarPrograma(procesoEliminar)){
+								printf("Proceso %d eliminado\n",procesoEliminar);
+							}
 						break;
 					}
 				}else{salir=1;}
@@ -377,17 +389,14 @@ void atenderNucleo(int conexion){
 		registrarWarning(archivoLog,"Se desconectó el Nucleo");
 }
 
-//--------------------------------FUNCIONES PARA EL NUCLEO----------------------------------
-
 
 void mostrarTablaPag(traductor_marco* fila) {
-	printf("Marco: %d, Pag: %d, Proc:%d\n", fila->marco, fila->pagina,fila->proceso);
+	printf("Marco: %d, Pag: %d, Proc:%d", fila->marco, fila->pagina,fila->proceso);
 	char* asd = malloc(datosMemoria->marco_size + 1);
 	memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
 	memcpy(asd + datosMemoria->marco_size , "\0", 1);
-	printf("%s\n", asd);
+	printf("-[%s]\n", asd);
 }
-
 
 
 
@@ -399,7 +408,6 @@ int inicializarPrograma(int conexion) {
 	char* codigo = recibirMensaje(conexion, espacio_del_codigo);			//CODIGO
 	//printf("Codigo: %s-\n",codigo);
 	int i;
-	void* asd=(void*)malloc(datosMemoria->marco_size);
 	for (i = 0; i < paginasNecesarias; i++) {//Entradas en la tabla, SIN marcos
 		  actualizarTabla(i, PID, -1);
 	//	memcpy(asd,codigo+i*datosMemoria->marco_size,datosMemoria->marco_size);
@@ -413,10 +421,40 @@ int inicializarPrograma(int conexion) {
 	string_append(&programa, header(paginasNecesarias));
 	string_append(&programa, codigo);
 	string_append(&programa, "\0");
-	printf("%s %d\n",programa,string_length(programa));
+	//printf("%s %d\n",programa,string_length(programa));
 	send(conexionSwap, programa, string_length(programa), 0);
 	free(programa);
-	return esperarRespuestaSwap();
+	int aceptadoSwap= esperarRespuestaSwap();
+	if (!aceptadoSwap){
+		return 0;
+	}
+	printf("Ansisop guardado\n");
+	if (hayMarcosLibres()){
+		return 1;
+	}
+	return 2;
+}
+
+int finalizarPrograma(int procesoEliminar){
+		int paginasDelProceso(traductor_marco* entradaTabla){
+			return (entradaTabla->proceso==procesoEliminar);
+		}
+		void eliminarEntrada(traductor_marco* entrada){
+			free(entrada);
+		}
+	void limpiar(traductor_marco* marco){
+		list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)eliminarEntrada);
+	}
+	printf("LISTA antes: %d ",list_size(tabla_de_paginas));
+	list_iterate(tabla_de_paginas,(void*)limpiar);
+	printf(" /Despues %d\n",list_size(tabla_de_paginas));
+	char* mensajeEliminar=string_new();
+	string_append(&mensajeEliminar,"3");
+	string_append(&mensajeEliminar,header(procesoEliminar));
+	string_append(&mensajeEliminar,"\0");
+	send(conexionSwap,mensajeEliminar,string_length(mensajeEliminar),0);
+	free(mensajeEliminar);
+	return 1;
 }
 
 int esperarRespuestaSwap(){

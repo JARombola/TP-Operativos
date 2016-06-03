@@ -33,6 +33,12 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 	FILE* ansisop=fopen(argv[1],"r");
 	if (!ansisop){perror("Archivo");}
 	if(enviarAnsisop(ansisop, nucleo)){printf("Error en el envio del codigo\n");}
+	char respuesta;
+	recv(nucleo,respuesta,1,0);
+	if (!string_itoa(respuesta)){
+		printf("Ansisop rechazado\n Consola finalizada\n");
+		return -1;
+	}
 	printf("Ansisop enviado con éxito\n");
 	while (1){
 //		char *mensaje;

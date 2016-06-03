@@ -107,7 +107,6 @@ int main(int argc, char* argv[]) {
 	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
 	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
 	dispositivosES = crearDiccionarioSEMyES(datosNucleo->io_ids,datosNucleo->io_sleep,1);
-	//printf("%d\n",(int)dictionary_get(globales,"!UnaVar"));	//EJEMPLO DE BUSQUEDA
 
 	//---------------------------------PLANIFICACION PCB-----------------------------------
 
@@ -136,10 +135,8 @@ int main(int argc, char* argv[]) {
 	int conexionUMC = conectar(datosNucleo->puerto_umc, datosNucleo->ip_umc);
 	tamPagina=autentificarUMC(conexionUMC);
 
-
 	if (!tamPagina) {printf("Falló el handshake\n");
 		return -1;}
-
 
 	printf("Aceptados por la umc\n");
 
@@ -154,9 +151,10 @@ int main(int argc, char* argv[]) {
 
 	int socketARevisar;
 
-	//****_____________________________________________________________________________________________________________*
-	//****--------------------------------------------ACA Arranca la Magia---------------------------------------------*
-	//****_____________________________________________________________________________________________________________*
+	//****/////////////////////////////////////////////////////////////////////////////////////////////////////////////*
+	//****-------------------------------------------ACA Arranca la Magia----------------------------------------------*
+	//****/////////////////////////////////////////////////////////////////////////////////////////////////////////////*
+
 	while (1) {
 
 		FD_ZERO(&descriptores);
@@ -193,11 +191,10 @@ int main(int argc, char* argv[]) {
 						}
 					}else{
 					if (FD_ISSET(nucleo_servidor, &descriptores)) { 			//aceptar cliente
-						nuevo_cliente = accept(nucleo_servidor,
-								(void *) &direccionCliente, (void *) &sin_size);
+						nuevo_cliente = accept(nucleo_servidor,(void *) &direccionCliente, (void *) &sin_size);
 						if (nuevo_cliente == -1) {
-							perror("Fallo el accept");
-						}
+							perror("Fallo el accept");}
+
 						printf("Nueva conexion\n");
 						int tamPagParaCpu = htonl(tamPagina);
 						switch (comprobarCliente(nuevo_cliente)) {
@@ -213,14 +210,14 @@ int main(int argc, char* argv[]) {
 							queue_push(colaCPUs,&nuevo_cliente);
 							break;
 
-						case 2:							//CONSOLA, RECIBO EL CODIGO
+						case 2:												//CONSOLA, RECIBO EL CODIGO
 							send(nuevo_cliente, "1", 1, 0);
 							list_add(consolas, (void *) nuevo_cliente);
 							printf("Acepté una nueva consola\n");
 							int tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
-								char* codigo = (char*) recibirMensaje(nuevo_cliente,
-										tamanio);//printf("--Codigo:%s--\n",codigo);
+								char* codigo = (char*) recibirMensaje(nuevo_cliente,tamanio);
+								//printf("--Codigo:%s--\n",codigo);
 								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
 								free(codigo);
 							}
@@ -344,33 +341,37 @@ int comprobarCliente(int nuevoCliente) {
 void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	int paginasNecesarias=calcularPaginas(codigo);
 	char* mensaje = string_new();
-	pcb* pcbNuevo = crearPCB(codigo);
-	pcbNuevo->consola=consola;
-	pcbNuevo->SP = 2; 											//todo numero para probar
-	printf("\n");
 	string_append(&mensaje, "1");
-	string_append(&mensaje, header(pcbNuevo->PID));
-	string_append(&mensaje, header((paginasNecesarias)));
+	string_append(&mensaje, header(ultimoPID));
+	string_append(&mensaje, header(paginasNecesarias+datosNucleo->tamStack));
 	agregarHeader(&codigo);
 	string_append(&mensaje,codigo);
-	//string_append(&mensaje,"\0");
 	//printf("%s\n",codigo);
 	send(conexionUMC, mensaje, string_length(mensaje), 0);
-	free(codigo);
 	free(mensaje);
-	char* resp = malloc(2);
-	recv(conexionUMC, resp, 1, 0);
-	resp[1] = '\0';
-	if (string_equals_ignore_case(resp, "1")) {
-		printf("Código enviado a la UMC\nNuevo PCB en cola de listos!\n");
-		queue_push(colaListos, pcbNuevo);
-		sem_post(&sem_Listos);
-	} else {
+	int aceptado;
+	recv(conexionUMC, &aceptado, sizeof(int), 0);
+	aceptado=ntohl(aceptado);
+	printf("-------------------------ACEPTADO: %d\n",aceptado);
+	if(!aceptado){													//consola rechazada
 		printf("Ansisop rechazado\n");
-		free(pcbNuevo);
-		ultimoPID--;
+		send(consola,"0",1,0);}
+	else{
+			send(consola,"1",1,0);
+			pcb* pcbNuevo = crearPCB(codigo);
+			pcbNuevo->consola=consola;
+			pcbNuevo->SP = 2; 							//todo numero para probar!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if(aceptado==1){
+			printf("Código enviado a la UMC\nNuevo PCB en cola de READY!\n");
+			queue_push(colaListos, pcbNuevo);
+			sem_post(&sem_Listos);}
+	else{
+	printf("Código enviado a la UMC\nNuevo PCB en cola de NEW!\n");
+		/*	queue_push(colaNuevos, pcbNuevo);
+			sem_post(&sem_Nuevos);*/
+		}
 	}
-	free(resp);
+	free(codigo);
 	//list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
 }
 

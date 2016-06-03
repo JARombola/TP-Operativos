@@ -40,6 +40,9 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 
 void actualizarTabla(int pag, int proceso, int marco){
 	traductor_marco* traductorMarco=malloc(sizeof(traductor_marco));
+	void eliminarAnterior(traductor_marco* marco){
+		free(marco);
+	}
 	int existe(traductor_marco* entrada){
 		return (entrada->pagina==pag && entrada->proceso==proceso);
 	}
@@ -74,9 +77,11 @@ void actualizarTabla(int pag, int proceso, int marco){
 int guardarPagina(void* datos,int proceso,int pag){
 	int marco,tamMarco=datosMemoria->marco_size;
 	marco = buscarMarcoLibre(proceso);
-	memcpy(memoria + (marco * tamMarco), datos, tamMarco);//	memcpy(memoria + marco * tamMarco, datos + pag * tamMarco, size);
+	if (marco==-1){								//no hay marcos para darle => hay que eliminar el proceso
+		return -1;
+	}
+	memcpy(memoria + (marco * tamMarco), datos, tamMarco);//
 	actualizarTabla(pag, proceso, marco);
-	registrarInfo(archivoLog,"Ansisop guardado con exito!");
 //	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 //	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
 	return marco;
@@ -98,6 +103,9 @@ int buscarMarcoLibre(int pid) {
 	}
 	int marcoViejo(traductor_marco* marco) {
 		return (vectorMarcos[marco->marco] == 1);
+	}
+	void eliminarEntrada(traductor_marco* marco){
+		free(marco);
 	}
 
 	if (cantMarcos < datosMemoria->marco_x_proc) {												//cantidad de marcos del proceso para ver si reemplazo, o asigno vacios
@@ -161,7 +169,7 @@ int buscarMarcoLibre(int pid) {
 			else {
 				vectorMarcos[pos]--;
 				if (!datosMemoria->algoritmo) {																//Clock comun => saco y pongo al final de la lista
-					list_remove_by_condition(tabla_de_paginas,(void*) marcoPosicion);
+					list_remove_and_destroy_by_condition(tabla_de_paginas,(void*) marcoPosicion,(void*)eliminarEntrada);
 					list_add(tabla_de_paginas, datosMarco);
 				}
 			}
@@ -176,4 +184,13 @@ int marcosAsignados(int pid, int operacion){
 		return (marco->proceso==pid && marco->marco>=0);
 	}
  return (list_count_satisfying(tabla_de_paginas,(void*)marcosDelProceso));
+}
+
+int hayMarcosLibres(){
+	int i;
+	for (i=0;i<datosMemoria->marcos;i++){
+		if (!vectorMarcos[i]){
+			return 1;}
+	}
+	return 0;
 }
