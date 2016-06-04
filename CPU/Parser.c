@@ -2,64 +2,62 @@
 
 t_puntero definirVariable(t_nombre_variable variable) {
 	printf("definir la variable %c\n", variable);
-	Vars var = crearVariable(variable);
-	sumarEnLasVariables(&var);
-	return  &(var);
+	Variable* var = crearVariable(variable);
+	sumarEnLasVariables(var);
+	return  (int)var;
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	printf("Obtener posicion de %c\n", variable);
-	t_list* variables = list_get(pcb.stack,(list_size(pcb.stack))-1);
-	Vars* var;
+	Stack* stack = obtenerStack();
+	t_list* variables = stack->vars;
+	Variable* var;
 	int i;
-	for(i = 0; i< list_size(variables)-1; i++){
-		var = (Vars*) list_get(variables,i);
+	for(i = 0; i< list_size(variables); i++){
+		var = (Variable*) list_get(variables,i);
 		if ( var->id == variable  ){
-			return (var);
+			return (int)&(var->pagina);
 		}
 	}
-	Pagina pagina;
-	pagina.pag = -1;
-	var->pag = pagina;
-	var->id = variable;
-	return (var);
+	return -1;
 }
 
-t_valor_variable dereferenciar(t_puntero var) {
-	Vars* variable =var;
-	int valor;
-	char mensaje[50];
-	if (variable->pag.pag == -1){
-		mensaje[0] = variable->id;
-		mensaje[1] = '\0';
-		enviarMensajeConProtocolo(nucleo, mensaje, CODIGO_DESREFERENCIA_NUCLEO);
-		valor = atoi(esperarRespuesta(nucleo));
-	}else{
-		strcat(mensaje, header(variable->pag.pag));
-		strcat(mensaje, header(variable->pag.off));
-		enviarMensajeConProtocolo(umc,mensaje,CODIGO_DESREFERENCIA_UMC);
-		valor = atoi(esperarRespuesta(umc));
-	}
-	return valor;
+t_valor_variable dereferenciar(t_puntero pagina) {
+	Pagina* pag = (Pagina*) pagina;
+	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
+	return atoi(esperarRespuesta(umc));
 }
 
-void asignar(t_puntero var, t_valor_variable valor) {
-	char mensaje[100];
-	Vars* variable = (Vars*)var;
-	if (variable->pag.pag == -1){
-		mensaje[0] = variable->id;
-		mensaje[1] = '\0';
-		strcat(mensaje,header(valor));
-		enviarMensajeConProtocolo(nucleo, mensaje, CODIGO_ASIGNACION_NUCLEO);
-		return;
-	}
-	strcpy(mensaje, header(pcb.id) );
-	strcat(mensaje, header(variable->pag.pag));
-	strcat(mensaje, header(variable->pag.off));
-	strcat(mensaje,	header(valor));
-	enviarMensajeConProtocolo(umc,mensaje,CODIGO_ASIGNACION_UMC);
+void asignar(t_puntero pagina, t_valor_variable valor) {
+	Pagina* pag = (Pagina*) pagina;
+	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
 }
 
+t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
+	enviarMensajeNucleoConsulta(variable);
+	return atoi(esperarRespuesta(nucleo));
+}
+
+t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
+	enviarMensajeNucleoAsignacion(variable,valor);
+	return atoi(esperarRespuesta(nucleo));
+}
+
+t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
+	return metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+}
+
+void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
+	Stack* stack = malloc(sizeof(Stack));
+	stack->retPos = donde_retornar;
+	stack->vars = list_create();
+	Pagina pag = obtenerPagDisponible();
+	Pagina* pagina = malloc(sizeof(Pagina));
+	pagina = &pag;
+	list_add(stack->vars,pagina);
+	list_add(pcb.stack,stack);
+}
+///hasta ak por ahora
 void imprimir(t_valor_variable valor){
 	printf("Imprimir %d \n", valor);
 	char* mensaje = header(valor);
@@ -80,70 +78,46 @@ void finalizar() {
 	}
 }
 
-void llamadasSinRetorno(char* texto){
-	if ( (strcmp(_string_trim(texto),"begin") == 0) || (strcmp(_string_trim(texto),"begin\n") == 0) ){
-		printf("Inicio de Programa\n");
-		Stack* stack;
-		stack->args = list_create();
-		stack->vars = list_create();
-		list_add(pcb.stack, stack);
-		return;
-	}
-    printf("Llamada a la funcion: %s \n", texto);
-    saltoDeLinea(0,texto);
-}
-
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------
 
-Vars crearVariable(char variable){
-	Vars var;
-	var.id = variable;
-	var.pag = obtenerPagDisponible();
+Variable* crearVariable(char variable){
+	Variable* var = malloc(sizeof(Variable));
+	var->id = variable;
+	var->pagina = obtenerPagDisponible();
 	return var;
 }
 
 Pagina obtenerPagDisponible(){
-	int tamanioStack = list_size(pcb.stack);
-	Stack* stackActual;
-	stackActual = (list_get(pcb.stack, tamanioStack-1));
-
-	int cantidadDeVariables = list_size(stackActual->vars);
-
-	if (cantidadDeVariables == 0){
-		return fromIntegerPagina(pcb.indice_stack);
-	}
-
-	Vars* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
-	int indiceDeVariable = toIntegerPagina(ultimaVariable->pag);
-	indiceDeVariable = indiceDeVariable +4 ;
-
-	return fromIntegerPagina(indiceDeVariable);
-}
-
-Pagina fromIntegerPagina(int int_pagina){
+	Stack* stackActual = obtenerStack();
+	int cantidadDeVariables = list_size(stackActual->vars)-1;
 	Pagina pagina;
-	pagina.pag = int_pagina/TAMANIO_PAGINA;
-	pagina.off = int_pagina - (pagina.pag * TAMANIO_PAGINA);
-	pagina.size = 4;
+	if (cantidadDeVariables == 0){
+		pagina.pag = pcb.paginas_codigo+1;
+		pagina.off = 0;
+	}else{
+		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables);
+		if ((ultimaVariable->pagina.off+ultimaVariable->pagina.tamanio+4)<=TAMANIO_PAGINA){
+			pagina.pag = ultimaVariable->pagina.pag;
+			pagina.off = ultimaVariable->pagina.off+4;
+		}else{
+			pagina.pag = ultimaVariable->pagina.pag+1;
+			pagina.off = 0;
+		}
+	}
+	pagina.tamanio = 4;
 	return pagina;
 }
 
-int toIntegerPagina(Pagina pagina){
-	return ((pagina.pag * TAMANIO_PAGINA)+pagina.off);
-}
-
-void sumarEnLasVariables(Vars* var){
-	int tamanioStack = list_size(pcb.stack);
-	Stack* stackActual;
-	stackActual = (list_get(pcb.stack, tamanioStack-1));
-
+void sumarEnLasVariables(Variable* var){
+	Stack* stackActual = obtenerStack();
 	t_list* variables = stackActual->vars;
 	list_add(variables,var);
 }
-void saltoDeLinea(int cantidad, char* nombre){
-	int a = 4;
-}
 
+Stack* obtenerStack(){
+	int tamanioStack = list_size(pcb.stack)-1;
+	return (list_get(pcb.stack,tamanioStack));
+}
 
 
 

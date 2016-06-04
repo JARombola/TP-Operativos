@@ -44,7 +44,6 @@ void invertir(char* palabra);
 t_intructions* valorInstruccionMeta(char* char_meta, int tamanio);
 u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
 
-
 char* toStringInstruccion(t_intructions instruccion, char separador);
 
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio);
