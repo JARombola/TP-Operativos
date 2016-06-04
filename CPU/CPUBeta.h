@@ -1,3 +1,13 @@
+/*
+ * CPUBeta.h
+ *
+ *  Created on: 4/6/2016
+ *      Author: utnso
+ */
+
+#ifndef CPUBETA_H_
+#define CPUBETA_H_
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,6 +23,15 @@ static const int POSICION_MEMORIA = 0x10;
 int nucleo;
 int umc;
 PCB pcb;
+int PUERTO_NUCLEO= 0;
+char AUTENTIFICACION[100];
+char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionCPU.txt";
+char IP_NUCLEO[50];
+char IP_UMC[50];
+int PUERTO_UMC = 0;
+int quantum = 1;
+
+
 int finalizado;
 int CODIGO_IMPRESION = 0;
 int CODIGO_ASIGNACION_UMC = 0;
@@ -20,8 +39,19 @@ int CODIGO_ASIGNACION_NUCLEO = 0;
 int CODIGO_FINALIZACION = 0;
 int CODIGO_DESREFERENCIA_UMC = 0;
 int CODIGO_DESREFERENCIA_NUCLEO = 0;
+int CODIGO_WAIT = 0;
+int CODIGO_SIGNAL = 0;
 int CODIGO_CONSULTA_UMC = 0;
 int TAMANIO_PAGINA = 1;
+
+
+
+int levantarArchivoDeConfiguracion();
+void conectarseAlNucleo();
+void conectarseALaUMC();
+int procesarPeticion();
+int procesarCodigo();
+char* pedirLinea();
 
 t_puntero definirVariable(t_nombre_variable variable);
 t_puntero obtenerPosicionVariable(t_nombre_variable variable);
@@ -34,12 +64,19 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable);
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor);
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar);
+void wait(t_nombre_semaforo identificador_semaforo);
+void signal(t_nombre_semaforo identificador_semaforo);
 
 Variable* crearVariable(char variable);
 Pagina obtenerPagDisponible();
 void sumarEnLasVariables(Variable* var);
-char* pedirLinea();
 Stack* obtenerStack();
+void enviarMensajeNucleoConsulta(char* variable);
+void enviarMensajeNucleoAsignacion(char* variable, int valor);
+void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);
+void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
+void saltoDeLinea(int cantidad, void* funcion);
+void parsear(char* instruccion);
 
 AnSISOP_funciones functions = {
 		.AnSISOP_definirVariable		= definirVariable,
@@ -56,39 +93,4 @@ AnSISOP_funciones functions = {
 };
 AnSISOP_kernel kernel_functions = {};
 
-void parsear(char* instruccion){
-	analizadorLinea(strdup(instruccion), &functions, &kernel_functions);
-}
-
-int tienePermiso(char* autentificacion){
-	return 1;
-}
-
-void saltoDeLinea(int cantidad, void* funcion){
-	if (cantidad == 0){
-		pcb.pc = metadata_buscar_etiqueta(funcion,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-		return;
-	}
-	pcb.pc++;
-}
-
-void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
-	char* mensaje = malloc(18*sizeof(char));
-	sprintf(mensaje,"2%s%s%s%s",toStringInt(proceso),toStringInt(pag),toStringInt(off),toStringInt(size));
-	send(umc,mensaje,strlen(mensaje),0);
-	free(mensaje);
-}
-
-void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor){
-	char* mensaje = malloc(22*sizeof(char));
-	sprintf(mensaje,"3%s%s%s%s%s",toStringInt(proceso),toStringInt(pag),toStringInt(off),toStringInt(size),toStringInt(valor));
-	send(umc,mensaje,strlen(mensaje),0);
-	free(mensaje);
-}
-
-void enviarMensajeNucleoConsulta(char* variable){
-
-}
-void enviarMensajeNucleoAsignacion(char* variable, int valor){
-
-}
+#endif /* CPUBETA_H_ */
