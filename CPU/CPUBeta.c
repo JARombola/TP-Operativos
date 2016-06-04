@@ -26,30 +26,30 @@ int levantarArchivoDeConfiguracion(){
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
-	buscar(archivoJson,"PURTO_NUCLEO", puertoDelNucleo);
+	buscar(archivoJson,"PUERTO_NUCLEO", puertoDelNucleo);
 	PUERTO_NUCLEO = atoi(puertoDelNucleo);
 	if (PUERTO_NUCLEO == 0){
 		printf("Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"AUTENTIFICACION", AUTENTIFICACION);
-	if (AUTENTIFICACION == NULL){
+	if (AUTENTIFICACION[0] =='\0'){
 		printf("Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"IP_NUCLEO", IP_NUCLEO);
-	if (IP_NUCLEO == NULL){
+	if (IP_NUCLEO[0] == '\0'){
 		printf("Error: No se ha encontrado la IP del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"IP_UMC", IP_UMC);
-	if (IP_NUCLEO == NULL){
-		printf("Error: No se ha encontvoid saltoDeLinea(int cantidad, char* nombre)rado la IP de la UMC en el archivo de Configuracion \n");
+	if (IP_UMC[0] =='\0'){
+		printf("Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
 		return -1;
 	}
 
 	char puertoDeLaUMC[6];
-	buscar(archivoJson,"PURTO_UMC", puertoDeLaUMC);
+	buscar(archivoJson,"PUERTO_UMC", puertoDeLaUMC);
 	PUERTO_UMC = atoi(puertoDeLaUMC);
 	if (PUERTO_UMC == 0){
 		printf("Error: No se ha encontrado el Puerto de la UMC en el archivo de Configuracion \n");
@@ -78,7 +78,7 @@ void conectarseALaUMC(){
 		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
 	}
 	char* tamanioPagina = esperarRespuesta(umc);
-	if (*tamanioPagina == NULL){
+	if (tamanioPagina[0] == '\0'){
 		printf("Error: Se ha perdido la coneccion con la UMC\n");
 		close(umc);
 	}
@@ -101,7 +101,7 @@ int procesarPeticion(){
 			perror("Error: Error de conexion con el nucleo\n");
 		}else{
 			pcb_char = esperarRespuesta(nucleo);
-			if (*pcb_char == NULL){
+			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
 				pcb = fromStringPCB(pcb_char);
@@ -120,7 +120,7 @@ int procesarCodigo(){
 	while ((quantum>0) && (!(finalizado))){
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
-		if (*linea == NULL){
+		if (linea[0] == '\0'){
 			perror("Error: Error de conexion con la UMC \n");
 			return -1;
 		}
@@ -136,11 +136,10 @@ char* pedirLinea(){
 	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
 	int off = TAMANIO_PAGINA - pag;
 	int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
-	int proceso;
-
+	int proceso = pcb.id;
 	enviarMensajeUMCConsulta(pag,off,size,proceso);
 	char* respuesta = esperarRespuesta(umc);
-	if (*respuesta == NULL){
+	if (respuesta[0] == '\0'){
 		printf("Error: No se ha logrado conectarse a la UMC\n");
 	}
 	return respuesta;

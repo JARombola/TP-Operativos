@@ -101,7 +101,8 @@ char* esperarRespuesta(int conexion){
 	header[4]= '\0';
 	uint32_t tamanioPaquete = atoi(header);
 	if (bytes<=0){
-		buffer = NULL;
+		buffer = malloc(2*sizeof(char));
+		buffer[0] = '\0';
 	}else{
 		buffer = malloc(tamanioPaquete);
 		recv(conexion,buffer,tamanioPaquete,0);
