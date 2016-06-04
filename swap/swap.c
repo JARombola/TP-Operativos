@@ -219,6 +219,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		posicion+=proceso->inicio;					//donde arranca el proceso + pag
 		printf("Pagina modificada\n");
 	}
+	//memcpy(donde voy a guardar, que es lo que voy a guardar, tamanio)
 	memcpy(archivoSwap + posicion * datosSwap->tamPagina, datos, size);
 	free(datos);
 	return 1;
@@ -253,7 +254,8 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 
 int compactar(){
 	int pos=0, i,contador=0,compactado=0,inicio=0;
-	int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
+	int j;
+	/*int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
 		return (marco1->inicio<marco2->inicio);
 	}
 	int proximoProceso(traductor_marco* proceso){
@@ -262,10 +264,22 @@ int compactar(){
 		}
 		return 0;
 	}
-	list_sort(tablaPaginas,inicioMenorMayor);
+	list_sort(tablaPaginas,inicioMenorMayor);*/
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
+		// pregunta si la pagina esta vacia, y si esta vacia es 0, entonces lo niega, devuelve 1 y entra al if
 		if (!bitarray_test_bit(bitArray,i)){
-				traductor_marco* procesoAMover=list_find(tablaPaginas,proximoProceso);
+				//traductor_marco* procesoAMover=list_find(tablaPaginas,proximoProceso);
+				// ahora tengo que encontrar una pagina ocupada para ponerla en el lugar de la pagina vacia
+								for (j=i;j<datosSwap->cantidadPaginas;j++){
+									// me fijo si encuentro una pagina ocupada
+									if (bitarray_test_bit(bitArray,j)==1){
+										// seteo el bit array de i a 1 porque ahora esta ocupada
+										bitarray_set_bit(bitArray,i);
+										// limpio el valor del bit de j porque ahora va a estar vacia
+										bitarray_clean_bit(bitArray,j);
+									}
+
+								}
 		}
 	}
 	return 1;
