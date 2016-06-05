@@ -134,15 +134,33 @@ int procesarCodigo(){
 
 char* pedirLinea(){
 	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
-	int off = TAMANIO_PAGINA - pag;
+	int off = pcb.indices.instrucciones_serializado[pcb.pc].start-TAMANIO_PAGINA*pag;
 	int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
+	int size_page = size;
 	int proceso = pcb.id;
-	enviarMensajeUMCConsulta(pag,off,size,proceso);
-	char* respuesta = esperarRespuesta(umc);
-	if (respuesta[0] == '\0'){
-		printf("Error: No se ha logrado conectarse a la UMC\n");
+	char* respuesta;
+	char* respuestaFinal = malloc(sizeof(char));
+	int repeticiones = 0;
+	while(size >0){
+		if (size > TAMANIO_PAGINA-off){
+			size_page = TAMANIO_PAGINA-off;
+		}else{
+			size_page = size;
+		}
+		enviarMensajeUMCConsulta(pag,off,size_page,proceso);
+		respuesta = esperarRespuesta(umc);
+		respuestaFinal = realloc(respuestaFinal,(strlen(respuesta)+ strlen(respuestaFinal)+1)*sizeof(char));
+		repeticiones++;
+		pag++;
+		size = size - size_page;
+		off = 0;
+		if (respuesta[0] == '\0'){
+			printf("Error: No se ha logrado conectarse a la UMC\n");
+			break;
+		}
 	}
-	return respuesta;
+
+	return respuestaFinal;
 }
 
 
