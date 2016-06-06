@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "Funciones/Comunicacion.h"
+#include "Funciones/json.h"
 
 
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra) 	//MACRO
@@ -34,20 +35,8 @@ typedef struct {
 	int tamStack;
 } datosConfiguracion;
 
-typedef struct {
-	int PID;
-	int PC;
-	int SP;
-	t_intructions* indiceCodigo;
-	char* etiquetas;
-	t_size cantEtiquetas;
-	int consola;
-	int cantInstrucciones;
-	int indiceStack;
-} pcb;
-
 typedef struct{
-	pcb* pcb;
+	PCB* pcb;
 	int ut;
 }pcbParaES;
 
@@ -65,7 +54,7 @@ int leerConfiguracion(char*, datosConfiguracion**);
 t_dictionary* crearDiccionarioGlobales(char** keys);
 t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO);
 int comprobarCliente(int);
-pcb* crearPCB(char*);
+PCB* crearPCB(char*);
 int calcularPaginas(char*);
 void mostrar(int*);
 void enviarAnsisopAUMC(int, char*,int);
@@ -78,12 +67,12 @@ void atenderOperacion(int op,int cpu);
 void procesar_operacion_privilegiada(int operacion, int cpu);
 int ese_PCB_hay_que_eliminarlo(int consola);
 int revisarActividad(t_list*, fd_set*);
+char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep);
 
 
-int ultimoPID=0,tamPagina=0;
 datosConfiguracion* datosNucleo;
 t_dictionary *globales,*semaforos,*dispositivosES;
-int *dispositivosSleeps, *globalesValores;
+int tamPagina=0,*dispositivosSleeps, *globalesValores;
 sem_t *semaforosES,*semaforosGlobales;
 t_queue **colasES,**colasSEM;
 
@@ -120,8 +109,8 @@ int main(int argc, char* argv[]) {
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
 
 	//-----------------------------------pcb para probar bloqueo de E/S
-	pcb*pcbprueba=malloc(sizeof(pcb));
-	pcbprueba->PID=5;
+	PCB*pcbprueba=malloc(sizeof(PCB));
+	pcbprueba->id=5;
 	pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
 	pcbParaBloquear->pcb = pcbprueba;
 	pcbParaBloquear->ut = 6;
@@ -190,39 +179,40 @@ int main(int argc, char* argv[]) {
 							return 0;
 						}
 					}else{
-					if (FD_ISSET(nucleo_servidor, &descriptores)) { 			//aceptar cliente
-						nuevo_cliente = accept(nucleo_servidor,(void *) &direccionCliente, (void *) &sin_size);
+						if (FD_ISSET(nucleo_servidor, &descriptores)) { 			//aceptar cliente
+						nuevo_cliente = accept(nucleo_servidor,
+								(void *) &direccionCliente, (void *) &sin_size);
 						if (nuevo_cliente == -1) {
-							perror("Fallo el accept");}
-
+							perror("Fallo el accept");
+						}
 						printf("Nueva conexion\n");
 						int tamPagParaCpu = htonl(tamPagina);
 						switch (comprobarCliente(nuevo_cliente)) {
 
-						case 0:											//ERROR!!
+						case 0:										//ERROR!!
 							perror("Falló el handshake\n");
 							close(nuevo_cliente);
 							break;
 
-						case 1:												//CPU
+						case 1:											//CPU
 							send(nuevo_cliente, &tamPagParaCpu, 4, 0);
 							printf("Acepté un nuevo cpu\n");
-							queue_push(colaCPUs,&nuevo_cliente);
+							queue_push(colaCPUs, &nuevo_cliente);
 							break;
 
-						case 2:												//CONSOLA, RECIBO EL CODIGO
+						case 2:						//CONSOLA, RECIBO EL CODIGO
 							send(nuevo_cliente, "1", 1, 0);
 							list_add(consolas, (void *) nuevo_cliente);
 							printf("Acepté una nueva consola\n");
 							int tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
-								char* codigo = (char*) recibirMensaje(nuevo_cliente,tamanio);
-								//printf("--Codigo:%s--\n",codigo);
-								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
+								char* codigo = (char*) recibirMensaje(
+										nuevo_cliente, tamanio);//printf("--Codigo:%s--\n",codigo);
+								enviarAnsisopAUMC(conexionUMC, codigo,
+										nuevo_cliente);
 								free(codigo);
 							}
 							break;
-
 						}
 					}
 				}
@@ -342,7 +332,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	int paginasNecesarias=calcularPaginas(codigo);
 	char* mensaje = string_new();
 	string_append(&mensaje, "1");
-	string_append(&mensaje, header(ultimoPID));
+	string_append(&mensaje, header(consola));
 	string_append(&mensaje, header(paginasNecesarias+datosNucleo->tamStack));
 	agregarHeader(&codigo);
 	string_append(&mensaje,codigo);
@@ -358,9 +348,8 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 		send(consola,"0",1,0);}
 	else{
 			send(consola,"1",1,0);
-			pcb* pcbNuevo = crearPCB(codigo);
-			pcbNuevo->consola=consola;
-			pcbNuevo->SP = 2; 							//todo numero para probar!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			PCB* pcbNuevo = crearPCB(codigo);
+			pcbNuevo->id=consola;							//Se le asigna al proceso como ID el numero de consola que lo envía.
 	if(aceptado==1){
 			printf("Código enviado a la UMC\nNuevo PCB en cola de READY!\n");
 			queue_push(colaListos, pcbNuevo);
@@ -376,18 +365,22 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 }
 
 
-pcb* crearPCB(char* codigo) {
-	pcb* pcbProceso=(pcb*)malloc(sizeof(pcb));
+PCB* crearPCB(char* codigo) {
+	PCB* pcb=malloc(sizeof(PCB));
 	//printf("***CODIGO:%s\n", codigo);
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
-	pcbProceso->PID=ultimoPID++;
-	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
-	pcbProceso->indiceCodigo=metadata->instrucciones_serializado;
-	pcbProceso->cantEtiquetas=metadata->etiquetas_size;
-	pcbProceso->etiquetas=metadata->etiquetas;
-	pcbProceso->cantInstrucciones=metadata->instrucciones_size;
-	pcbProceso->indiceStack=string_length(codigo)+1;
-	return pcbProceso;
+	pcb->indices = *metadata;
+	pcb->paginas_codigo = calcularPaginas(codigo);
+	pcb->pc = metadata->instruccion_inicio;
+	pcb->stack = list_create();
+//	pcbProceso->PID=ultimoPID++;
+//	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
+//	pcbProceso->indiceCodigo=metadata->instrucciones_serializado;
+//	pcbProceso->cantEtiquetas=metadata->etiquetas_size;
+//	pcbProceso->etiquetas=metadata->etiquetas;
+//	pcbProceso->cantInstrucciones=metadata->instrucciones_size;
+//	pcbProceso->indiceStack=string_length(codigo)+1;
+	return pcb;
 }
 
 int calcularPaginas(char* codigo){
@@ -432,22 +425,23 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 
 void atender_Ejecuciones(){
 	 printf("[HILO EJECUCIONES]: Se creo el hilo para ejecutar programas, esperando..\n");
+	 char* mensajeCPU;
 	 while(1){
 		 sem_wait(&sem_Listos);
 		 printf("[HILO EJECUCIONES]: se activo el semaforo listo y lo frene, voy a ver los cpus disponibles\n");
-		 pcb* pcbListo = malloc(sizeof(pcb));
+		 PCB* pcbListo = malloc(sizeof(PCB));
 		 pcbListo = queue_pop(colaListos);
-		 if(ese_PCB_hay_que_eliminarlo(pcbListo->consola)){
-			 printf("La consola del proceso %d no existe mas, se lo eliminara\n",pcbListo->PID);
+		 if(ese_PCB_hay_que_eliminarlo(pcbListo->id)){
+			 printf("La consola del proceso %d no existe mas, se lo eliminara\n",pcbListo->id);
 			 //todo avisar umc de eliminar este proceso
 		 }else{
 		 int paso=1;
 		 	 while(paso){
 		 		 if(!queue_is_empty(colaCPUs)){
-					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->PID);
+					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					int cpu = queue_pop(colaCPUs); //saco el socket de ese cpu disponible
-			 	 	//todo serializar pcbListo (agregar quantum y quantum_sleep)
-					//send(cpu, pcbSerializado, tamanioSerializado, 0);
+					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);
+					send(cpu, mensajeCPU, string_length(mensajeCPU), 0);
 					paso=0;
 				}
 		 	 }
@@ -461,10 +455,10 @@ void atender_Ejecuciones(){
 	 while(1){
 	 	 sem_wait(&semaforosES[posicion]);
 	 	 pcbParaES* pcbBloqueando = queue_pop(colasES[posicion]);
-	 	 printf("[HILO DE E/S nro %d]: saque el pcb nro %d y va a esperar %d ut\n", posicion, pcbBloqueando->pcb->PID,pcbBloqueando->ut);
+	 	 printf("[HILO DE E/S nro %d]: saque el pcb nro %d y va a esperar %d ut\n", posicion, pcbBloqueando->pcb->id,pcbBloqueando->ut);
 	 	 usleep(miSLEEP*pcbBloqueando->ut);
 		 queue_push(colaListos, pcbBloqueando->pcb);
-		 printf("[HILO DE E/S nro %d]: el pcb %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->PID);
+		 printf("[HILO DE E/S nro %d]: el pcb %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->id);
 		 sem_post(&sem_Listos);
 	 }
  }
@@ -473,10 +467,10 @@ void atender_Ejecuciones(){
 	 while(1){
 		 sem_wait(&semaforosGlobales[posicion]);
 		 if(!queue_is_empty(colaCPUs)){
-			 pcb* pcbBloqueando = queue_pop(colasSEM[posicion]);
+			 PCB* pcbBloqueando = queue_pop(colasSEM[posicion]);
 		 	 queue_push(colaListos, pcbBloqueando);
 		 	 sem_post(&sem_Listos);
-		 	 printf("[HILO DE SEMAFORO nro %d]: el proceso %d paso de Bloqueado a Listo\n",posicion, pcbBloqueando->PID);
+		 	 printf("[HILO DE SEMAFORO nro %d]: el proceso %d paso de Bloqueado a Listo\n",posicion, pcbBloqueando->id);
 		 }else{
 			 printf("[HILO DE SEMAFORO nro %d]: no hay ningun pcb para desbloquear\n",posicion);
 		 }
@@ -486,7 +480,7 @@ void atender_Ejecuciones(){
  void atender_Terminados(){
 	 while(1){
 		 sem_wait(&sem_Terminado);
-	 	 pcb* pcbTerminado = (pcb*) malloc(sizeof(pcb));
+	 	 PCB* pcbTerminado = malloc(sizeof(PCB));
 	 	 pcbTerminado = queue_pop(colaTerminados);
 	 	 //todo avisar umc y consola que termino el programa
 	 	 free(pcbTerminado);
@@ -497,13 +491,13 @@ void atender_Ejecuciones(){
 void atenderOperacion(int op,int cpu){
 		int tamanio, consola, operacion;
 		char* texto;
-		pcb*pcbDesSerializado; //lo pongo aca para tenerlo de prueba
+		PCB* pcbDesSerializado; //lo pongo aca para tenerlo de prueba
 	switch (op){
 	case 1:
 		//termino bien el quantum, no necesita nada
 		//pcb*pcb = desSerializar();
 		printf("el cpu termino su quantum, no necesita nada\n");
- 		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->PID);
+ 		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
 		queue_push(colaCPUs, &cpu);
 		queue_push(colaListos, pcbDesSerializado);
 		sem_post(&sem_Listos);
@@ -516,7 +510,7 @@ void atenderOperacion(int op,int cpu){
 	case 3:
 		//termino el ansisop, va a listos
 		//pcb*pcb = desserializar();
-		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->PID);
+		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->id);
 		queue_push(colaCPUs, &cpu);
 		queue_push(colaTerminados, pcbDesSerializado);
 		sem_post(&sem_Terminado);
@@ -536,7 +530,7 @@ void atenderOperacion(int op,int cpu){
 void procesar_operacion_privilegiada(int operacion, int cpu){
 	int tamanioNombre, posicion, unidadestiempo,valor;
 	char *identificador;
-	pcb*pcbDesSerializado; //lo pongo aca para tenerlo de prueba
+	PCB* pcbDesSerializado; //lo pongo aca para tenerlo de prueba
 
 	switch (operacion){
 	case 0:
@@ -596,7 +590,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		unidadestiempo = recibirProtocolo(cpu);
 		posicion = (int)dictionary_get(dispositivosES,identificador);
 		//pcb*pcb = desserializar();
-		pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
+		pcbParaES *pcbParaBloquear=malloc(sizeof(pcbParaES));
 		pcbParaBloquear->pcb = pcbDesSerializado;
 		pcbParaBloquear->ut = unidadestiempo;
 		queue_push(colasES[posicion], pcbParaBloquear);
@@ -617,4 +611,19 @@ int ese_PCB_hay_que_eliminarlo(int consola){
 		list_remove_by_condition(listConsolasParaEliminarPCB,(void*)buscarIgual);
 		return 1;
 	}return 0;
+}
+
+char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
+	char* mensaje;
+	char* quantum_char = toStringInt(quantum);
+	char* quantum_sleep_char = toStringInt(quantum_sleep);
+	char* pcb_char = toStringPCB(*pcbListo);
+	mensaje = malloc((strlen(pcb_char)+10)*sizeof(char));
+	sprintf(mensaje,"%s%s%s",quantum_char,quantum_sleep_char,pcb_char);
+	free(quantum_char);
+	free(quantum_char);
+	free(pcb_char);
+
+	return mensaje;
+
 }

@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
 	pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nucleo);						//Hilo para atender al nucleo
 	pthread_create(&thread, &attr, (void*) consola, NULL);										//Hilo para atender comandos
 	listen(umc_servidor, 100);																	//Para recibir conexiones (CPU's)
-	int cpuRespuesta=htonl(1);
+	int cpuRespuesta=htonl(datosMemoria->marco_size);
 
 	while (1) {
 		nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
@@ -382,7 +382,7 @@ void atenderNucleo(int nucleo){
 							recv(nucleo,&procesoEliminar,sizeof(int),0);
 							procesoEliminar=ntohl(procesoEliminar);
 							if(finalizarPrograma(procesoEliminar)){
-								printf("Proceso %d eliminado\n",procesoEliminar);
+							printf("Proceso %d eliminado\n",procesoEliminar);
 							}
 						break;
 					}
