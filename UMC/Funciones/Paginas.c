@@ -88,7 +88,7 @@ int guardarPagina(void* datos,int proceso,int pag){
 }
 
 int buscarMarcoLibre(int pid) {
-	int pos = 0, cantMarcos = marcosAsignados(pid, 1);
+	int pos = 0, cantMarcos = marcosAsignados(pid, 1),a=0;
 	int menorMayor(traductor_marco* marco1, traductor_marco* marco2){
 		return marco1->marco<marco2->marco;
 	}
@@ -98,47 +98,44 @@ int buscarMarcoLibre(int pid) {
 	int marcoPosicion(traductor_marco* marco) {													//porque la pos que ocupa y el marco no son el mismo, necesito el marco con esa posicion
 		return (marco->marco == pos);
 	}
-	int marcoNuevo(traductor_marco* marco) {
-		return (vectorMarcos[marco->marco] == 2);
-	}
-	int marcoViejo(traductor_marco* marco) {
-		return (vectorMarcos[marco->marco] == 1);
-	}
 	void eliminarEntrada(traductor_marco* marco){
 		free(marco);
+	}
+	int clockDelProceso(unClock* marco){
+		return(marco->proceso==pid);
 	}
 
 	if (cantMarcos < datosMemoria->marco_x_proc) {												//cantidad de marcos del proceso para ver si reemplazo, o asigno vacios
 		for (pos = 0; pos < datosMemoria->marcos; pos++) {											//Se fija si hay marcos vacios
 			if (!vectorMarcos[pos]) {
+				if (!cantMarcos){										//Para el clock mejorado, registro el clock del proceso
+					unClock* clockProceso=malloc(sizeof(unClock));
+					clockProceso->clock=pos;
+					clockProceso->proceso=pid;
+					list_add(tablaClocks,clockProceso);}
 				vectorMarcos[pos] = 2;
 				return pos;
 			}
 		}
 	}
-	if (cantMarcos) {																			//Si tiene marcos => hay que reemplazarle uno, SINO no hay espacio
-		traductor_marco* datosMarco = malloc(sizeof(traductor_marco));
-		t_list* listaFiltrada = list_filter(tabla_de_paginas,
-				(void*) marcoDelProceso);														//Filtro los marcos de ESE proceso
+	if (cantMarcos) {		//Si tiene marcos => hay que reemplazarle uno, SINO no hay espacio
 
 		int i = 0,primeraVuelta=0,modificada=0;
+		unClock* marcoClock =(unClock*)malloc(sizeof(unClock));
+		marcoClock=(unClock*)list_find(tablaClocks,(void*)clockDelProceso);
+		pos=marcoClock->clock;
+		traductor_marco* datosMarco = malloc(sizeof(traductor_marco));
+		t_list* listaFiltrada = list_filter(tabla_de_paginas,(void*) marcoDelProceso);														//Filtro los marcos de ESE proceso
+
 		if (datosMemoria->algoritmo) {
-			primeraVuelta=1;
-			list_sort(listaFiltrada,(void*)menorMayor);				//CLOCK MEJORADO
-			if (list_all_satisfy(listaFiltrada, (void*) marcoNuevo)) {								//Si son todas pags nuevas arranco x la primera (FIFO)
-				i = 0;
-			} else {
-				int encontrado=0;
-				datosMarco = list_find(listaFiltrada, (void*) marcoViejo);							//Sino, busco el primero disponible para sacar
-				pos = datosMarco->marco;
-				for (i = 0; !encontrado; i++) {
-					datosMarco = list_get(listaFiltrada, i);
-					if (datosMarco->marco == pos) {
-						encontrado = 1;
-						i--;
-					}
-				}
-			}
+			primeraVuelta=1;}
+		list_sort(listaFiltrada,(void*)menorMayor);				//CLOCK MEJORADO
+		int encontrado=0;
+		for (i = 0; !encontrado; i++) {
+			datosMarco = list_get(listaFiltrada, i);
+			if (datosMarco->marco == pos) {
+				encontrado = 1;
+				i--;}
 		}
 		int cont=0;
 		do {traductor_marco* datosMarco = malloc(sizeof(traductor_marco));
@@ -167,8 +164,20 @@ int buscarMarcoLibre(int pid) {
 				}
 				vectorMarcos[pos] = 2;
 				printf("Marco eliminado: %d\n", pos);
+				i++;
+				if (i >= list_size(listaFiltrada)) {													//Para que pegue la vuelta
+					i = 0;
+				}
+				datosMarco=list_get(listaFiltrada,i);						//Dejo el puntero apuntando al proximo marco
+				marcoClock->clock=datosMarco->marco;
+				list_remove_by_condition(tablaClocks,(void*)clockDelProceso);
+				list_add(tablaClocks,marcoClock);
+				a=datosMarco->marco;
 				datosMarco = list_find(tabla_de_paginas, (void*) marcoPosicion);
 				actualizarTabla(datosMarco->pagina,pid,-1);
+
+			//	datosMarco=list_find(listaFiltrada,(void*)marcoDelProceso);
+
 		/*		datosMarco->marco = -1;
 				list_replace(tabla_de_paginas, (int) marcoPosicion, datosMarco);*/
 				list_clean(listaFiltrada);

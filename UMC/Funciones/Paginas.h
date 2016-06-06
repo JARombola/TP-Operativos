@@ -23,6 +23,11 @@ typedef struct{
 	int puerto_umc, puerto_swap, marcos, marco_size, marco_x_proc, entradas_tlb, retardo, algoritmo;
 }datosConfiguracion;
 
+typedef struct{
+	int proceso, clock;
+}unClock;
+
+extern t_list* tablaClocks;
 extern t_list* tabla_de_paginas;
 extern datosConfiguracion* datosMemoria;
 extern int conexionSwap;

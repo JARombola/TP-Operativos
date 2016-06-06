@@ -41,7 +41,7 @@ int esperarRespuestaSwap();
 //COMANDOS--------------
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
-t_list *tabla_de_paginas;
+t_list *tabla_de_paginas, *tablaClocks;
 int totalPaginas,conexionSwap, *vectorMarcos;
 void* memoria;
 datosConfiguracion* datosMemoria;
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 	////////////////////////////////////////////////
-	datosMemoria->algoritmo=0;														//todo CAMBIAR ALGORITMO
+	datosMemoria->algoritmo=1;														//todo CAMBIAR ALGORITMO
 	///////////////////////////////////////////////////
 	vectorMarcos=(int*) malloc(datosMemoria->marcos*sizeof(int*));
 	memoria = (void*) malloc(marcosTotal);
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
 	for (j=0;j<datosMemoria->marcos;j++){
 		vectorMarcos[j]=0;															//Para la busqueda de marcos (como un bitMap)
 	}
-
+	tablaClocks=list_create();
 	//void* a=(void*) malloc(10);
 	/*char* p=malloc(5);
 	memcpy(p,"hola",4);
@@ -277,10 +277,10 @@ void consola(){
 		} else {
 			if (esIgual(comando, "dump")) {
 				scanf("%d",&VELOCIDAD);
-				int pos=buscar(0,VELOCIDAD);
-				void* mje=malloc(16);
-				memcpy(mje,memoria+pos,15);
-				memcpy(mje+15, "\0",1);
+				int pos=buscar(5,VELOCIDAD);
+				void* mje=malloc(datosMemoria->marco_size+1);
+				memcpy(mje,memoria+pos,datosMemoria->marco_size);
+				memcpy(mje+datosMemoria->marco_size, "\0",1);
 				printf("%s\n",mje);//todo
 				free(mje);
 				/*printf("Estructuras de Memoria\n");
