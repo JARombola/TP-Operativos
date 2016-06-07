@@ -187,13 +187,12 @@ int main(int argc, char* argv[]) {
 						}
 					}else{
 						if (FD_ISSET(nucleo_servidor, &descriptores)) { 			//aceptar cliente
-						nuevo_cliente = accept(nucleo_servidor,
-								(void *) &direccionCliente, (void *) &sin_size);
+						nuevo_cliente = accept(nucleo_servidor,(void *) &direccionCliente, (void *) &sin_size);
 						if (nuevo_cliente == -1) {
 							perror("Fallo el accept");
 						}
 						printf("Nueva conexion\n");
-						int tamPagParaCpu = htonl(tamPagina);
+						int mjeCpu=htonl(1);
 						switch (comprobarCliente(nuevo_cliente)) {
 
 						case 0:										//ERROR!!
@@ -202,7 +201,7 @@ int main(int argc, char* argv[]) {
 							break;
 
 						case 1:											//CPU
-							send(nuevo_cliente, &tamPagParaCpu, 4, 0);
+							send(nuevo_cliente, &mjeCpu, 4, 0);
 							printf("Acepté un nuevo cpu\n");
 							queue_push(colaCPUs, &nuevo_cliente);
 							list_add(cpus, (void *) nuevo_cliente);

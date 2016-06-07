@@ -1,19 +1,15 @@
 #include "sockets.h"
 
-int conectar(int puerto,char* ip, char* autor){
+int conectar(int puerto,char* ip){
 
 	struct sockaddr_in direccServ;
 	direccServ.sin_family = AF_INET;
-	direccServ.sin_addr.s_addr = INADDR_ANY;
+	direccServ.sin_addr.s_addr = inet_addr(ip);
 	direccServ.sin_port = htons(puerto);
 
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
 
 	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
-
-	if (autentificar(conexion,autor)){
-		return -1;
-	}
 
 	return conexion;
 }
@@ -35,24 +31,20 @@ void enviarMensajeConProtocolo(int conexion, char* mensaje, int protocolo){
 }
 
 int autentificar(int conexion, char* autor){
-	enviarMensaje(conexion,autor);;
-	if (esperarConfirmacion(conexion)){
-		return 1;
-	}
-	return 0;
+	send(conexion,autor,strlen(autor),0);
+	return (esperarConfirmacion(conexion));
 }
 
 int esperarConfirmacion(int conexion){
 
-	char* bufferHandshake = malloc(sizeof(int));
-	int bytesRecibidos = recv(conexion, bufferHandshake, 2, 0);
+	int bufferHandshake;
+	int bytesRecibidos = recv(conexion, &bufferHandshake, 4 , 0);
 
 	if (bytesRecibidos <= 0) {
-		printf("Rechazado\n");
-		return 1;
+		return 0;
 	}
-	printf("Aceptado\n");
-	return 0;
+	bufferHandshake=ntohl(bufferHandshake);
+	return bufferHandshake;
 }
 
 int crearServidor(int puerto){

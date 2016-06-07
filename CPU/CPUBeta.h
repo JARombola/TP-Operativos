@@ -88,7 +88,7 @@ AnSISOP_funciones functions = {
 		.AnSISOP_finalizar				= finalizar,
 		.AnSISOP_obtenerValorCompartida = obtenerValorCompartida,
 		.AnSISOP_asignarValorCompartida = asignarValorCompartida,
-		.AnSISOP_irAlLabel 				= irAlLabel,
+		//.AnSISOP_irAlLabel 				= irAlLabel,
 		.AnSISOP_llamarConRetorno		= llamarConRetorno,
 };
 AnSISOP_kernel kernel_functions = {};
