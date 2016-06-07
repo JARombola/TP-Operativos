@@ -121,7 +121,7 @@ char* header(int numero){
 
 int recibirProtocolo(int conexion){
 	char protocolo[5];
-	int bytes= recv(conexion, &protocolo,4,0);
+	int bytes= recv(conexion, protocolo,4,0);
 	protocolo[4] = '\0';
 	return atoi(protocolo);
 }

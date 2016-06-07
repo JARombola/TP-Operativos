@@ -10,7 +10,6 @@ int main(){
 
 	conectarseALaUMC();
 	if (umc < 0) return -1;
-
 	if (procesarPeticion()<0) return -1;
 
 	printf("Cerrando CPU.. \n");
@@ -19,7 +18,7 @@ int main(){
 }
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen(ARCHIVO_DE_CONFIGURACION,"r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;

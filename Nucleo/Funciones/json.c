@@ -85,25 +85,26 @@ void buscar(char* archivo, char* key, char*value){
 
 
 char* toStringInstruccion(t_intructions instruccion,char separador){
-	char* char_instruccion =  malloc(10*sizeof(char));
+	char* char_instruccion =  string_new();
 	char barra[2];
 	barra[0] = separador;
 	barra[1] = '\0';
-	strcpy(char_instruccion, barra);
+	string_append(&char_instruccion, barra);
 	char num[10];
 	sprintf(num,"%d!", instruccion.start);
-	strcat(char_instruccion,num);
+	string_append(&char_instruccion,num);
 	sprintf(num,"%d!", instruccion.offset);
-	strcat(char_instruccion,num);
+	string_append(&char_instruccion,num);
 	return char_instruccion;
 }
 
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
-	char* char_instrucciones= malloc(10*tamanio*sizeof(char)) ;
+	char* char_instrucciones=string_new();
 	int i;
 	for (i = 0 ; i< tamanio; i++){
-		strcat(char_instrucciones, toStringInt(instrucciones->offset));
-		strcat(char_instrucciones, toStringInt(instrucciones->start));
+		string_append(&char_instrucciones, toStringInt(instrucciones->offset));
+		string_append(&char_instrucciones, toStringInt(instrucciones->start));
+		instrucciones++;
 	}
 	return char_instrucciones;
 }
@@ -119,19 +120,17 @@ t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio)
 }
 
 char* toStringMetadata(t_metadata_program meta, char separador){
-	char* char_meta;
-	if (meta.etiquetas == NULL){
-		char_meta = malloc(((meta.instrucciones_size*10)+30) *sizeof(char));
-	}else{
-		char_meta = malloc((meta.instrucciones_size*10)+30+(strlen(meta.etiquetas)) *sizeof(char));
-	}
+	char* char_meta=string_new();
 	strcpy(char_meta,toStringInt(meta.instruccion_inicio));
 	strcat(char_meta,toStringInt(meta.instrucciones_size));
 	strcat(char_meta,toStringInt(meta.etiquetas_size));
 	strcat(char_meta,toStringInt(meta.cantidad_de_funciones));
 	strcat(char_meta,toStringInt(meta.cantidad_de_etiquetas));
 	if (meta.etiquetas != NULL){
-		strcat(char_meta,meta.etiquetas);
+		char** etiquetas=meta.etiquetas;
+		strcat(char_meta,*etiquetas[0]);
+		strcat(char_meta,*etiquetas[1]);
+		strcat(char_meta,*etiquetas[2]);
 	}
 	if (meta.instrucciones_size!=0){
 		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
@@ -296,7 +295,7 @@ t_list* fromStringList(char* char_list, char simbol){
 	return lista;
 }
 char* toStringPCB(PCB pcb){
-	char* char_pcb;
+	char* char_pcb=string_new();
 	char* char_id;
 	char_id = toStringInt(pcb.id);
 	char *char_metadata;
@@ -307,13 +306,12 @@ char* toStringPCB(PCB pcb){
 	char_pc = toStringInt(pcb.pc);
 	char* char_stack;
 	char_stack = toStringListStack(pcb.stack);
-	char_pcb = malloc((5+strlen(char_metadata)+5+5+strlen(char_stack)+10)*sizeof(char));
-	strcpy(char_pcb,char_id);
-	strcat(char_pcb, toStringInt(strlen(char_metadata)));
-	strcat(char_pcb,char_metadata);
-	strcat(char_pcb, char_paginas_codigo);
-	strcat(char_pcb, char_pc);
-	strcat(char_pcb,char_stack);
+	string_append(&char_pcb,char_id);
+	string_append(&char_pcb, toStringInt(strlen(char_metadata)));
+	string_append(&char_pcb,char_metadata);
+	string_append(&char_pcb, char_paginas_codigo);
+	string_append(&char_pcb, char_pc);
+	string_append(&char_pcb,char_stack);
 	free (char_id);
 	free(char_metadata);
 	free(char_pc);
@@ -327,7 +325,7 @@ PCB fromStringPCB(char* char_pcb){
 	pcb.indices = fromStringMetadata(toSubString(char_pcb,8,(8+tamanioMeta-1)),'&');
 	pcb.paginas_codigo = atoi(toSubString(char_pcb,8+tamanioMeta,8+tamanioMeta+3));
 	pcb.pc = atoi(toSubString(char_pcb,8+tamanioMeta+4, 8+ tamanioMeta+4 +3));
-	char * subString = toSubString(char_pcb,tamanioMeta+16,strlen(char_pcb));
+	char *subString = toSubString(char_pcb,tamanioMeta+16,strlen(char_pcb));
 	pcb.stack = fromStringListStack(subString);
 	return pcb;
 }
@@ -430,7 +428,7 @@ Stack* fromStringStack(char* char_stack){
 
 char* toStringListPagina(t_list* lista_page){
 	int i;
-	char* char_lista_page = malloc(sizeof(char));
+	char* char_lista_page = string_new();
 	char_lista_page[0] = '\0';
 	Pagina* page;
 	char barra[2] = "*";
@@ -438,9 +436,8 @@ char* toStringListPagina(t_list* lista_page){
 	for (i=0; i<list_size(lista_page);i++){
 		page = list_get(lista_page,i);
 		char_page = toStringPagina(*page);
-		char_lista_page = realloc(char_lista_page, (strlen(char_lista_page)+ strlen(char_page)+2)*sizeof(char));
-		strcat(char_lista_page,char_page);
-		strcat(char_lista_page,barra);
+		string_append(&char_lista_page,char_page);
+		string_append(&char_lista_page,barra);
 		free(char_page);
 	}
 	return char_lista_page;
@@ -486,7 +483,7 @@ Pagina* fromStringPagina(char* char_page){
 
 char* toStringListVariables(t_list* lista){
 	int i;
-	char* char_lista_var = malloc(sizeof(char));
+	char* char_lista_var = string_new();
 	char_lista_var[0] = '\0';
 	Variable* variable;
 	char* char_var;
@@ -494,9 +491,8 @@ char* toStringListVariables(t_list* lista){
 	for (i=0; i<list_size(lista);i++){
 		variable = list_get(lista,i);
 		char_var = toStringVariable(*variable);
-		char_lista_var = realloc(char_lista_var, (strlen(char_lista_var)+ strlen(char_var)+2)*sizeof(char));
-		strcat(char_lista_var,char_var);
-		strcat(char_lista_var,barra);
+		string_append(&char_lista_var,char_var);
+		string_append(&char_lista_var,barra);
 		free(char_var);
 	}
 	return char_lista_var;
@@ -521,7 +517,7 @@ t_list* fromStringListVariables(char* char_list){
 
 char* toStringVariable(Variable variable){
 	char* pagina = toStringPagina(variable.pagina);
-	char* char_variable = malloc((strlen(pagina)+2)*sizeof(char));
+	char* char_variable = string_new();
 	strcpy(char_variable,pagina);
 	char_variable[strlen(pagina)]=variable.id;
 	char_variable[strlen(pagina)+1]='\0';

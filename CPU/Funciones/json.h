@@ -30,7 +30,7 @@ typedef struct{
 	int id;
 	int pc; //Número de la próxima instrucción del Programa que se debe ejecutar
 	int paginas_codigo;
-	t_metadata_program indices; // Índice de código + Índice de	etiquetas
+	t_metadata_program *indices; // Índice de código + Índice de	etiquetas
 	t_list* stack; // Lista de Stack
 }PCB;
 

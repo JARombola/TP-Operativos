@@ -75,6 +75,7 @@ t_dictionary *globales,*semaforos,*dispositivosES;
 int tamPagina=0,*dispositivosSleeps, *globalesValores;
 sem_t *semaforosES,*semaforosGlobales;
 t_queue **colasES,**colasSEM;
+int cpu;
 
 
 int main(int argc, char* argv[]) {
@@ -93,7 +94,7 @@ int main(int argc, char* argv[]) {
 	if (!(leerConfiguracion("ConfigNucleo", &datosNucleo) || leerConfiguracion("../ConfigNucleo", &datosNucleo))){
 			printf("Error archivo de configuracion\n FIN.");return 1;}
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
-	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
+/*	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
 	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
 	dispositivosES = crearDiccionarioSEMyES(datosNucleo->io_ids,datosNucleo->io_sleep,1);
 
@@ -107,15 +108,15 @@ int main(int argc, char* argv[]) {
 	colaCPUs=queue_create();
 
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
-
+*/
 	//-----------------------------------pcb para probar bloqueo de E/S
-	PCB*pcbprueba=malloc(sizeof(PCB));
+	/*PCB*pcbprueba=malloc(sizeof(PCB));
 	pcbprueba->id=5;
 	pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
 	pcbParaBloquear->pcb = pcbprueba;
 	pcbParaBloquear->ut = 6;
 	queue_push(colasES[1], pcbParaBloquear);
-	sem_post(&semaforosES[1]);
+	sem_post(&semaforosES[1]);*/
 
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -195,8 +196,9 @@ int main(int argc, char* argv[]) {
 
 						case 1:											//CPU
 							send(nuevo_cliente, &mjeCpu, 4, 0);
+							cpu=nuevo_cliente;
 							printf("Acepté un nuevo cpu\n");
-							queue_push(colaCPUs, &nuevo_cliente);
+//							queue_push(colaCPUs, &nuevo_cliente);
 							break;
 
 						case 2:						//CONSOLA, RECIBO EL CODIGO
@@ -342,23 +344,26 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	recv(conexionUMC, &aceptado, sizeof(int), 0);
 	aceptado=ntohl(aceptado);
 	printf("-------------------------ACEPTADO: %d\n",aceptado);
+	PCB* pcbNuevo;
 	if(!aceptado){													//consola rechazada
 		printf("Ansisop rechazado\n");
 		send(consola,"0",1,0);}
 	else{
 			send(consola,"1",1,0);
-			PCB* pcbNuevo = crearPCB(codigo);
+			pcbNuevo = crearPCB(codigo);
 			pcbNuevo->id=consola;							//Se le asigna al proceso como ID el numero de consola que lo envía.
 	if(aceptado==1){
 			printf("Código enviado a la UMC\nNuevo PCB en cola de READY!\n");
-			queue_push(colaListos, pcbNuevo);
-			sem_post(&sem_Listos);}
-	else{
+//			queue_push(colaListos, pcbNuevo);
+//			sem_post(&sem_Listos);}
+	}else{
 	printf("Código enviado a la UMC\nNuevo PCB en cola de NEW!\n");
 		/*	queue_push(colaNuevos, pcbNuevo);
 			sem_post(&sem_Nuevos);*/
 		}
 	}
+	char* pcbSerializado=serializarMensajeCPU(pcbNuevo,2,5);
+	send(cpu,pcbSerializado,string_length(pcbSerializado),0);
 	free(codigo);
 	//list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
 }
@@ -372,6 +377,11 @@ PCB* crearPCB(char* codigo) {
 	pcb->paginas_codigo = calcularPaginas(codigo);
 	pcb->pc = metadata->instruccion_inicio;
 	pcb->stack = list_create();
+	char* a=malloc(metadata->etiquetas_size);
+	memcpy(a,metadata->etiquetas,metadata->etiquetas_size);
+	memcpy(a+metadata->etiquetas_size,"\0",1);
+	printf("%s\n",a);
+
 //	pcbProceso->PID=ultimoPID++;
 //	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
 //	pcbProceso->indiceCodigo=metadata->instrucciones_serializado;
@@ -620,7 +630,7 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 	mensaje = malloc((strlen(pcb_char)+10)*sizeof(char));
 	sprintf(mensaje,"%s%s%s",quantum_char,quantum_sleep_char,pcb_char);
 	free(quantum_char);
-	free(quantum_char);
+	free(quantum_sleep);
 	free(pcb_char);
 
 	return mensaje;
