@@ -82,24 +82,29 @@ void conectarseALaUMC(){
 }
 
 int procesarPeticion(){
-	int quantum;
+	int quantum, quantum_sleep;
 	char* pcb_char;
 
 	while(1){
 		quantum = recibirProtocolo(nucleo);
 		if (quantum <= 0){
-			if (quantum == 0){
+			if (!quantum){
 				close(nucleo);
 				close(umc);
 				return 0;
 			}
 			perror("Error: Error de conexion con el nucleo\n");
 		}else{
+			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
+				string_append(&pcb_char,"\0");
+				printf("%s\n",pcb_char);
 				pcb = fromStringPCB(pcb_char);
+//				int p=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+//				printf("PERRO: %d\n",p);
 				if (procesarCodigo()<0) return -1;
 			}
 			free(pcb_char);

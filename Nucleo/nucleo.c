@@ -225,7 +225,6 @@ int main(int argc, char* argv[]) {
 								char* codigo = (char*) recibirMensaje(nuevo_cliente, tamanio);
 								//printf("--Codigo:%s--\n",codigo);
 								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
-								free(codigo);
 							}
 							break;
 						}
@@ -391,7 +390,6 @@ PCB* crearPCB(char* codigo) {
 	pcb->paginas_codigo = calcularPaginas(codigo);
 	pcb->pc = metadata->instruccion_inicio;
 	pcb->stack = list_create();
-
 //	pcbProceso->PID=ultimoPID++;
 //	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
 //	pcbProceso->indiceCodigo=metadata->instrucciones_serializado;
@@ -683,12 +681,16 @@ int ese_cpu_tenia_pcb_ejecutando(cpu){ //devuelve el pid si el cpu estaba ejecut
 }
 
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
-	char* mensaje;
+	char* mensaje=string_new();
 	char* quantum_char = toStringInt(quantum);
 	char* quantum_sleep_char = toStringInt(quantum_sleep);
 	char* pcb_char = toStringPCB(*pcbListo);
-	mensaje = malloc((strlen(pcb_char)+10)*sizeof(char));
-	sprintf(mensaje,"%s%s%s",quantum_char,quantum_sleep_char,pcb_char);
+	string_append(&mensaje,quantum_char);
+	string_append(&mensaje,quantum_sleep_char);
+	agregarHeader(&pcb_char);
+	string_append(&mensaje,pcb_char);
+	string_append(&mensaje,"\0");
+	printf("Mensaje: %s\n",mensaje);
 	free(quantum_char);
 	free(quantum_sleep_char);
 	free(pcb_char);

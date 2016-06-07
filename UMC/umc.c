@@ -205,10 +205,10 @@ int comprobarCliente(int nuevoCliente) {
 	char* bufferHandshake = malloc(15);
 	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
 	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
-	if (strcmp("soy_un_cpu", bufferHandshake) == 0) {
+	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
 		free(bufferHandshake);
 		return 1;
-	} else if (strcmp("soy_el_nucleo", bufferHandshake) == 0) {
+	} else if (string_equals_ignore_case("soy_el_nucleo", bufferHandshake)) {
 		free(bufferHandshake);
 		return 2;
 	}

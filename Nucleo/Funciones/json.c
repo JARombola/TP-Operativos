@@ -130,9 +130,9 @@ char* toStringMetadata(t_metadata_program meta, char separador){
 		char* asd=malloc(meta.etiquetas_size);
 		memcpy(asd,meta.etiquetas,meta.etiquetas_size);
 		string_append(&char_meta,asd);
-		t_puntero_instruccion* b=metadata_buscar_etiqueta("perro",asd,meta.etiquetas_size);
+	//	t_puntero_instruccion* b=metadata_buscar_etiqueta("perro",asd,meta.etiquetas_size);
 
-			printf("PUNTERO : %d\n",b);
+		//	printf("PUNTERO : %d\n",b);
 	}
 	if (meta.instrucciones_size!=0){
 		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
