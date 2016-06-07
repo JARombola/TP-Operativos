@@ -11,10 +11,11 @@ variables f, i, t
 
 	#Incrementar el iterador
 	i=i+1
-	
+	:perro
+		
 	#Imprimir el contador
 	print i
-
+	:hola
 	#`t`: Comparador entre `i` y `f`
 	t=f-i
 	#De no ser iguales, salta a inicio

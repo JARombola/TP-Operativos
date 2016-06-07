@@ -391,10 +391,6 @@ PCB* crearPCB(char* codigo) {
 	pcb->paginas_codigo = calcularPaginas(codigo);
 	pcb->pc = metadata->instruccion_inicio;
 	pcb->stack = list_create();
-	char* a=malloc(metadata->etiquetas_size);
-	memcpy(a,metadata->etiquetas,metadata->etiquetas_size);
-	memcpy(a+metadata->etiquetas_size,"\0",1);
-	printf("%s\n",a);
 
 //	pcbProceso->PID=ultimoPID++;
 //	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
@@ -694,7 +690,7 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 	mensaje = malloc((strlen(pcb_char)+10)*sizeof(char));
 	sprintf(mensaje,"%s%s%s",quantum_char,quantum_sleep_char,pcb_char);
 	free(quantum_char);
-	free(quantum_sleep);
+	free(quantum_sleep_char);
 	free(pcb_char);
 
 	return mensaje;

@@ -121,20 +121,22 @@ t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio)
 
 char* toStringMetadata(t_metadata_program meta, char separador){
 	char* char_meta=string_new();
-	strcpy(char_meta,toStringInt(meta.instruccion_inicio));
-	strcat(char_meta,toStringInt(meta.instrucciones_size));
-	strcat(char_meta,toStringInt(meta.etiquetas_size));
-	strcat(char_meta,toStringInt(meta.cantidad_de_funciones));
-	strcat(char_meta,toStringInt(meta.cantidad_de_etiquetas));
+	string_append(&char_meta,toStringInt(meta.instruccion_inicio));
+	string_append(&char_meta,toStringInt(meta.instrucciones_size));
+	string_append(&char_meta,toStringInt(meta.etiquetas_size));
+	string_append(&char_meta,toStringInt(meta.cantidad_de_funciones));
+	string_append(&char_meta,toStringInt(meta.cantidad_de_etiquetas));
 	if (meta.etiquetas != NULL){
-		char** etiquetas=meta.etiquetas;
-		strcat(char_meta,*etiquetas[0]);
-		strcat(char_meta,*etiquetas[1]);
-		strcat(char_meta,*etiquetas[2]);
+		char* asd=malloc(meta.etiquetas_size);
+		memcpy(asd,meta.etiquetas,meta.etiquetas_size);
+		string_append(&char_meta,asd);
+		t_puntero_instruccion* b=metadata_buscar_etiqueta("perro",asd,meta.etiquetas_size);
+
+			printf("PUNTERO : %d\n",b);
 	}
 	if (meta.instrucciones_size!=0){
 		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
-		strcat(char_meta, char_instrucciones);
+		string_append(&char_meta, char_instrucciones);
 		free(char_instrucciones);
 	}
 	return char_meta;
