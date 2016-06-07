@@ -51,8 +51,8 @@ t_list *cpus, *consolas, *listaEjecuciones, *listConsolasParaEliminarPCB;
 pthread_attr_t attr;
 pthread_t thread;
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
-t_queue *colaListos,*colaTerminados, *colaCPUs;
-sem_t sem_Listos,sem_Terminado;
+t_queue *colaNuevos, *colaListos,*colaTerminados, *colaCPUs;
+sem_t sem_Nuevos, sem_Listos,sem_Terminado;
 
 int autentificarUMC(int);
 int leerConfiguracion(char*, datosConfiguracion**);
@@ -64,6 +64,7 @@ int calcularPaginas(char*);
 void mostrar(int*);
 void enviarAnsisopAUMC(int, char*,int);
 void maximoDescriptor(int* maximo, t_list* lista, fd_set *descriptores);
+void atender_Nuevos();
 void atender_Ejecuciones();
 void atender_Bloq_ES(int posicion);
 void atender_Bloq_SEM(int posicion);
@@ -107,15 +108,19 @@ int main(int argc, char* argv[]) {
 
 	//---------------------------------PLANIFICACION PCB-----------------------------------
 
+	sem_init(&sem_Nuevos, 0, 0);
 	sem_init(&sem_Listos, 0, 0);
 	sem_init(&sem_Terminado, 0, 0);
 
 	listaEjecuciones=list_create();
+	colaNuevos=queue_create();
 	colaListos=queue_create();
 	colaTerminados=queue_create();
 	colaCPUs=queue_create();
 
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
+	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
+	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);
 
 	//-----------------------------------pcb para probar bloqueo de E/S
 	PCB*pcbprueba=malloc(sizeof(PCB));
@@ -213,10 +218,9 @@ int main(int argc, char* argv[]) {
 							printf("Acepté una nueva consola\n");
 							int tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
-								char* codigo = (char*) recibirMensaje(
-										nuevo_cliente, tamanio);//printf("--Codigo:%s--\n",codigo);
-								enviarAnsisopAUMC(conexionUMC, codigo,
-										nuevo_cliente);
+								char* codigo = (char*) recibirMensaje(nuevo_cliente, tamanio);
+								//printf("--Codigo:%s--\n",codigo);
+								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
 								free(codigo);
 							}
 							break;
@@ -363,8 +367,8 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 			sem_post(&sem_Listos);}
 	else{
 	printf("Código enviado a la UMC\nNuevo PCB en cola de NEW!\n");
-		/*	queue_push(colaNuevos, pcbNuevo); todo
-			sem_post(&sem_Nuevos);*/
+			queue_push(colaNuevos, pcbNuevo);
+			sem_post(&sem_Nuevos);
 		}
 	}
 	free(codigo);
@@ -430,6 +434,21 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 }
 //--------------------------------------------PLANIFICACION----------------------------------------------------
 
+void atender_Nuevos(){
+	while(1){
+		sem_wait(&sem_Nuevos);
+		 PCB* pcbNuevo = malloc(sizeof(PCB));
+		 pcbNuevo = queue_pop(colaNuevos);
+		 int respuesta = 0; //todo preguntar umc si hay marcos
+		 if(respuesta){
+			 queue_push(colaListos,pcbNuevo);
+			 sem_post(&sem_Listos);
+		 }else{
+			 queue_push(colaNuevos,pcbNuevo);
+		 }
+	}
+}
+
 void atender_Ejecuciones(){
 	 printf("[HILO EJECUCIONES]: Se creo el hilo para ejecutar programas, esperando..\n");
 	 char* mensajeCPU;
@@ -472,7 +491,7 @@ void atender_Ejecuciones(){
 		 queue_push(colaListos, pcbBloqueando->pcb);
 		 printf("[HILO DE E/S nro %d]: el pcb %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->id);
 		 sem_post(&sem_Listos);
-		 //free(pcbBloqueando)?
+		 free(pcbBloqueando);
 	 }
  }
  void atender_Bloq_SEM(int posicion){
@@ -496,6 +515,7 @@ void atender_Ejecuciones(){
 	 	 PCB* pcbTerminado = malloc(sizeof(PCB));
 	 	 pcbTerminado = queue_pop(colaTerminados);
 	 	 //todo avisar umc y consola que termino el programa
+	 	 sem_post(&sem_Nuevos);
 	 	 free(pcbTerminado);
 	 }
  }
@@ -511,6 +531,7 @@ void atenderOperacion(int op,int cpu){
 		pidMalo = ese_cpu_tenia_pcb_ejecutando(cpu);
 		if(pidMalo){
 			//todo avisar umc y consola, de borrar ese pid y de que hubo error en ejecucion
+		 	 sem_post(&sem_Nuevos);
 		}
 		list_remove(cpus, cpu);
 		printf("Se desconecto o envio algo mal el CPU en %d, eliminado\n",cpu);
