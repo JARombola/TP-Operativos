@@ -61,28 +61,24 @@ int levantarArchivoDeConfiguracion(){
 
 
 void conectarseAlNucleo(){
-	printf("Conectandose al nucleo....\n");
-	nucleo = conectar(PUERTO_NUCLEO,IP_NUCLEO, AUTENTIFICACION);
+	nucleo = conectar(PUERTO_NUCLEO,IP_NUCLEO);
 	if (nucleo<0){
 		printf("Error al conectarse con el nucelo \n");
 		return;
 	}
+	autentificar(nucleo,AUTENTIFICACION);
 	printf("Conexion con el nucleo OK... \n");
 }
 
 void conectarseALaUMC(){
-	printf("Conectandose a la UMC....\n");
-
-	umc = conectar(PUERTO_UMC,IP_UMC,AUTENTIFICACION);
+	umc = conectar(PUERTO_UMC,IP_UMC);
 	if (umc<0){
 		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
 	}
-	char* tamanioPagina = esperarRespuesta(umc);
-	if (tamanioPagina[0] == '\0'){
-		printf("Error: Se ha perdido la coneccion con la UMC\n");
-		close(umc);
-	}
-	TAMANIO_PAGINA = atoi(tamanioPagina);
+	TAMANIO_PAGINA = autentificar(umc,AUTENTIFICACION);
+	if (!TAMANIO_PAGINA){
+		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+		}
 	printf("Conexion con la UMC OK...\n");
 }
 

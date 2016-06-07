@@ -9,13 +9,14 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <commons/string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 int tienePermiso(char* autentificacion);
-int conectar(int puerto,char* ip, char* autor);
+int conectar(int puerto,char* ip);
 int autentificar(int conexion, char* autor);
 int esperarConfirmacion(int conexion);
 int crearServidor(int puerto);
