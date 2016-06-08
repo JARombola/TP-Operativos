@@ -138,7 +138,7 @@ char* pedirLinea(){
 	int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
 	int size_page = size;
 	int proceso = pcb.id;
-	char* respuesta;
+	char* respuesta = malloc(sizeof(char));
 	char* respuestaFinal = malloc(sizeof(char));
 	int repeticiones = 0;
 	while(size >0){
@@ -147,8 +147,10 @@ char* pedirLinea(){
 		}else{
 			size_page = size;
 		}
+		respuesta = realloc(respuesta,(size_page+1)*sizeof(char));
 		enviarMensajeUMCConsulta(pag,off,size_page,proceso);
-		respuesta = esperarRespuesta(umc);
+		recv(umc,respuesta,size_page,0);
+		respuesta[size_page] ='\0';
 		respuestaFinal = realloc(respuestaFinal,(strlen(respuesta)+ strlen(respuestaFinal)+1)*sizeof(char));
 		repeticiones++;
 		pag++;
