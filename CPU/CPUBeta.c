@@ -133,13 +133,14 @@ int procesarCodigo(){
 }
 
 char* pedirLinea(){
-	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
-	int off = pcb.indices.instrucciones_serializado[pcb.pc].start-TAMANIO_PAGINA*pag;
-	int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
+	int pag = pcb.indices.instrucciones_serializado[pcb.pc+1].start/TAMANIO_PAGINA;
+	int off = pcb.indices.instrucciones_serializado[pcb.pc+1].start-TAMANIO_PAGINA*pag;
+	int size = pcb.indices.instrucciones_serializado[pcb.pc+1].offset;
 	int size_page = size;
 	int proceso = pcb.id;
 	char* respuesta = malloc(sizeof(char));
 	char* respuestaFinal = malloc(sizeof(char));
+	respuestaFinal[0] = '\0';
 	int repeticiones = 0;
 	while(size >0){
 		if (size > TAMANIO_PAGINA-off){
@@ -147,11 +148,13 @@ char* pedirLinea(){
 		}else{
 			size_page = size;
 		}
-		respuesta = realloc(respuesta,(size_page+1)*sizeof(char));
+		size_page++;
+		respuesta = realloc(respuesta,(size_page)*sizeof(char));
 		enviarMensajeUMCConsulta(pag,off,size_page,proceso);
 		recv(umc,respuesta,size_page,0);
 		respuesta[size_page] ='\0';
 		respuestaFinal = realloc(respuestaFinal,(strlen(respuesta)+ strlen(respuestaFinal)+1)*sizeof(char));
+		strcat(respuestaFinal,respuesta);
 		repeticiones++;
 		pag++;
 		size = size - size_page;
