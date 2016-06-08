@@ -1,6 +1,7 @@
-Hola
-Amigazo
-
-#esto es para probar
-
-como ANDA!
+#!/usr/bin/ansisop
+begin
+	variables a, b
+	a = 3
+	b = 5
+	a = b + 12
+end

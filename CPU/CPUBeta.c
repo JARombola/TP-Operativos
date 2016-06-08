@@ -18,7 +18,7 @@ int main(){
 }
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
@@ -31,6 +31,7 @@ int levantarArchivoDeConfiguracion(){
 		printf("Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
+
 	buscar(archivoJson,"AUTENTIFICACION", AUTENTIFICACION);
 	if (AUTENTIFICACION[0] =='\0'){
 		printf("Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
@@ -100,7 +101,6 @@ int procesarPeticion(){
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
-				string_append(&pcb_char,"\0");
 				printf("%s\n",pcb_char);
 				pcb = fromStringPCB(pcb_char);
 //				int p=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
