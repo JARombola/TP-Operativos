@@ -9,7 +9,7 @@ int main(){
 	PCB pcb;
 	pcb.id = 6;
 	pcb.paginas_codigo = 4;
-	pcb.pc = 1;
+	pcb.pc = 0;
 	pcb.stack = list_create();
 	pcb.indices = *(metadata_desde_literal(arch_char));
 	printf("a\n");
