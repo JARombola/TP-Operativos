@@ -113,8 +113,8 @@ t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio)
 	t_intructions* instrucciones = malloc(tamanio*sizeof(t_intructions));
 	int i;
 	for (i=0;i<tamanio;i++){
-		instrucciones[i].offset = atoi(string_substring(char_instrucciones,i*8+4,4));
-		instrucciones[i].start = atoi(string_substring(char_instrucciones,i*8,4));
+		instrucciones[i].offset = atoi(string_substring(char_instrucciones,i*8,4));
+		instrucciones[i].start = atoi(string_substring(char_instrucciones,i*8+4,4));
 	}
 	return instrucciones;
 }
@@ -149,9 +149,14 @@ t_metadata_program fromStringMetadata(char* char_meta,char separador){
 		meta.etiquetas_size = atoi(toSubString(char_meta,8,11));
 		meta.cantidad_de_funciones = atoi(toSubString(char_meta,12,15));
 		meta.cantidad_de_etiquetas = atoi(toSubString(char_meta,16,19));
-		meta.etiquetas = toSubString(char_meta,20,(20+meta.etiquetas_size-1));
-		meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,24),meta.instrucciones_size);
-	return meta;
+		if (meta.etiquetas_size>0){
+			meta.etiquetas = toSubString(char_meta,20,(20+meta.etiquetas_size-1));
+			meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,24),meta.instrucciones_size);
+		}else{
+			meta.etiquetas =NULL;
+			meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,20),meta.instrucciones_size);
+		}
+return meta;
 }
 
 u_int32_t valorMetadata(char*char_meta,int indice, char separador){
@@ -193,8 +198,8 @@ char* valorStringMetadata(char *char_meta, char separador){
 			indice = i;
 		}
 	}
-	char* aux = malloc(i*sizeof(char));
-	strcpy(aux,char_meta);
+	char* aux = string_new();
+	string_append(&aux,char_meta);
 	aux[i] = '\0';
 	invertir(aux);
 	aux[indice-subindice] = '\0';
