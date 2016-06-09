@@ -18,7 +18,7 @@ int main(){
 }
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");//"ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
@@ -98,7 +98,6 @@ int procesarPeticion(){
 		}else{
 			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
-			printf("%s\n", pcb_char);
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
@@ -135,38 +134,32 @@ int procesarCodigo(){
 
 char* pedirLinea(){
 	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
-	int off = pcb.indices.instrucciones_serializado[pcb.pc].start-TAMANIO_PAGINA*pag;
+	int inicio = pcb.indices.instrucciones_serializado[pcb.pc].start-TAMANIO_PAGINA*pag;
 	int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
-	int size_page = size;
-	int proceso = pcb.id;
-	char* respuesta = malloc(sizeof(char));
-	char* respuestaFinal = malloc(sizeof(char));
-	respuestaFinal[0] = '\0';
-	int repeticiones = 0;
-	while(size >0){
-		if (size > TAMANIO_PAGINA-off){
-			size_page = TAMANIO_PAGINA-off;
-		}else{
-			size_page = size;
-		}
-		size_page++;
-		respuesta = realloc(respuesta,(size_page)*sizeof(char));
-		enviarMensajeUMCConsulta(pag,off,size_page,proceso);
+	int size_page;
+	int i=0,cantPaginas=size/TAMANIO_PAGINA,resto=(size-inicio)%TAMANIO_PAGINA,proceso = pcb.id;
+	inicio=TAMANIO_PAGINA-inicio;
+	size_page=TAMANIO_PAGINA-inicio;
+	char* respuesta = string_new();
+	char* respuestaFinal = string_new();
+
+	for (i=0;i<cantPaginas;i++){
+		enviarMensajeUMCConsulta(pag+i,inicio,size_page,proceso);
 		recv(umc,respuesta,size_page,0);
-		respuesta[size_page] ='\0';
-		respuestaFinal = realloc(respuestaFinal,(strlen(respuesta)+ strlen(respuestaFinal)+1)*sizeof(char));
-		printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
-		strcat(respuestaFinal,respuesta);
-		repeticiones++;
-		pag++;
-		size = size - size_page;
-		off = 0;
-		if (respuesta[0] == '\0'){
-			printf("Error: No se ha logrado conectarse a la UMC\n");
-			break;
+		string_append(&respuestaFinal,respuesta);
+		string_append(&respuesta,"\0");
+		if(i==0){size_page=TAMANIO_PAGINA;
+			inicio=0;
 		}
 	}
-
+	if (resto){
+		inicio=0;
+		enviarMensajeUMCConsulta(pag+i,inicio,resto,proceso);
+		recv(umc,respuesta,resto,0);
+		string_append(&respuestaFinal,string_substring(respuesta,0,resto));
+	}
+	free(respuesta);
+	string_append(&respuestaFinal,"\0");
 	return respuestaFinal;
 }
 
@@ -181,17 +174,20 @@ t_puntero definirVariable(t_nombre_variable variable) {
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
+	int variableBuscada(Variable* var){
+		return (var->id==variable);
+	}
 	printf("Obtener posicion de %c\n", variable);
 	Stack* stack = obtenerStack();
+	if (stack==NULL){
+		printf("No hay Stack..... no hay stack!?\n");
+	}
 	t_list* variables = stack->vars;
 	Variable* var;
-	int i;
-	for(i = 0; i< list_size(variables); i++){
-		var = (Variable*) list_get(variables,i);
-		if ( var->id == variable  ){
-			return (int)&(var->pagina);
+	var = (Variable*) list_find(variables,(void*)variableBuscada);
+		if ( var!=NULL){
+			return (int)&(var->pagina);				// POR QUE HAY UN "&" AHI!?!?!?!?   todo
 		}
-	}
 	return -1;
 }
 
@@ -278,7 +274,7 @@ Pagina obtenerPagDisponible(){
 	Stack* stackActual = obtenerStack();
 	int cantidadDeVariables = list_size(stackActual->vars)-1;
 	Pagina pagina;
-	if (cantidadDeVariables == 0){
+	if (!cantidadDeVariables){
 		pagina.pag = pcb.paginas_codigo+1;
 		pagina.off = 0;
 	}else{
@@ -302,7 +298,7 @@ void sumarEnLasVariables(Variable* var){
 }
 
 Stack* obtenerStack(){
-	int tamanioStack = list_size(pcb.stack)-1;
+	int tamanioStack = list_size(pcb.stack);				//Habia un -1 muy turbio que rompia todo(?
 	return (list_get(pcb.stack,tamanioStack));
 }
 

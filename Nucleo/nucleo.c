@@ -681,27 +681,21 @@ int ese_cpu_tenia_pcb_ejecutando(cpu){ //devuelve el pid si el cpu estaba ejecut
 }
 
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
-	printf("Metadata:%s\n", toStringMetadata(pcbListo->indices,'&'));
 	char* mensaje=string_new();
-	char* quantum_char = toStringInt(quantum);
-	char* quantum_sleep_char = toStringInt(quantum_sleep);
-	char* pcb_char = toStringPCB(*pcbListo);
-	string_append(&mensaje,quantum_char);
-	string_append(&mensaje,quantum_sleep_char);
-	agregarHeader(&pcb_char);
-	//string_append(&mensaje,pcb_char);
-	char m[100] = "000600680000000600000000000000140006000500200005002500080030000400380004004200040001";
-	string_append(&mensaje,toStringInt(strlen(m)));
-	string_append(&mensaje,m);
+		char* quantum_char = toStringInt(quantum);
+		char* quantum_sleep_char = toStringInt(quantum_sleep);
+		char* pcb_char = toStringPCB(*pcbListo);
+		string_append(&mensaje,quantum_char);
+		string_append(&mensaje,quantum_sleep_char);
+		agregarHeader(&pcb_char);
+		string_append(&mensaje,pcb_char);
+		string_append(&mensaje,"\0");
+		printf("Mensaje: %s\n",mensaje);
+		free(quantum_char);
+		free(quantum_sleep_char);
+		free(pcb_char);
 
-	string_append(&mensaje,"\0");
-	printf("PCB:%s\n", pcb_char);
-	printf("Mensaje: %s\n",mensaje);
-	free(quantum_char);
-	free(quantum_sleep_char);
-	free(pcb_char);
-
-	return mensaje;
+		return mensaje;
 }
 PCB* desSerializarMensajeCPU(char* char_pcb){
 	PCB * pcbDevuelto = (PCB*) malloc(sizeof(PCB));
