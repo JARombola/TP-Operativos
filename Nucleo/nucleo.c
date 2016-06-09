@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
 							int tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
 								char* codigo = (char*) recibirMensaje(nuevo_cliente, tamanio);
-								//printf("--Codigo:%s--\n",codigo);
+								printf("--Codigo:%s--\n",codigo);
 								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
 							}
 							break;
@@ -681,6 +681,7 @@ int ese_cpu_tenia_pcb_ejecutando(cpu){ //devuelve el pid si el cpu estaba ejecut
 }
 
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
+	printf("Metadata:%s\n", toStringMetadata(pcbListo->indices,'&'));
 	char* mensaje=string_new();
 	char* quantum_char = toStringInt(quantum);
 	char* quantum_sleep_char = toStringInt(quantum_sleep);
@@ -688,8 +689,13 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 	string_append(&mensaje,quantum_char);
 	string_append(&mensaje,quantum_sleep_char);
 	agregarHeader(&pcb_char);
-	string_append(&mensaje,pcb_char);
+	//string_append(&mensaje,pcb_char);
+	char m[100] = "000600680000000600000000000000140006000500200005002500080030000400380004004200040001";
+	string_append(&mensaje,toStringInt(strlen(m)));
+	string_append(&mensaje,m);
+
 	string_append(&mensaje,"\0");
+	printf("PCB:%s\n", pcb_char);
 	printf("Mensaje: %s\n",mensaje);
 	free(quantum_char);
 	free(quantum_sleep_char);

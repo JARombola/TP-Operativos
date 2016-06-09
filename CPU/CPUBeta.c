@@ -98,6 +98,7 @@ int procesarPeticion(){
 		}else{
 			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
+			printf("%s\n", pcb_char);
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
@@ -133,9 +134,9 @@ int procesarCodigo(){
 }
 
 char* pedirLinea(){
-	int pag = pcb.indices.instrucciones_serializado[pcb.pc+1].start/TAMANIO_PAGINA;
-	int off = pcb.indices.instrucciones_serializado[pcb.pc+1].start-TAMANIO_PAGINA*pag;
-	int size = pcb.indices.instrucciones_serializado[pcb.pc+1].offset;
+	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
+	int off = pcb.indices.instrucciones_serializado[pcb.pc].start-TAMANIO_PAGINA*pag;
+	int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
 	int size_page = size;
 	int proceso = pcb.id;
 	char* respuesta = malloc(sizeof(char));
@@ -154,6 +155,7 @@ char* pedirLinea(){
 		recv(umc,respuesta,size_page,0);
 		respuesta[size_page] ='\0';
 		respuestaFinal = realloc(respuestaFinal,(strlen(respuesta)+ strlen(respuestaFinal)+1)*sizeof(char));
+		printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
 		strcat(respuestaFinal,respuesta);
 		repeticiones++;
 		pag++;
