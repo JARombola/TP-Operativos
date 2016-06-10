@@ -438,25 +438,32 @@ int inicializarPrograma(int conexion) {
 }
 
 int finalizarPrograma(int procesoEliminar){
-		int paginasDelProceso(traductor_marco* entradaTabla){
-			return (entradaTabla->proceso==procesoEliminar);
-		}
-		void eliminarEntrada(traductor_marco* entrada){
-			free(entrada);
-		}
-	void limpiar(traductor_marco* marco){
-		list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)eliminarEntrada);
-	}
-	printf("LISTA antes: %d ",list_size(tabla_de_paginas));
-	list_iterate(tabla_de_paginas,(void*)limpiar);
-	printf(" /Despues %d\n",list_size(tabla_de_paginas));
-	char* mensajeEliminar=string_new();
-	string_append(&mensajeEliminar,"3");
-	string_append(&mensajeEliminar,header(procesoEliminar));
-	string_append(&mensajeEliminar,"\0");
-	send(conexionSwap,mensajeEliminar,string_length(mensajeEliminar),0);
-	free(mensajeEliminar);
-	return 1;
+    int paginasDelProceso(traductor_marco* entradaTabla){
+        return (entradaTabla->proceso==procesoEliminar);
+    }
+    void eliminarEntrada(traductor_marco* entrada){
+        free(entrada);
+    }
+    void limpiar(traductor_marco* marco){
+        list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)eliminarEntrada);
+    }
+    int clockDelProceso(unClock* clockDelProceso){                        //todo revisar si funciona :/
+        return(clockDelProceso->proceso==procesoEliminar);
+    }
+    printf("LISTA antes: %d ",list_size(tabla_de_paginas));
+    list_iterate(tabla_de_paginas,(void*)limpiar);
+    unClock* clockEliminar=list_find(tablaClocks,clockDelProceso);
+    if (clockDelProceso!=NULL){                            //todo revisar si funciona :/
+        queue_clean(clockEliminar->colaMarcos);
+        free(clockDelProceso);}
+    printf(" /Despues %d\n",list_size(tabla_de_paginas));
+    char* mensajeEliminar=string_new();
+    string_append(&mensajeEliminar,"3");
+    string_append(&mensajeEliminar,header(procesoEliminar));
+    string_append(&mensajeEliminar,"\0");
+    send(conexionSwap,mensajeEliminar,string_length(mensajeEliminar),0);
+    free(mensajeEliminar);
+    return 1;
 }
 
 int esperarRespuestaSwap(){

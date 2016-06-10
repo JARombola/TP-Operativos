@@ -24,7 +24,8 @@ typedef struct{
 }datosConfiguracion;
 
 typedef struct{
-	int proceso, clock;
+	int proceso;
+	t_queue*colaMarcos;
 }unClock;
 
 extern t_list* tablaClocks;
