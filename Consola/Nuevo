@@ -1,24 +1,7 @@
 #!/home/utnso/tp-2016-1c-CodeBreakers/Consola/Debug/Consola
 begin
-variables f, i, t
-
-	#`i`: Iterador
-	i=0
-	
-	#`f`: Hasta donde contar
-	f=20
-	:inicio
-
-	#Incrementar el iterador
-	i=i+1
-	:perro
-		
-	#Imprimir el contador
-	print i
-	:hola
-	#`t`: Comparador entre `i` y `f`
-	t=f-i
-	#De no ser iguales, salta a inicio
-	jnz t inicio
-
+variables a,b
+a=3
+b=5
+a=b+12
 end

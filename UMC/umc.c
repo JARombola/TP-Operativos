@@ -257,7 +257,7 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 	posicion+=offset;
 	memcpy(memoria+posicion,&buffer,size);
 	list_iterate(tabla_de_paginas,(void*)modificada);
-	printf("Pagina modificados\n");
+	printf("Pagina modificada\n");
 	return posicion;
 }
 
@@ -277,7 +277,7 @@ void consola(){
 		} else {
 			if (esIgual(comando, "dump")) {
 				scanf("%d",&VELOCIDAD);
-				int pos=buscar(5,VELOCIDAD);
+				int pos=buscar(6,VELOCIDAD);
 				void* mje=malloc(datosMemoria->marco_size+1);
 				memcpy(mje,memoria+pos,datosMemoria->marco_size);
 				memcpy(mje+datosMemoria->marco_size, "\0",1);
@@ -329,6 +329,7 @@ void atenderCpu(int conexion){
 
 	registrarTrace(archivoLog, "Nuevo CPU-");
 	int salir = 0, operacion, proceso, pagina, offset, buffer, size;
+	char* resp;
 	void* datos;
 	while (!salir) {
 		operacion = atoi(recibirMensaje(conexion, 1));
@@ -347,8 +348,10 @@ void atenderCpu(int conexion){
 				recv(conexion,&buffer,sizeof(int),0);
 				buffer=ntohl(buffer);
 				if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
-					send(conexion,"-1",1,0);
-				}
+					resp=header(0);
+				}else{resp=header(1);}
+					send(conexion,resp,string_length(resp),0);
+				free(resp);
 				break;
 			}
 		} else {
@@ -408,7 +411,7 @@ int inicializarPrograma(int conexion) {
 	int paginasNecesarias=recibirProtocolo(conexion);
 	espacio_del_codigo = recibirProtocolo(conexion);
 	char* codigo = recibirMensaje(conexion, espacio_del_codigo);			//CODIGO
-	//printf("Codigo: %s-\n",codigo);
+	printf("Codigo: %s-\n",codigo);
 	int i;
 	for (i = 0; i < paginasNecesarias; i++) {//Entradas en la tabla, SIN marcos
 		  actualizarTabla(i, PID, -1);
@@ -423,7 +426,6 @@ int inicializarPrograma(int conexion) {
 	string_append(&programa, header(paginasNecesarias));
 	string_append(&programa, codigo);
 	string_append(&programa, "\0");
-	//printf("%s %d\n",programa,string_length(programa));
 	send(conexionSwap, programa, string_length(programa), 0);
 	free(programa);
 	int aceptadoSwap= esperarRespuestaSwap();

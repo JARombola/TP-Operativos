@@ -18,7 +18,7 @@ int main(){
 }
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
@@ -98,7 +98,7 @@ int procesarPeticion(){
 		}else{
 			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
-			strcpy(pcb_char, "000600680000000600000000000000130006000400190004002300070027000400340004003800040000");
+			//strcpy(pcb_char, "000600680000000600000000000000130006000400190004002300070027000400340004003800040000");
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
@@ -131,8 +131,7 @@ int procesarCodigo(){
 	}
 	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
-}
-
+}/*
 char* pedirLinea(){
 	pcb.indices.instrucciones_serializado[pcb.pc].start++;
 	pcb.indices.instrucciones_serializado[pcb.pc].offset++;
@@ -171,6 +170,56 @@ char* pedirLinea(){
 		}
 
 		return respuestaFinal;
+}*/
+char* pedirLinea(){
+	int start, pag, faltante, sizePag, longitud, inicio,i=0, cantPaginas,resto,proceso=pcb.id;
+	start=pcb.indices.instrucciones_serializado[pcb.pc].start;
+	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset;
+	pag = (start-pcb.pc)/TAMANIO_PAGINA;
+	faltante=start%TAMANIO_PAGINA;					//Lo que falta leer
+	cantPaginas=longitud/TAMANIO_PAGINA;
+	//	longitud=TAMANIO_PAGINA-inicio;
+	inicio = TAMANIO_PAGINA-faltante;
+	int sePaso=(inicio+longitud)>TAMANIO_PAGINA;				//La instruccion esta dividida en varias paginas
+	resto=0;
+	if (sePaso){						//Está cortada en 2 paginas
+		sizePag=faltante;
+		if (!cantPaginas){							//Solo esas 2 Pags
+			cantPaginas++;							//Para que lea las 2
+			resto=longitud-faltante;
+//			inicio++;
+		}else{							//Mas de 2
+			inicio--;
+			resto=(longitud-faltante)%TAMANIO_PAGINA;
+		}
+	}
+	else{
+		inicio = (start%TAMANIO_PAGINA)-longitud;
+		cantPaginas=1;
+		sizePag=longitud;
+	}
+	char* respuesta = string_new();
+	char* respuestaFinal = string_new();
+
+	for (i=0;i<cantPaginas;i++){
+		enviarMensajeUMCConsulta(pag+i,inicio,sizePag,proceso);
+		recv(umc,respuesta,sizePag,0);
+		string_append(&respuestaFinal,respuesta);
+		string_append(&respuesta,"\0");
+		if(i==0){sizePag=TAMANIO_PAGINA;
+			inicio=0;
+		}
+	}
+	if (resto){
+		inicio--;
+		if(cantPaginas)inicio=0;
+		enviarMensajeUMCConsulta(pag+i,inicio,resto,proceso);
+		recv(umc,respuesta,resto,0);
+		string_append(&respuestaFinal,string_substring(respuesta,0,resto));
+	}
+	free(respuesta);
+	string_append(&respuestaFinal,"\0");
+	return respuestaFinal;
 }
 
 
