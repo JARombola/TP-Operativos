@@ -96,7 +96,7 @@ char* esperarRespuesta(int conexion){
 		buffer = malloc(2*sizeof(char));
 		buffer[0] = '\0';
 	}else{
-		buffer = malloc(tamanioPaquete);
+		buffer = malloc(tamanioPaquete+1);
 		recv(conexion,buffer,tamanioPaquete,0);
 		buffer[tamanioPaquete] = '\0';
 	}
