@@ -88,7 +88,7 @@ int procesarPeticion(){
 
 	while(1){
 		quantum = recibirProtocolo(nucleo);
-		quantum = 10;
+	//	quantum = 10;
 		if (quantum <= 0){
 			if (!quantum){
 				close(nucleo);
@@ -99,7 +99,7 @@ int procesarPeticion(){
 		}else{
 			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
-			strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
+			//strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
@@ -142,7 +142,7 @@ int procesarCodigo(){
 }
 
 char* pedirLinea(){
-	/*printf("Start:%d",pcb.indices.instrucciones_serializado[pcb.pc].start);
+	printf("Start:%d",pcb.indices.instrucciones_serializado[pcb.pc].start);
 	pcb.indices.instrucciones_serializado[pcb.pc].start++;
 	pcb.indices.instrucciones_serializado[pcb.pc].offset++;
 	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
@@ -179,8 +179,8 @@ char* pedirLinea(){
 			free(respuesta);
 		}
 
-		return respuestaFinal;*/
-	char* linea = string_new();
+		return respuestaFinal;
+	/*char* linea = string_new();
 	switch (quantum){
 	case 10: string_append(&linea,"variables a,b"); break;
 	case 9: string_append(&linea,"a=3"); break;
@@ -188,7 +188,7 @@ char* pedirLinea(){
 	case 7: string_append(&linea,"a=12+b"); break;
 	case 6: string_append(&linea,"end"); break;
 	}
-	return linea;
+	return linea;*/
 }
 
 
