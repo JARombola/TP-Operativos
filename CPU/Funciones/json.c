@@ -355,11 +355,12 @@ t_list* fromStringListStack(char* char_stack){
 	int indice = 0;
 	int subIndice;
 	t_list* lista_stack = list_create();
+	Stack* stack;
 	for(i=0; i<strlen(char_stack);i++){
 		subIndice = indice;
 		if (char_stack[i]=='-'){
 			indice = i-1;
-			Stack* stack = fromStringStack(toSubString(char_stack,subIndice,indice));
+			stack = fromStringStack(toSubString(char_stack,subIndice,indice));
 			list_add(lista_stack,stack);
 			indice = i+1;
 		}

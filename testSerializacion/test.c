@@ -13,11 +13,9 @@ int main(){
 	pcb.stack = list_create();
 	pcb.indices = *(metadata_desde_literal(arch_char));
 	printf("a\n");
-	printf("%d\n",pcb.indices.instrucciones_serializado[1].offset);
+	printf("%d\n",pcb.indices.instrucciones_serializado[0].start);
 	printf("%d\n",pcb.indices.instrucciones_serializado[1].start);
-	printf("%d\n",pcb.indices.instrucciones_serializado[2].offset);
 	printf("%d\n",pcb.indices.instrucciones_serializado[2].start);
-	printf("%d\n",pcb.indices.instrucciones_serializado[3].offset);
 	printf("%d\n",pcb.indices.instrucciones_serializado[3].start);
 	char* pcb_char = toStringPCB(pcb);
 	printf("Metadata:%s\n\n\n\n\n", toStringMetadata(pcb.indices,'&'));
