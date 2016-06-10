@@ -83,11 +83,12 @@ void conectarseALaUMC(){
 }
 
 int procesarPeticion(){
-	int quantum, quantum_sleep;
+	int quantum_sleep;
 	char* pcb_char;
 
 	while(1){
 		quantum = recibirProtocolo(nucleo);
+	//	quantum = 10;
 		if (quantum <= 0){
 			if (!quantum){
 				close(nucleo);
@@ -98,7 +99,9 @@ int procesarPeticion(){
 		}else{
 			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
-			//strcpy(pcb_char, "000600680000000600000000000000130006000400190004002300070027000400340004003800040000");
+
+			//strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
+
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
 			}else{
@@ -122,6 +125,7 @@ int procesarCodigo(){
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 		if (linea[0] == '\0'){
+
 			perror("Error: Error de conexion con la UMC \n");
 			return -1;
 		}
@@ -129,10 +133,17 @@ int procesarCodigo(){
 		quantum--;
 		saltoDeLinea(1,NULL);
 	}
+	Stack* s = obtenerStack();
+	t_list* vars = s->vars;
+	Variable* a = list_get(vars,0);
+	Variable* b = list_get(vars,1);
+	printf("%c\n",a->id);
+	printf("%c\n",b->id);
 	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
 }/*
 char* pedirLinea(){
+	printf("Start:%d",pcb.indices.instrucciones_serializado[pcb.pc].start);
 	pcb.indices.instrucciones_serializado[pcb.pc].start++;
 	pcb.indices.instrucciones_serializado[pcb.pc].offset++;
 	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
@@ -154,7 +165,7 @@ char* pedirLinea(){
 			enviarMensajeUMCConsulta(pag,off,size_page,proceso);
 			respuesta = string_new();
 			recv(umc,respuesta,size_page,0);
-			string_append(&respuesta,"\0");
+			respuesta[size_page]= '\0';
 			string_append(&respuestaFinal,respuesta);
 			string_append(&respuestaFinal,"\0");
 			printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
@@ -170,6 +181,7 @@ char* pedirLinea(){
 		}
 
 		return respuestaFinal;
+
 }*/
 char* pedirLinea(){
 	int start, pag, faltante, sizePag, longitud, inicio,i=0, cantPaginas,resto,proceso=pcb.id;
@@ -220,6 +232,17 @@ char* pedirLinea(){
 	free(respuesta);
 	string_append(&respuestaFinal,"\0");
 	return respuestaFinal;
+
+	/*char* linea = string_new();
+	switch (quantum){
+	case 10: string_append(&linea,"variables a,b"); break;
+	case 9: string_append(&linea,"a=3"); break;
+	case 8: string_append(&linea,"b=5"); break;
+	case 7: string_append(&linea,"a=12+b"); break;
+	case 6: string_append(&linea,"end"); break;
+	}
+	return linea;*/
+
 }
 
 
@@ -228,6 +251,7 @@ char* pedirLinea(){
 t_puntero definirVariable(t_nombre_variable variable) {
 	printf("definir la variable %c\n", variable);
 	Variable* var = crearVariable(variable);
+	printf("Variable %c creada\n", var->id);
 	sumarEnLasVariables(var);
 	return  (int)var;
 }
@@ -251,6 +275,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
+	if (atoi(recibirProtocolo(umc)) == 0) printf("Cabum me exploto la UMC \n");
 	return atoi(esperarRespuesta(umc));
 }
 
@@ -258,7 +283,7 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
 }
-char* pedirLinea();
+
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 	enviarMensajeNucleoConsulta(variable);
 	return atoi(esperarRespuesta(nucleo));
@@ -329,13 +354,13 @@ Variable* crearVariable(char variable){
 
 Pagina obtenerPagDisponible(){
 	Stack* stackActual = obtenerStack();
-	int cantidadDeVariables = list_size(stackActual->vars)-1;
+	int cantidadDeVariables = list_size(stackActual->vars);
 	Pagina pagina;
-	if (!cantidadDeVariables){
+	if (cantidadDeVariables<=0){
 		pagina.pag = pcb.paginas_codigo+1;
 		pagina.off = 0;
 	}else{
-		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables);
+		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
 		if ((ultimaVariable->pagina.off+ultimaVariable->pagina.tamanio+4)<=TAMANIO_PAGINA){
 			pagina.pag = ultimaVariable->pagina.pag;
 			pagina.off = ultimaVariable->pagina.off+4;
@@ -351,12 +376,21 @@ Pagina obtenerPagDisponible(){
 void sumarEnLasVariables(Variable* var){
 	Stack* stackActual = obtenerStack();
 	t_list* variables = stackActual->vars;
+	printf("Agregando a la lista de variables: %c \n", var->id);
 	list_add(variables,var);
 }
 
 Stack* obtenerStack(){
-	int tamanioStack = list_size(pcb.stack);				//Habia un -1 muy turbio que rompia todo(?
-	return (list_get(pcb.stack,tamanioStack));
+	int tamanioStack = list_size(pcb.stack);
+	if (tamanioStack <= 0){
+		Stack* stack = malloc(sizeof(Stack));
+		stack->vars = list_create();
+		Pagina pagina;
+		stack->retVar = pagina;
+		list_add(pcb.stack,stack);
+		tamanioStack = 1;
+	}
+	return (list_get(pcb.stack,tamanioStack-1));
 }
 
 

@@ -19,6 +19,11 @@
 
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
+typedef struct {
+	int pid;
+	int numPagina;
+}t_paquete_lectura;
+
 typedef struct{
 	int puerto;
 	char* ip;
@@ -43,6 +48,7 @@ void* buscar(int, int);
 int compactar();
 int eliminarProceso(int);
 void verMarcos();
+char* leerEnParticion(t_paquete_lectura*);
 
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
@@ -252,9 +258,20 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 	return pos;
 }
 
+
 int compactar(){
-	int pos=0, i,contador=0,compactado=0,inicio=0;
+	int pos=0;
+	int i;
+	int contador=0;
+	int compactado=0;
+	int inicio=0;
 	int j;
+	int k;
+	char* contenidoPagina;
+	int pagInicialLectura;
+	t_paquete_lectura* paqueteLecturaAux;
+	traductor_marco* progAnsis;
+
 	/*int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
 		return (marco1->inicio<marco2->inicio);
 	}
@@ -282,8 +299,34 @@ int compactar(){
 								}
 		}
 	}
+
+	//Administro el contenido de dicho proceso página a página
+
+	pagInicialLectura = progAnsis->inicio;
+
+			for(k=0; k<progAnsis->paginas; k++){
+				// empiezo a hacer la lectura
+				progAnsis->inicio = pagInicialLectura;
+				// estructura que tiene el PID y el numero de pagina que le mando a memoria
+				paqueteLecturaAux = (t_paquete_lectura*) malloc(sizeof(t_paquete_lectura));
+				paqueteLecturaAux->pid = progAnsis->proceso;
+				paqueteLecturaAux->numPagina = k;
+				contenidoPagina = leerEnParticion(paqueteLecturaAux);
+				free(paqueteLecturaAux);
+			}
 	return 1;
 }
+
+
+char* leerEnParticion(t_paquete_lectura* paquete){
+	// hay que hacerlo con memcpy del archivoSwap, proximamente
+	printf("Voy a leer la pagina (%d) del pid (%d)\n", paquete->numPagina, paquete->pid);
+	int byteInicial=0;
+	char* data = malloc(datosSwap->tamPagina);
+return data;
+}
+
+
 
 	/*	int pos,a=1;
 	for (pos = 0 ; (pos<datosSwap->cantidadPaginas) && a ;pos++){
