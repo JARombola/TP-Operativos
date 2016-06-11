@@ -703,7 +703,7 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 }
 void finalizarProgramaUMC(int id){
 	 char* mensaje = string_new();
-	 string_append(&mensaje, "1");
+	 string_append(&mensaje, "4");
 	 string_append(&mensaje, header(id));
 	 send(conexionUMC, mensaje, string_length(mensaje), 0);
 }
@@ -717,7 +717,7 @@ PCB* desSerializarMensajeCPU(char* char_pcb){
 }
 void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	char* mensaje = string_new();
-	string_append(&mensaje, "4");
+	string_append(&mensaje, "1");
 	agregarHeader(&pcbSerializado);
 	string_append(&mensaje,pcbSerializado);
 	send(cpu, mensaje, string_length(mensaje), 0);
