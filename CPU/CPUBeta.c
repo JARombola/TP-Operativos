@@ -1,5 +1,6 @@
 #include "CPUBeta.h"
 
+
 int main(){
 	printf("CPU estable...\n");
 
@@ -10,15 +11,38 @@ int main(){
 
 	conectarseALaUMC();
 	if (umc < 0) return -1;
+	crearHiloSignal();
+
 	if (procesarPeticion()<0) return -1;
 
 	printf("Cerrando CPU.. \n");
 
 	return 0;
 }
+void hiloSignal();
+void funcionSenial(int n);
+void crearHiloSignal(){
+	pthread_t th_seniales;
+	pthread_create(&th_seniales, NULL, (void*)hiloSignal, NULL);
+}
+
+void hiloSignal(){
+	while(1){
+		// no funciona, revisarlo
+		if (signal(SIGUSR1, funcionSenial) == SIG_ERR){
+			sleep(20000);
+			perror ("No se puede cambiar la señal SIGUSR1");
+		}
+	}
+return;
+}
+
+void funcionSenial(int n){
+	perror("nada");
+}
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/workspace/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
@@ -100,7 +124,7 @@ int procesarPeticion(){
 			quantum_sleep=recibirProtocolo(nucleo);
 			pcb_char = esperarRespuesta(nucleo);
 
-			//strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
+			strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
 
 			if (pcb_char[0] == '\0'){
 				perror("Error: Error de conexion con el nucleo\n");
@@ -314,7 +338,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	enviarMensajeConProtocolo(nucleo,identificador_semaforo,CODIGO_WAIT);
 }
 
-void signal(t_nombre_semaforo identificador_semaforo){
+void signalHola(t_nombre_semaforo identificador_semaforo){
 	printf("Signal: %s", identificador_semaforo);
 	enviarMensajeConProtocolo(nucleo,identificador_semaforo,CODIGO_SIGNAL);
 }

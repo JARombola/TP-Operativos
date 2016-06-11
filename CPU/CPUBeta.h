@@ -16,6 +16,9 @@
 #include <commons/collections/list.h>
 #include "Funciones/json.h"
 #include "Funciones/sockets.h"
+#include <signal.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 static const int CONTENIDO_VARIABLE = 20;
 static const int POSICION_MEMORIA = 0x10;
@@ -65,7 +68,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar);
 void wait(t_nombre_semaforo identificador_semaforo);
-void signal(t_nombre_semaforo identificador_semaforo);
+void signalHola(t_nombre_semaforo identificador_semaforo);
 
 Variable* crearVariable(char variable);
 Pagina obtenerPagDisponible();
@@ -92,7 +95,7 @@ AnSISOP_funciones functions = {
 		.AnSISOP_llamarConRetorno		= llamarConRetorno,
 };
 AnSISOP_kernel kernel_functions = {
-		.AnSISOP_signal = signal,
+		.AnSISOP_signal = signalHola,
 		.AnSISOP_wait = wait,
 };
 
