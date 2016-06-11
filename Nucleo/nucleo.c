@@ -77,11 +77,12 @@ int revisarActividad(t_list*, fd_set*);
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep);
 PCB* desSerializarMensajeCPU(char* char_pcb);
 void enviarPCBaCPU(int, char*);
+void finalizarProgramaUMC(int id);
 
 
 datosConfiguracion* datosNucleo;
 t_dictionary *globales,*semaforos,*dispositivosES;
-int tamPagina=0,*dispositivosSleeps, *globalesValores;
+int tamPagina=0,*dispositivosSleeps, *globalesValores, conexionUMC;
 sem_t *semaforosES,*semaforosGlobales;
 t_queue **colasES,**colasSEM;
 int cpu;
@@ -138,7 +139,7 @@ int main(int argc, char* argv[]) {
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in direccionNucleo = crearDireccion(datosNucleo->puerto_nucleo, datosNucleo->ip);
 	printf("Nucleo creado, conectando con la UMC...\n");
-	int conexionUMC = conectar(datosNucleo->puerto_umc, datosNucleo->ip_umc);
+	conexionUMC = conectar(datosNucleo->puerto_umc, datosNucleo->ip_umc);
 	tamPagina=autentificarUMC(conexionUMC);
 
 	if (!tamPagina) {printf("Falló el handshake\n");
@@ -442,16 +443,11 @@ int revisarActividad(t_list* lista, fd_set *descriptores) {
 
 void atender_Nuevos(){
 	while(1){
-		sem_wait(&sem_Nuevos);
+		 sem_wait(&sem_Nuevos); //se libero un pcb en la umc
 		 PCB* pcbNuevo = malloc(sizeof(PCB));
 		 pcbNuevo = queue_pop(colaNuevos);
-		 int respuesta = 0; //todo preguntar umc si hay marcos
-		 if(respuesta){
-			 queue_push(colaListos,pcbNuevo);
-			 sem_post(&sem_Listos);
-		 }else{
-			 queue_push(colaNuevos,pcbNuevo);
-		 }
+		 queue_push(colaListos,pcbNuevo); //entonces lo mando a Listos
+		 sem_post(&sem_Listos);
 	}
 }
 
@@ -466,7 +462,7 @@ void atender_Ejecuciones(){
 		 pidEjecutandose*pidEnCpu = malloc(sizeof(pidEjecutandose));
 		 if(ese_PCB_hay_que_eliminarlo(pcbListo->id)){
 			 printf("La consola del proceso %d no existe mas, se lo eliminara\n",pcbListo->id);
-			 //todo avisar umc de eliminar este proceso
+		 	 finalizarProgramaUMC(pcbListo->id);
 		 }else{
 		 int paso=1;
 		 	 while(paso){
@@ -516,11 +512,13 @@ void atender_Ejecuciones(){
 
  }
  void atender_Terminados(){
+
 	 while(1){
 		 sem_wait(&sem_Terminado);
 	 	 PCB* pcbTerminado = malloc(sizeof(PCB));
 	 	 pcbTerminado = queue_pop(colaTerminados);
-	 	 //todo avisar umc y consola que termino el programa
+	 	 //todo avisar consola que termino bien el programa
+	 	 finalizarProgramaUMC(pcbTerminado->id);
 	 	 sem_post(&sem_Nuevos);
 	 	 free(pcbTerminado);
 	 }
@@ -528,7 +526,7 @@ void atender_Ejecuciones(){
 
 
 void atenderOperacion(int op,int cpu){
-		int tamanio, consola, operacion,pidMalo;
+		int tamanio, consola, operacion, pidMalo;
 		char* texto;
 		PCB*pcbDesSerializado;
 	switch (op){
@@ -536,7 +534,8 @@ void atenderOperacion(int op,int cpu){
 		//el cpu se desconecto y termino mal el q? o hubo un error        (en pruebas, cuando cerraba un cpu devolvia 0, en vez de -1)
 		pidMalo = ese_cpu_tenia_pcb_ejecutando(cpu);
 		if(pidMalo){
-			//todo avisar umc y consola, de borrar ese pid y de que hubo error en ejecucion
+			//todo avisar consola que hubo error en ejecucion
+		 	 finalizarProgramaUMC(pidMalo);
 		 	 sem_post(&sem_Nuevos);
 		}
 		list_remove(cpus, cpu);
@@ -575,6 +574,11 @@ void atenderOperacion(int op,int cpu){
 		texto = recibirMensaje(cpu, tamanio);   //texto o valor
 		//todo verificar que esa consola exista (que este en la lista de consolas)
 		//send(consola, agregarHeader(texto),(tamanio+4),0);
+		break;
+	case 5:
+		//error en el ansisop (memoria o sintaxis)
+		consola = recibirProtocolo(cpu);
+		//aviso consola que hubo un error en la ejecucion
 		break;
 	}
 
@@ -697,16 +701,23 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 
 		return mensaje;
 }
+void finalizarProgramaUMC(int id){
+	 char* mensaje = string_new();
+	 string_append(&mensaje, "1");
+	 string_append(&mensaje, header(id));
+	 send(conexionUMC, mensaje, string_length(mensaje), 0);
+}
+
 PCB* desSerializarMensajeCPU(char* char_pcb){
-	PCB * pcbDevuelto = (PCB*) malloc(sizeof(PCB));
-	//pcbDevuelto = fromStringPCB(char_pcb);
+	PCB* pcbDevuelto = (PCB*) malloc(sizeof(PCB));
+	pcbDevuelto = fromStringPCB(char_pcb);
 	free(char_pcb);
 
 	return pcbDevuelto;
 }
 void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	char* mensaje = string_new();
-	string_append(&mensaje, "1");
+	string_append(&mensaje, "4");
 	agregarHeader(&pcbSerializado);
 	string_append(&mensaje,pcbSerializado);
 	send(cpu, mensaje, string_length(mensaje), 0);
