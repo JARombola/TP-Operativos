@@ -28,6 +28,7 @@ int recibirProtocolo(int conexion){
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
 		return -1;}
+	protocolo[4]='\0';
 	int numero = atoi(protocolo);
 	free(protocolo);
 	return numero;
@@ -39,7 +40,7 @@ char* recibirMensaje(int conexion, int tamanio){
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
-		return "a";}
+		return "0";}
 	mensaje[tamanio]='\0';
 	return mensaje;
 }

@@ -100,10 +100,15 @@ char* toStringInstruccion(t_intructions instruccion,char separador){
 
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 	char* char_instrucciones=string_new();
+
 	int i;
 	for (i = 0 ; i< tamanio; i++){
-		string_append(&char_instrucciones, toStringInt(instrucciones->offset));
-		string_append(&char_instrucciones, toStringInt(instrucciones->start));
+		char* start=toStringInt(instrucciones->start);
+		char* offset=toStringInt(instrucciones->offset);
+		string_append(&char_instrucciones, offset);
+		string_append(&char_instrucciones, start);
+		free(start);
+		free(offset);
 		instrucciones++;
 	}
 	return char_instrucciones;
@@ -111,44 +116,72 @@ char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 
 t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio){
 	t_intructions* instrucciones = malloc(tamanio*sizeof(t_intructions));
-	int i;
-	for (i=0;i<tamanio;i++){
-		instrucciones[i].offset = atoi(string_substring(char_instrucciones,i*8,4));
-		instrucciones[i].start = atoi(string_substring(char_instrucciones,i*8+4,4));
+		int i;
+		for (i=0;i<tamanio;i++){
+			char* offset=string_substring(char_instrucciones,i*8,4);
+			instrucciones[i].offset = atoi(offset);
+			free(offset);
+			char* start=string_substring(char_instrucciones,i*8+4,4);
+			instrucciones[i].start = atoi(start);
+			free(start);
+		}
+		return instrucciones;
 	}
-	return instrucciones;
+
+void copiar(char *destino, char *origen,int cantidad) {
+  int i=0;
+	for(;i<cantidad;i++){
+      *destino++ = *origen++;
+   }
+   *destino = '\0';
 }
 
 char* toStringMetadata(t_metadata_program meta, char separador){
 	char* char_meta=string_new();
-	string_append(&char_meta,toStringInt(meta.instruccion_inicio));
-	string_append(&char_meta,toStringInt(meta.instrucciones_size));
-	string_append(&char_meta,toStringInt(meta.etiquetas_size));
-	string_append(&char_meta,toStringInt(meta.cantidad_de_funciones));
-	string_append(&char_meta,toStringInt(meta.cantidad_de_etiquetas));
+	char* inicio=toStringInt(meta.instruccion_inicio);
+	char* instrSize=toStringInt(meta.instrucciones_size);
+	char* etiqSize=toStringInt(meta.etiquetas_size);
+	char* cantFunc=toStringInt(meta.cantidad_de_funciones);
+	char* cantEtiq=toStringInt(meta.cantidad_de_etiquetas);
+	string_append(&char_meta,inicio);
+	string_append(&char_meta,instrSize);
+	string_append(&char_meta,etiqSize);
+	string_append(&char_meta,cantFunc);
+	string_append(&char_meta,cantEtiq);
+	free(inicio);
+	free(instrSize);
+	free(etiqSize);
+	free(cantFunc);
+	free(cantEtiq);
 	if (meta.etiquetas != NULL){
-		char* asd=malloc(meta.etiquetas_size);
-		memcpy(asd,meta.etiquetas,meta.etiquetas_size);
-		string_append(&char_meta,asd);
-	//	t_puntero_instruccion* b=metadata_buscar_etiqueta("perro",asd,meta.etiquetas_size);
 
-		//	printf("PUNTERO : %d\n",b);
 	}
 	if (meta.instrucciones_size!=0){
-		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
+		char* char_instrucciones=toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size);
 		string_append(&char_meta, char_instrucciones);
 		free(char_instrucciones);
 	}
 	return char_meta;
 }
 
+
 t_metadata_program fromStringMetadata(char* char_meta,char separador){
 	t_metadata_program meta;
-		meta.instruccion_inicio = atoi(toSubString(char_meta,0,3));
-		meta.instrucciones_size = atoi(toSubString(char_meta,4,7));
-		meta.etiquetas_size = atoi(toSubString(char_meta,8,11));
-		meta.cantidad_de_funciones = atoi(toSubString(char_meta,12,15));
-		meta.cantidad_de_etiquetas = atoi(toSubString(char_meta,16,19));
+		char* inicio=toSubString(char_meta,0,3);
+		char* instrSize=toSubString(char_meta,4,7);
+		char* etiquetasSize=toSubString(char_meta,8,11);
+		char* cantFunciones=toSubString(char_meta,12,15);
+		char* cantEtiquetas=toSubString(char_meta,16,19);
+			meta.instruccion_inicio = atoi(inicio);
+			free(inicio);
+			meta.instrucciones_size = atoi(instrSize);
+			free(instrSize);
+			meta.etiquetas_size = atoi(etiquetasSize);
+			free(etiquetasSize);
+			meta.cantidad_de_funciones = atoi(cantFunciones);
+			free(cantFunciones);
+			meta.cantidad_de_etiquetas = atoi(cantEtiquetas);
+			free(cantEtiquetas);
 		if (meta.etiquetas_size>0){
 			meta.etiquetas = toSubString(char_meta,20,(20+meta.etiquetas_size-1));
 			meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,24),meta.instrucciones_size);
@@ -210,15 +243,15 @@ char* valorStringMetadata(char *char_meta, char separador){
 
 t_intructions* valorInstruccionMeta(char* char_meta, int tamanio){
 	t_intructions* instrucciones = malloc(tamanio*sizeof(t_intructions));
-	t_intructions instruccion;
-	int i;
-	for (i=0; i<tamanio;i++){
-		instruccion.offset =  valorInstruccion(char_meta,1,i);
-		instruccion.start = valorInstruccion(char_meta,0,i);
-		instrucciones[i] = instruccion;
+		t_intructions instruccion;
+		int i;
+		for (i=0; i<tamanio;i++){
+			instruccion.offset =  valorInstruccion(char_meta,1,i);
+			instruccion.start = valorInstruccion(char_meta,0,i);
+			instrucciones[i] = instruccion;
+		}
+		return instrucciones;
 	}
-	return instrucciones;
-}
 u_int32_t valorInstruccion(char * char_meta,int subindice,int indice){
 	int i;
 	int signo =0;

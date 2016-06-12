@@ -237,9 +237,16 @@ void* enviarBytes(int proceso,int pagina,int offset,int size){
 	if (posicion!=-1){
 		void* mje=(void*) malloc(size);
 		memcpy(mje,memoria+posicion+offset,size);
+	/*	void* a=(void*)malloc(size+1);
+		memcpy(a,mje,size);
+		memcpy(a+size,"\0",1);
+		printf("%s\n",a);
+		free(a);*/
 		return mje;
 	}
-	return "-1";				//No existe la pag
+	char* mje=string_new();
+	string_append(&mje,"-1");
+	return mje;				//No existe la pag
 }
 
 
@@ -356,9 +363,10 @@ void atenderCpu(int conexion){
 			}
 		} else {
 			salir = 1;
+		//	printf("MENSAJE POST MUERTE: %d\n",operacion);
 		}
 	}
-	registrarTrace(archivoLog, "CPU eliminada");
+	registrarTrace(archivoLog, "CPU Desconectada");
 }
 
 
@@ -411,7 +419,7 @@ int inicializarPrograma(int conexion) {
 	int paginasNecesarias=recibirProtocolo(conexion);
 	espacio_del_codigo = recibirProtocolo(conexion);
 	char* codigo = recibirMensaje(conexion, espacio_del_codigo);			//CODIGO
-	printf("Codigo: %s-\n",codigo);
+	//printf("Codigo: %s-\n",codigo);
 	int i;
 	for (i = 0; i < paginasNecesarias; i++) {//Entradas en la tabla, SIN marcos
 		  actualizarTabla(i, PID, -1);

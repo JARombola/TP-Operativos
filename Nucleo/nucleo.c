@@ -528,7 +528,7 @@ void atender_Ejecuciones(){
 void atenderOperacion(int op,int cpu){
 		int tamanio, consola, operacion, pidMalo;
 		char* texto;
-		PCB*pcbDesSerializado;
+		PCB *pcbDesSerializado;
 	switch (op){
 	case 0:
 		//el cpu se desconecto y termino mal el q? o hubo un error        (en pruebas, cuando cerraba un cpu devolvia 0, en vez de -1)

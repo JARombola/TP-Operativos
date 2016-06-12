@@ -1,17 +1,25 @@
 #include "CPUBeta.h"
+#include <pthread.h>
+#include <commons/process.h>
+#include <signal.h>
 
+void crearHiloSignal();
+void hiloSignal();
+void funcionSenial(int n);
+
+int ejecutar=1;
 
 int main(){
-	printf("CPU estable...\n");
+	printf("CPU estable...%d \n",process_getpid());
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
+	crearHiloSignal();
 	conectarseAlNucleo();
 	if (nucleo < 0) return -1;
 
 	conectarseALaUMC();
 	if (umc < 0) return -1;
-	crearHiloSignal();
 
 	if (procesarPeticion()<0) return -1;
 
@@ -19,30 +27,46 @@ int main(){
 
 	return 0;
 }
-void hiloSignal();
-void funcionSenial(int n);
+
 void crearHiloSignal(){
 	pthread_t th_seniales;
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 	pthread_create(&th_seniales, NULL, (void*)hiloSignal, NULL);
 }
 
 void hiloSignal(){
-	while(1){
 		// no funciona, revisarlo
-		if (signal(SIGUSR1, funcionSenial) == SIG_ERR){
-			sleep(20000);
-			perror ("No se puede cambiar la señal SIGUSR1");
-		}
-	}
-return;
+		signal(SIGUSR1, funcionSenial);					//(SIGUSR1) ---------> Kill -10 (ProcessPid)
+		signal(SIGINT,funcionSenial);					//(SIGINT) ---------> Ctrl+C
 }
 
 void funcionSenial(int n){
-	perror("nada");
+	int error;
+	switch(n){
+	case SIGUSR1:
+		printf("Me mataron con SIGUSR1\n");
+		sleep(2);
+		printf("Adios mundo cruel\n");
+		quantum=0;
+		return;
+		break;
+
+	case SIGINT:
+		printf("Por que me cerraste? \n");
+		sleep(2);
+		printf("Mentira, bye\n");
+		send(umc,"0",1,0);
+	//	send(nucleo,error,4,0);
+		exit(0);
+		break;
+	}
 }
 
+
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("/home/utnso/workspace/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
@@ -110,152 +134,95 @@ int procesarPeticion(){
 	int quantum_sleep;
 	char* pcb_char;
 
-	while(1){
-		quantum = recibirProtocolo(nucleo);
-	//	quantum = 10;
-		if (quantum <= 0){
-			if (!quantum){
-				close(nucleo);
-				close(umc);
-				return 0;
-			}
+	quantum = recibirProtocolo(nucleo);
+	quantum_sleep=recibirProtocolo(nucleo);
+	pcb_char = esperarRespuesta(nucleo);
+
+	if (!quantum){
+		close(nucleo);
+		close(umc);
 			perror("Error: Error de conexion con el nucleo\n");
-		}else{
-			quantum_sleep=recibirProtocolo(nucleo);
-			pcb_char = esperarRespuesta(nucleo);
-
-			strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
-
-			if (pcb_char[0] == '\0'){
-				perror("Error: Error de conexion con el nucleo\n");
-			}else{
-				printf("%s\n",pcb_char);
-				pcb = fromStringPCB(pcb_char);
-//				int p=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-//				printf("PERRO: %d\n",p);
-				if (procesarCodigo()<0) return -1;
-			}
-			free(pcb_char);
-		}
+		return 0;
 	}
+	//	quantum = 10;
+
+		//	strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
+
+	if (pcb_char[0] == '\0'){
+		perror("Error: Error de conexion con el nucleo\n");
+		return 0;}
+
+	printf("%s\n",pcb_char);
+	pcb = fromStringPCB(pcb_char);
+	//		int p=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	//		printf("PERRO: %d\n",p);
+	procesarCodigo();
+	free(pcb_char);
 	return 0;
 }
 
 int procesarCodigo(){
-	finalizado = 0;
-	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
-	while ((quantum>0) && (!(finalizado))){
-		linea = pedirLinea();
-		printf("Recibi: %s \n", linea);
-		if (linea[0] == '\0'){
-
-			perror("Error: Error de conexion con la UMC \n");
-			return -1;
-		}
-		parsear(linea);
-		quantum--;
-		saltoDeLinea(1,NULL);
+	char* linea;
+	while(quantum){
+	//sleep(4);
+	linea = pedirLinea();
+	printf("Recibi: %s \n", linea);
+	if (linea[0] == '\0'){
+		perror("Error: Error de conexion con la UMC \n");
+		return -1;
 	}
+	/*
+	//parsear(linea);
+	quantum--;
+	//saltoDeLinea(1,NULL);
+	linea[0]='\0';
+	free(linea);
 	Stack* s = obtenerStack();
 	t_list* vars = s->vars;
 	Variable* a = list_get(vars,0);
 	Variable* b = list_get(vars,1);
 	printf("%c\n",a->id);
 	printf("%c\n",b->id);
-	printf("Finalizado el Proceso de Codigo...\n");
+	printf("Finalizado el Proceso de Codigo...\n");*/
+	}
 	return 0;
-}/*
-char* pedirLinea(){
-	printf("Start:%d",pcb.indices.instrucciones_serializado[pcb.pc].start);
-	pcb.indices.instrucciones_serializado[pcb.pc].start++;
-	pcb.indices.instrucciones_serializado[pcb.pc].offset++;
-	int pag = pcb.indices.instrucciones_serializado[pcb.pc].start/TAMANIO_PAGINA;
-		int off = pcb.indices.instrucciones_serializado[pcb.pc].start-TAMANIO_PAGINA*pag;
-		int size = pcb.indices.instrucciones_serializado[pcb.pc].offset;
-		int size_page = size;
-		int proceso = pcb.id;
-		char* respuesta;
-		char* respuestaFinal = string_new();
-		respuestaFinal[0] = '\0';
-		int repeticiones = 0;
-		while(size >0){
-			if (size > TAMANIO_PAGINA-off){
-				size_page = TAMANIO_PAGINA-off;
-			}else{
-				size_page = size;
-			}
-			size_page++;
-			enviarMensajeUMCConsulta(pag,off,size_page,proceso);
-			respuesta = string_new();
-			recv(umc,respuesta,size_page,0);
-			respuesta[size_page]= '\0';
-			string_append(&respuestaFinal,respuesta);
-			string_append(&respuestaFinal,"\0");
-			printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
-			repeticiones++;
-			pag++;
-			size = size - size_page;
-			off = 0;
-			if (respuesta[0] == '\0'){
-				printf("Error: No se ha logrado conectarse a la UMC\n");
-				break;
-			}
-			free(respuesta);
-		}
+}
 
-		return respuestaFinal;
-
-}*/
 char* pedirLinea(){
-	int start, pag, faltante, sizePag, longitud, inicio,i=0, cantPaginas,resto,proceso=pcb.id;
-	start=pcb.indices.instrucciones_serializado[pcb.pc].start;
-	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset;
-	pag = (start-pcb.pc)/TAMANIO_PAGINA;
-	faltante=start%TAMANIO_PAGINA;					//Lo que falta leer
-	cantPaginas=longitud/TAMANIO_PAGINA;
-	//	longitud=TAMANIO_PAGINA-inicio;
-	inicio = TAMANIO_PAGINA-faltante;
-	int sePaso=(inicio+longitud)>TAMANIO_PAGINA;				//La instruccion esta dividida en varias paginas
-	resto=0;
-	if (sePaso){						//Está cortada en 2 paginas
-		sizePag=faltante;
-		if (!cantPaginas){							//Solo esas 2 Pags
-			cantPaginas++;							//Para que lea las 2
-			resto=longitud-faltante;
-//			inicio++;
-		}else{							//Mas de 2
-			inicio--;
-			resto=(longitud-faltante)%TAMANIO_PAGINA;
-		}
-	}
-	else{
-		inicio = (start%TAMANIO_PAGINA)-longitud;
-		cantPaginas=1;
-		sizePag=longitud;
-	}
-	char* respuesta = string_new();
+	int start, pag, size_page, longitud, proceso = pcb.id;
+	start = pcb.indices.instrucciones_serializado[pcb.pc].start-4;
+	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
+	pag = start / TAMANIO_PAGINA;
+	int off = start%TAMANIO_PAGINA;
+
+	size_page = longitud;
+
 	char* respuestaFinal = string_new();
-
-	for (i=0;i<cantPaginas;i++){
-		enviarMensajeUMCConsulta(pag+i,inicio,sizePag,proceso);
-		recv(umc,respuesta,sizePag,0);
-		string_append(&respuestaFinal,respuesta);
-		string_append(&respuesta,"\0");
-		if(i==0){sizePag=TAMANIO_PAGINA;
-			inicio=0;
+	//respuestaFinal[0]='\0';
+	int repeticiones = 0;
+	while (longitud>0) {
+		if (longitud > TAMANIO_PAGINA - off) {
+			size_page = TAMANIO_PAGINA - off;
+		} else {
+			size_page = longitud;
 		}
+		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
+		char* respuesta=malloc(size_page+1);
+		recv(umc, respuesta, size_page, 0);
+		respuesta[size_page]='\0';
+		string_append(&respuestaFinal, respuesta);
+		//printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
+		free(respuesta);
+		pag++;
+		longitud -= size_page;
+		repeticiones++;
+		off = 0;
 	}
-	if (resto){
-		inicio--;
-		if(cantPaginas)inicio=0;
-		enviarMensajeUMCConsulta(pag+i,inicio,resto,proceso);
-		recv(umc,respuesta,resto,0);
-		string_append(&respuestaFinal,string_substring(respuesta,0,resto));
-	}
-	free(respuesta);
-	string_append(&respuestaFinal,"\0");
+	string_append(&respuestaFinal, "\0");
+	pcb.pc++;
 	return respuestaFinal;
+
 
 	/*char* linea = string_new();
 	switch (quantum){
@@ -436,12 +403,21 @@ void saltoDeLinea(int cantidad, void* funcion){
 
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 	char* mensaje = string_new();
+	char* procesoMje=toStringInt(proceso);
+	char* pagMje=toStringInt(pag);
+	char* offMje=toStringInt(off);
+	char* sizeMje=toStringInt(size);
 	string_append(&mensaje,"2");
-	string_append(&mensaje,toStringInt(proceso));
-	string_append(&mensaje,toStringInt(pag));
-	string_append(&mensaje,toStringInt(off));
-	string_append(&mensaje,toStringInt(size));
+	string_append(&mensaje,procesoMje);
+	string_append(&mensaje,pagMje);
+	string_append(&mensaje,offMje);
+	string_append(&mensaje,sizeMje);
+	string_append(&mensaje,"\0");
 	send(umc,mensaje,strlen(mensaje),0);
+	free(procesoMje);
+	free(pagMje);
+	free(offMje);
+	free(sizeMje);
 	free(mensaje);
 }
 
