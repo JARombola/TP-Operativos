@@ -30,8 +30,9 @@
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1690717909" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1385439745" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug">
-								<option id="gnu.c.link.option.libs.1309931352" superClass="gnu.c.link.option.libs" valueType="libs">
+								<option id="gnu.c.link.option.libs.1309931352" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="commons"/>
+									<listOptionValue builtIn="false" value="pthread"/>
 									<listOptionValue builtIn="false" value="parser-ansisop"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.389854301" superClass="cdt.managedbuild.tool.gnu.c.linker.input">

@@ -10,11 +10,12 @@ void funcionSenial(int n);
 int ejecutar=1;
 
 int main(){
-	printf("CPU estable...%d \n",process_getpid());
+	printf("CPU estable...%d \n");
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
 	crearHiloSignal();
+
 	conectarseAlNucleo();
 	if (nucleo < 0) return -1;
 
@@ -27,10 +28,11 @@ int main(){
 
 	return 0;
 }
-
+void hiloSignal();
 void crearHiloSignal(){
 	pthread_t th_seniales;
 	pthread_attr_t attr;
+
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 	pthread_create(&th_seniales, NULL, (void*)hiloSignal, NULL);
@@ -66,7 +68,7 @@ void funcionSenial(int n){
 
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;
@@ -154,43 +156,45 @@ int procesarPeticion(){
 
 	printf("%s\n",pcb_char);
 	pcb = fromStringPCB(pcb_char);
-	//		int p=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	//		printf("PERRO: %d\n",p);
+
 	procesarCodigo();
 	free(pcb_char);
 	return 0;
 }
 
 int procesarCodigo(){
-	printf("Iniciando Proceso de Codigo...\n");
+	finalizado = 0;
 	char* linea;
-	while(quantum){
-	//sleep(4);
-	linea = pedirLinea();
-	printf("Recibi: %s \n", linea);
-	if (linea[0] == '\0'){
-		perror("Error: Error de conexion con la UMC \n");
-		return -1;
+	printf("Iniciando Proceso de Codigo...\n");
+	while ((quantum>0) && (!(finalizado))){
+		linea = pedirLinea();
+		printf("Recibi: %s \n", linea);
+		if (linea[0] == '\0'){
+
+			perror("Error: Error de conexion con la UMC \n");
+			return -1;
+		}
+		parsear(linea);
+		quantum--;
+		saltoDeLinea(1,NULL);
 	}
-	/*
-	//parsear(linea);
-	quantum--;
-	//saltoDeLinea(1,NULL);
-	linea[0]='\0';
-	free(linea);
 	Stack* s = obtenerStack();
 	t_list* vars = s->vars;
 	Variable* a = list_get(vars,0);
 	Variable* b = list_get(vars,1);
 	printf("%c\n",a->id);
 	printf("%c\n",b->id);
-	printf("Finalizado el Proceso de Codigo...\n");*/
-	}
+	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
 }
 
 char* pedirLinea(){
-	int start, pag, size_page, longitud, proceso = pcb.id;
+	int start;
+	int pag;
+	int size_page;
+	int longitud;
+	int proceso = pcb.id;
+
 	start = pcb.indices.instrucciones_serializado[pcb.pc].start-4;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
 	pag = start / TAMANIO_PAGINA;
@@ -199,8 +203,6 @@ char* pedirLinea(){
 	size_page = longitud;
 
 	char* respuestaFinal = string_new();
-	//respuestaFinal[0]='\0';
-	int repeticiones = 0;
 	while (longitud>0) {
 		if (longitud > TAMANIO_PAGINA - off) {
 			size_page = TAMANIO_PAGINA - off;
@@ -212,15 +214,13 @@ char* pedirLinea(){
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
 		string_append(&respuestaFinal, respuesta);
-		//printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
+		printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
 		free(respuesta);
 		pag++;
 		longitud -= size_page;
-		repeticiones++;
 		off = 0;
 	}
 	string_append(&respuestaFinal, "\0");
-	pcb.pc++;
 	return respuestaFinal;
 
 
