@@ -38,8 +38,8 @@ extern t_log* archivoLog;
 extern int* vectorMarcos;
 
 int buscar(int proceso, int pag);
-traductor_marco* actualizarTabla(int pag, int proceso, int marco);
-traductor_marco* guardarPagina(void* datos,int proceso,int pag);
+void actualizarTabla(int pag, int proceso, int marco);
+int guardarPagina(void* datos,int proceso,int pag);
 int buscarMarcoLibre(int pid);
 int marcosAsignados(int pid, int operacion);
 int hayMarcosLibres();

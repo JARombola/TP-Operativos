@@ -15,18 +15,12 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 		return 0;
 	}
 	int posicion;
-	traductor_marco* encontrada;
-	if (list_any_satisfy(tabla_de_paginas,(void*)paginaBuscada)) {				//Esta "registrada" la pag (Existe)
-		//Consultar tlb
-		//encontrada=list_find(tlb,(void*paginaBuscada);
-		//if (encontrada!=NULL){		//Esta en la tlb, entonces saco y vuelvo a poner
-		//
-		//}
-		//else{
-		encontrada=list_find(tabla_de_paginas,(void*) paginaBuscada);
-			//slep, consulta a la tabla de paginas
-		if (encontrada->marco <0) {	//no está en memoria => peticion a swap
-			void* datos = (void*) malloc(datosMemoria->marco_size);
+	traductor_marco* encontrada = list_find(tabla_de_paginas,(void*) paginaBuscada);
+	if (encontrada != NULL) {				//Esta "registrada" la pag (Existe)
+		void* datos = (void*) malloc(datosMemoria->marco_size);
+		if (encontrada->marco >= 0) {						//Está en memoria
+			posicion=encontrada->marco * datosMemoria->marco_size;
+		} else {					//todo no está en memoria => peticion a swap
 			char* pedido = string_new();
 			string_append(&pedido, "2");
 			string_append(&pedido, (char*)header(proceso));
@@ -35,18 +29,16 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 			send(conexionSwap, pedido, string_length(pedido), 0);
 			free(pedido);
 			recv(conexionSwap, datos, datosMemoria->marco_size, 0);
-			encontrada=guardarPagina(datos, proceso, pag);
+			posicion=guardarPagina(datos, proceso, pag);
+			posicion*=datosMemoria->marco_size;
 		}
-							//Actualizar tlb
-		//}
-		posicion=encontrada->marco * datosMemoria->marco_size;
 		return posicion;								//devuelve la posicion dentro de la "memoria"
 	}
 	printf("No existe la pagina solicitada\n");
 	return -1;
 }
 
-traductor_marco* actualizarTabla(int pag, int proceso, int marco){
+void actualizarTabla(int pag, int proceso, int marco){
 	traductor_marco* traductorMarco=malloc(sizeof(traductor_marco));
 	void eliminarAnterior(traductor_marco* marco){
 		free(marco);
@@ -65,7 +57,13 @@ traductor_marco* actualizarTabla(int pag, int proceso, int marco){
 		}
 		traductorMarco->marco=marco;
 		traductorMarco->modificada=0;
+		if (datosMemoria->algoritmo){
 		list_replace(tabla_de_paginas,i,traductorMarco);}
+		else{
+			list_remove(tabla_de_paginas,i);
+			list_add(tabla_de_paginas,traductorMarco);
+		}
+	}
 	else{																//Sino la registro
 	traductorMarco->pagina=pag;
 	traductorMarco->proceso=proceso;
@@ -73,21 +71,20 @@ traductor_marco* actualizarTabla(int pag, int proceso, int marco){
 	traductorMarco->modificada=0;
 	printf("Pag %d, proceso %d, marco %d\n",traductorMarco->pagina,traductorMarco->proceso,traductorMarco->marco);
 	list_add(tabla_de_paginas,traductorMarco);}
-	return traductorMarco;
 }
 
 
-traductor_marco* guardarPagina(void* datos,int proceso,int pag){
+int guardarPagina(void* datos,int proceso,int pag){
 	int marco,tamMarco=datosMemoria->marco_size;
 	marco = buscarMarcoLibre(proceso);
 	if (marco==-1){								//no hay marcos para darle => hay que eliminar el proceso
 		return -1;
 	}
 	memcpy(memoria + (marco * tamMarco), datos, tamMarco);//
-	traductor_marco* datosPagina=actualizarTabla(pag, proceso, marco);
+	actualizarTabla(pag, proceso, marco);
 //	printf("Paginas Necesarias:%d , TotalMarcosGuardados: %d\n",paginasNecesarias,i);
 //	printf("TablaDePaginas:%d\n",list_size(tabla_de_paginas));
-	return datosPagina;
+	return marco;
 }
 
 int buscarMarcoLibre(int pid) {

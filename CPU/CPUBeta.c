@@ -140,21 +140,21 @@ int procesarPeticion(){
 	quantum_sleep=recibirProtocolo(nucleo);
 	pcb_char = esperarRespuesta(nucleo);
 
-	if (!quantum){
+	if (quantum<=0){
 		close(nucleo);
 		close(umc);
 			perror("Error: Error de conexion con el nucleo\n");
 		return 0;
 	}
-	//	quantum = 10;
-
-		//	strcpy(pcb_char, "000600680000000600000000000000140006000400200004002400070028000400350004003900040000");
+	quantum = 10;
+	printf("Eldel nucleo:%s\n",pcb_char);
+	strcpy(pcb_char, "000600680000000600000000000000150006000400210004002500070029000400360004004000040000");
 
 	if (pcb_char[0] == '\0'){
 		perror("Error: Error de conexion con el nucleo\n");
 		return 0;}
 
-	printf("%s\n",pcb_char);
+	printf("Hardcodeado: %s\n",pcb_char);
 	pcb = fromStringPCB(pcb_char);
 
 	procesarCodigo();
@@ -170,7 +170,6 @@ int procesarCodigo(){
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 		if (linea[0] == '\0'){
-
 			perror("Error: Error de conexion con la UMC \n");
 			return -1;
 		}
@@ -195,7 +194,7 @@ char* pedirLinea(){
 	int longitud;
 	int proceso = pcb.id;
 
-	start = pcb.indices.instrucciones_serializado[pcb.pc].start-4;
+	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;

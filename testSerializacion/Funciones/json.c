@@ -11,7 +11,7 @@ char* toJsonArchivo(FILE* archivo){
 	ansisop[0]='\0';
 	while (!feof(archivo)){
 		fgets(linea,200,archivo);
-        filtrar(linea);
+       // filtrar(linea);
 		strcat(ansisop,linea);
 		final = realloc(final,(strlen(ansisop)+1)* sizeof(char));
 		strcpy(final,ansisop);

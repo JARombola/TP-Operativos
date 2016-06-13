@@ -6,6 +6,7 @@
 int main(){
 	FILE* arch = fopen("arch.ansisop","r");
 	char* arch_char = toJsonArchivo(arch);
+	printf("Longitud %d\n",strlen(arch_char));
 	PCB pcb;
 	pcb.id = 6;
 	pcb.paginas_codigo = 4;
