@@ -207,20 +207,14 @@ int aceptarNucleo(int umc,struct sockaddr_in direccionCliente){
 void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
 	int posicion=buscar(proceso, pagina);
 	if (posicion!=-1){
-		if(op){
-			int valor;
-			memcpy(&valor,memoria+posicion+offset,size);
-			printf("Envio: %d\n",valor);
-			return htonl(valor);
-		}else{
-		void* codigo=(void*) malloc(size);
-		memcpy(codigo,memoria+posicion+offset,size);
+		void* datos=(void*) malloc(size);
+		memcpy(datos,memoria+posicion+offset,size);
 		void* a=(void*)malloc(size+1);
-		memcpy(a,codigo,size);
+		memcpy(a,datos,size);
 		memcpy(a+size,"\0",1);
 		printf("Envio: %s\n",a);
 		free(a);
-		return codigo;}
+		return datos;//}
 	}
 	char* mje=string_new();
 	string_append(&mje,"-1");
@@ -328,13 +322,9 @@ void atenderCpu(int conexion){
 			size=recibirProtocolo(conexion);
 			switch (operacion) {
 			case 2:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
-				operacion=atoi(recibirMensaje(conexion,1));
 				datos=enviarBytes(proceso,pagina,offset,size,operacion);
-				if(!operacion){
 					send(conexion,datos,size,0);
 					free(datos);
-				}else{
-				send(conexion,&datos,size,0);}
 				break;
 			case 3:													//3 = Guardar Valor
 				recv(conexion,&buffer,sizeof(int),0);
@@ -373,7 +363,6 @@ void atenderNucleo(int nucleo){
 							registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");
 							send(nucleo, &guardar,sizeof(int),0);}
 						break;
-
 					case 4:												//Finalizar programa
 							recv(nucleo,&procesoEliminar,sizeof(int),0);
 							procesoEliminar=ntohl(procesoEliminar);
@@ -445,13 +434,10 @@ int finalizarPrograma(int procesoEliminar){
     int clockDelProceso(unClock* clockDelProceso){                        //todo revisar si funciona :/
         return(clockDelProceso->proceso==procesoEliminar);
     }
-    printf("LISTA antes: %d ",list_size(tabla_de_paginas));
+    printf("[Antes] Paginas: %d  Clocks: %d\n",list_size(tabla_de_paginas),list_size(tablaClocks));
     list_iterate(tabla_de_paginas,(void*)limpiar);
-    unClock* clockEliminar=list_find(tablaClocks,clockDelProceso);
-    if (clockDelProceso!=NULL){                            //todo revisar si funciona :/
-        queue_clean(clockEliminar->colaMarcos);
-        free(clockDelProceso);}
-    printf(" /Despues %d\n",list_size(tabla_de_paginas));
+    list_remove_and_destroy_by_condition(tablaClocks,clockDelProceso,free);
+    printf("[Despues] Paginas: %d  Clocks: %d\n",list_size(tabla_de_paginas),list_size(tablaClocks));
     char* mensajeEliminar=string_new();
     string_append(&mensajeEliminar,"3");
     string_append(&mensajeEliminar,header(procesoEliminar));

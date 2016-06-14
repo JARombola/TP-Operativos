@@ -17,11 +17,11 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 	traductor_marco* encontrada;
 	if (list_any_satisfy(tabla_de_paginas,(void*)paginaBuscada)) {				//Esta "registrada" la pag (Existe)
 		//Consultar tlb
-		//encontrada=list_find(tlb,(void*paginaBuscada);
-		//if (encontrada!=NULL){		//Esta en la tlb, entonces saco y vuelvo a poner
-		//
-		//}
-		//else{
+		/*encontrada=list_find(tlb,(void*paginaBuscada);
+			if (encontrada!=NULL){		//Esta en la tlb, entonces saco y vuelvo a poner
+
+		}
+		else{*/
 		encontrada=list_find(tabla_de_paginas,(void*) paginaBuscada);
 			//slep, consulta a la tabla de paginas
 		if (encontrada->marco <0) {	//no está en memoria => peticion a swap

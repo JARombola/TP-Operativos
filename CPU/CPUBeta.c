@@ -211,7 +211,7 @@ char* pedirLinea(){
 		} else {
 			size_page = longitud;
 		}
-		enviarMensajeUMCConsulta(pag, off, size_page, proceso,"0\0");
+		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
 		char* respuesta=malloc(size_page+1);
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
@@ -268,10 +268,9 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
-	enviarMensajeUMCConsulta(pag->pag-1,pag->off,pag->tamanio,pcb.id,"1\0");			//1 = obtener valor, 0 = obtener linea
-	int p;
+	enviarMensajeUMCConsulta(pag->pag-1,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
+	int *p;
 	recv(umc,&p,sizeof(int),0);
-	p=ntohl(p);
 	printf("VALOR VARIABLE: %d \n",p);
 	//if (!recibirProtocolo(umc)) printf("Cabum me exploto la UMC \n");
 	//char* respuesta=esperarRespuesta(umc);
@@ -411,7 +410,7 @@ void saltoDeLinea(int cantidad, void* funcion){
 	pcb.pc++;
 }
 
-void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso, char* codigo){
+void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 	char* mensaje = string_new();
 	char* procesoMje=toStringInt(proceso);
 	char* pagMje=toStringInt(pag);
@@ -422,7 +421,6 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso, char* cod
 	string_append(&mensaje,pagMje);
 	string_append(&mensaje,offMje);
 	string_append(&mensaje,sizeMje);
-	string_append(&mensaje,codigo);
 	string_append(&mensaje,"\0");
 	send(umc,mensaje,string_length(mensaje),0);
 	free(procesoMje);
