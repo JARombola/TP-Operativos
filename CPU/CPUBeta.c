@@ -10,7 +10,7 @@ void funcionSenial(int n);
 int ejecutar=1;
 
 int main(){
-	printf("CPU estable...%d \n");
+	printf("CPU estable...[%d] \n",process_getpid());
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
@@ -39,7 +39,6 @@ void crearHiloSignal(){
 }
 
 void hiloSignal(){
-		// no funciona, revisarlo
 		signal(SIGUSR1, funcionSenial);					//(SIGUSR1) ---------> Kill -10 (ProcessPid)
 		signal(SIGINT,funcionSenial);					//(SIGINT) ---------> Ctrl+C
 }
@@ -68,10 +67,12 @@ void funcionSenial(int n){
 
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
+		FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+		if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
-		return -1;
+		return -1;}
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
@@ -148,7 +149,7 @@ int procesarPeticion(){
 	}
 	quantum = 10;
 	printf("Eldel nucleo:%s\n",pcb_char);
-	strcpy(pcb_char, "000600680000000600000000000000150006000400210004002500070029000400360004004000040000");
+	//strcpy(pcb_char, "000600680000000600000000000000150006000400210004002500070029000400360004004000040000");
 
 	if (pcb_char[0] == '\0'){
 		perror("Error: Error de conexion con el nucleo\n");
@@ -166,7 +167,8 @@ int procesarCodigo(){
 	finalizado = 0;
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
-	while ((quantum>0) && (!(finalizado))){
+	while ((quantum>0) && (!finalizado)){
+		//sleep(3);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 		if (linea[0] == '\0'){
@@ -175,7 +177,8 @@ int procesarCodigo(){
 		}
 		parsear(linea);
 		quantum--;
-		saltoDeLinea(1,NULL);
+//		saltoDeLinea(1,NULL);
+		pcb.pc++;
 	}
 	Stack* s = obtenerStack();
 	t_list* vars = s->vars;
@@ -188,13 +191,13 @@ int procesarCodigo(){
 }
 
 char* pedirLinea(){
-	int start;
-	int pag;
-	int size_page;
-	int longitud;
-	int proceso = pcb.id;
+	int start,
+		pag,
+		size_page,
+		longitud,
+		proceso = pcb.id;
 
-	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
+	start = pcb.indices.instrucciones_serializado[pcb.pc].start-4;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
@@ -208,12 +211,13 @@ char* pedirLinea(){
 		} else {
 			size_page = longitud;
 		}
-		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
+		enviarMensajeUMCConsulta(pag, off, size_page, proceso,"0\0");
 		char* respuesta=malloc(size_page+1);
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
 		string_append(&respuestaFinal, respuesta);
 		printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
+		respuesta='\0';
 		free(respuesta);
 		pag++;
 		longitud -= size_page;
@@ -264,9 +268,16 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
-	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
-	if (atoi(recibirProtocolo(umc)) == 0) printf("Cabum me exploto la UMC \n");
-	return atoi(esperarRespuesta(umc));
+	enviarMensajeUMCConsulta(pag->pag-1,pag->off,pag->tamanio,pcb.id,"1\0");			//1 = obtener valor, 0 = obtener linea
+	int p;
+	recv(umc,&p,sizeof(int),0);
+	p=ntohl(p);
+	printf("VALOR VARIABLE: %d \n",p);
+	//if (!recibirProtocolo(umc)) printf("Cabum me exploto la UMC \n");
+	//char* respuesta=esperarRespuesta(umc);
+	//int resp=atoi(respuesta);
+	//free(respuesta);
+	return p;
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
@@ -400,7 +411,7 @@ void saltoDeLinea(int cantidad, void* funcion){
 	pcb.pc++;
 }
 
-void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
+void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso, char* codigo){
 	char* mensaje = string_new();
 	char* procesoMje=toStringInt(proceso);
 	char* pagMje=toStringInt(pag);
@@ -411,8 +422,9 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 	string_append(&mensaje,pagMje);
 	string_append(&mensaje,offMje);
 	string_append(&mensaje,sizeMje);
+	string_append(&mensaje,codigo);
 	string_append(&mensaje,"\0");
-	send(umc,mensaje,strlen(mensaje),0);
+	send(umc,mensaje,string_length(mensaje),0);
 	free(procesoMje);
 	free(pagMje);
 	free(offMje);
@@ -421,9 +433,18 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 }
 
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor){
-	char* mensaje = malloc(22*sizeof(char));
-	sprintf(mensaje,"3%s%s%s%s%s",toStringInt(proceso),toStringInt(pag),toStringInt(off),toStringInt(size),toStringInt(valor));
-	send(umc,mensaje,strlen(mensaje),0);void parsear(char* instruccion);
+	char* mensaje = string_new();
+	valor=htonl(valor);
+	string_append_with_format(&mensaje,"3%s%s%s%s\0",toStringInt(proceso),toStringInt(pag-1),toStringInt(off),toStringInt(size));
+	send(umc,mensaje,string_length(mensaje),0);
+	send(umc,&valor,sizeof(int),0);
+	char* resp=malloc(5);
+	recv(umc,resp,4,0);
+	if (atoi(resp)){
+		printf("Asignacion ok\n");
+	}else{
+		printf("Cagamos\n");
+	}
 	free(mensaje);
 }
 

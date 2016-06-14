@@ -76,7 +76,7 @@ void sumarEnLasVariables(Variable* var);
 Stack* obtenerStack();
 void enviarMensajeNucleoConsulta(char* variable);
 void enviarMensajeNucleoAsignacion(char* variable, int valor);
-void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);
+void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso, char* codigoLectura);	//0 = pedir linea codigo, 1 = pedir valor almacenado
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
 void saltoDeLinea(int cantidad, void* funcion);
 void parsear(char* instruccion);

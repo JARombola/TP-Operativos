@@ -28,7 +28,7 @@ int comprobarCliente(int);
 void mostrarTablaPag(traductor_marco*);
 int aceptarNucleo(int,struct sockaddr_in);
 //COMPLETAR...........................................................
-void* enviarBytes(int proceso,int pagina,int offset,int size);
+void* enviarBytes(int proceso,int pagina,int offset,int size, int operacion);
 int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
 int finalizarPrograma(int);
 void consola();
@@ -50,14 +50,6 @@ t_log* archivoLog;
 
 
 int main(int argc, char* argv[]) {
-	/*void* ja=(void*) malloc(13); int aa=100;
-	memcpy(ja,&aa,4);
-	memcpy(ja+4,"holaaasss",9);
-	int x;memcpy(&x,ja,4);
-	char* v=malloc(6);
-	memcpy(v,ja+4,6);
-	printf("%d %s,\n",x,v);*/
-
 	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
 
 	int nucleo,nuevo_cliente,sin_size = sizeof(struct sockaddr_in);
@@ -80,27 +72,7 @@ int main(int argc, char* argv[]) {
 		vectorMarcos[j]=0;															//Para la busqueda de marcos (como un bitMap)
 	}
 	tablaClocks=list_create();
-	//void* a=(void*) malloc(10);
-	/*char* p=malloc(5);
-	memcpy(p,"hola",4);
-	memcpy(a,p,4);
-	memcpy(a+4,"\0",1);
-	printf("%s-",a);
-	void* q;
-	memcpy(q,a,4);
-	char* m=malloc(5);
-	memcpy(m,q,4);
-	memcpy(m+4,"\0",1);
-	printf("%s\n",m);*/
-	//int b=100;int *p=&b;
-//	printf("%d-",b);int *p=&b;
-/*	memcpy(a,p,4);
-	printf("%d- ",a);
-	void* q;
-	memcpy(q,a,4);
-	int d;//=malloc(4);
-	memcpy(&d,q,4);
-	printf("%d -",d);*/
+
 	//----------------------------------------------------------------------------SOCKETS
 
 	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc,datosMemoria->ip);
@@ -232,17 +204,23 @@ int aceptarNucleo(int umc,struct sockaddr_in direccionCliente){
 
 //-----------------------------------------------OPERACIONES UMC-------------------------------------------------
 
-void* enviarBytes(int proceso,int pagina,int offset,int size){
+void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
 	int posicion=buscar(proceso, pagina);
 	if (posicion!=-1){
-		void* mje=(void*) malloc(size);
-		memcpy(mje,memoria+posicion+offset,size);
-	/*	void* a=(void*)malloc(size+1);
-		memcpy(a,mje,size);
+		if(op){
+			int valor;
+			memcpy(&valor,memoria+posicion+offset,size);
+			printf("Envio: %d\n",valor);
+			return htonl(valor);
+		}else{
+		void* codigo=(void*) malloc(size);
+		memcpy(codigo,memoria+posicion+offset,size);
+		void* a=(void*)malloc(size+1);
+		memcpy(a,codigo,size);
 		memcpy(a+size,"\0",1);
-		printf("%s\n",a);
-		free(a);*/
-		return mje;
+		printf("Envio: %s\n",a);
+		free(a);
+		return codigo;}
 	}
 	char* mje=string_new();
 	string_append(&mje,"-1");
@@ -263,6 +241,9 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 	}
 	posicion+=offset;
 	memcpy(memoria+posicion,&buffer,size);
+	void* a=malloc(4);
+	memcpy(&a,memoria+posicion,4);
+	printf("Guardé: %d\n",a);
 	list_iterate(tabla_de_paginas,(void*)modificada);
 	printf("Pagina modificada\n");
 	return posicion;
@@ -347,9 +328,13 @@ void atenderCpu(int conexion){
 			size=recibirProtocolo(conexion);
 			switch (operacion) {
 			case 2:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
-				datos=enviarBytes(proceso,pagina,offset,size);
-				send(conexion,datos,size,0);
-				free(datos);
+				operacion=atoi(recibirMensaje(conexion,1));
+				datos=enviarBytes(proceso,pagina,offset,size,operacion);
+				if(!operacion){
+					send(conexion,datos,size,0);
+					free(datos);
+				}else{
+				send(conexion,&datos,size,0);}
 				break;
 			case 3:													//3 = Guardar Valor
 				recv(conexion,&buffer,sizeof(int),0);

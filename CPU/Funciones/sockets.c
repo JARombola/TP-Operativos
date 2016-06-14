@@ -14,19 +14,19 @@ int conectar(int puerto,char* ip){
 	return conexion;
 }
 void enviarMensaje(int conexion, char* mensaje){
-	char* mensajeReal = malloc ((strlen(mensaje)+4)*sizeof(char));
+	char* mensajeReal =string_new();
 	uint32_t longitud = strlen(mensaje);
-	strcpy(mensajeReal,header(longitud));
-	strcat(mensajeReal,mensaje);
+	string_append(&mensajeReal,header(longitud));
+	string_append(&mensajeReal,mensaje);
 	send(conexion,mensajeReal,strlen(mensajeReal),0);
 }
 
 void enviarMensajeConProtocolo(int conexion, char* mensaje, int protocolo){
-	char* mensajeReal = malloc ((strlen(mensaje)+4)*sizeof(char));
+	char* mensajeReal = string_new();
 	uint32_t longitud = strlen(mensaje)+1;
-	strcpy(mensajeReal,header(protocolo));
-	strcat(mensajeReal,header(longitud));
-	strcat(mensajeReal,mensaje);
+	string_append(&mensajeReal,header(protocolo));
+	string_append(&mensajeReal,header(longitud));
+	string_append(&mensajeReal,mensaje);
 	send(conexion,mensajeReal,strlen(mensajeReal),0);
 }
 
