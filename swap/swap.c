@@ -58,7 +58,7 @@ t_list* tablaPaginas;
 
 int main(int argc, char* argv[]){
 
-	int	conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
+	int conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
 
 	datosSwap=malloc(sizeof(datosConfiguracion));
 
@@ -208,7 +208,6 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		int tamanio = recibirProtocolo(conexionUmc);
 		datos = recibirMensaje(conexionUmc, tamanio);
 		posicion = buscarEspacioLibre(cantPaginas);
-		posicion *= datosSwap->tamPagina;
 		nuevaFila->inicio = posicion;
 		nuevaFila->paginas = cantPaginas;
 		nuevaFila->proceso = PID;
@@ -227,6 +226,11 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 	}
 	//memcpy(donde voy a guardar, que es lo que voy a guardar, tamanio)
 	memcpy(archivoSwap + posicion * datosSwap->tamPagina, datos, size);
+	/*void* p=malloc(size+1);				//Para comprobar lo que guardó
+	memcpy(p,archivoSwap+posicion*datosSwap->tamPagina,size);
+	memcpy(p+size,"\0",1);
+	printf("%s\n",p);
+	free(p);*/
 	free(datos);
 	return 1;
 }
@@ -237,12 +241,10 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 	do{
 	for(i=0;i<datosSwap->cantidadPaginas && contador<cantPaginas;i++){
 		if (!bitarray_test_bit(bitArray,i)){
-			contador++;
-		}
+			contador++;}
 		else{
 			contador=0;
-			pos=i;
-		}
+			pos=i+1;}
 	}
 	if (contador<cantPaginas){
 		compactar();							//todo agregar semaforo
@@ -287,9 +289,9 @@ int compactar(){
 		if (!bitarray_test_bit(bitArray,i)){
 				//traductor_marco* procesoAMover=list_find(tablaPaginas,proximoProceso);
 				// ahora tengo que encontrar una pagina ocupada para ponerla en el lugar de la pagina vacia
-								for (j=i;j<datosSwap->cantidadPaginas;j++){
+								for (j=i;j<datosSwap->cantidadPaginas;j++){	//Vas a necesitar un contador para esto, no va a servir j<cantPaginas :/
 									// me fijo si encuentro una pagina ocupada
-									if (bitarray_test_bit(bitArray,j)==1){
+									if (bitarray_test_bit(bitArray,j)){
 										// seteo el bit array de i a 1 porque ahora esta ocupada
 										bitarray_set_bit(bitArray,i);
 										// limpio el valor del bit de j porque ahora va a estar vacia
@@ -297,11 +299,14 @@ int compactar(){
 									}
 
 								}
+			//Después de actualizar los marcos hay que copiar las paginas... (memcpy)
+			//Y actualizar la tablaPaginas: al proceso que moviste actualizarle la pag de inicio.
 		}
 	}
-
+	
+	/*Con lo del memcpy todo esto no es necesario :)
 	//Administro el contenido de dicho proceso página a página
-
+	
 	pagInicialLectura = progAnsis->inicio;
 
 			for(k=0; k<progAnsis->paginas; k++){
@@ -313,7 +318,7 @@ int compactar(){
 				paqueteLecturaAux->numPagina = k;
 				contenidoPagina = leerEnParticion(paqueteLecturaAux);
 				free(paqueteLecturaAux);
-			}
+			}*/
 	return 1;
 }
 
@@ -347,7 +352,7 @@ void* buscar(int pid, int pag){
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
-	int pos=datosProceso->inicio+(datosSwap->tamPagina*pag);
+	int pos=datosProceso->inicio*datosSwap->tamPagina;
 	memcpy(pagina,archivoSwap+pos,datosSwap->tamPagina);
 	memcpy(pagina+datosSwap->tamPagina,"\0",1);
 	printf("PAG %d - Datos:  %s-\n",pos/datosSwap->tamPagina,(char*)pagina);
@@ -356,22 +361,26 @@ void* buscar(int pid, int pag){
 
 int eliminarProceso(int pid){
 	int entradaDelProceso(traductor_marco* entrada){
-		return (entrada->proceso==pid);
-	}
+//		printf("----%d\n",entrada->proceso);
+		return (entrada->proceso==pid);}
 	void eliminarEntrada(traductor_marco* entrada){
+//		printf("eliminada\n");
 		free(entrada);
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)entradaDelProceso);
-	int posicion=datosProceso->inicio/datosSwap->tamPagina;
+	int posicion=datosProceso->inicio;
 	int i;
 	for(i=0;i<datosProceso->paginas;i++){
 		bitarray_clean_bit(bitArray,posicion);
 		posicion++;
 	}
-	free(datosProceso);
+	//free(datosProceso);
+	printf("Lista antes: %d\n",list_size(tablaPaginas));
 	list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)eliminarEntrada);
+	printf("Lista despues: %d\n",list_size(tablaPaginas));
 	return 1;
 }
+
 void verMarcos(){
 	int i;
 	printf("Estado de los marcos: \n");
