@@ -268,7 +268,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
-	enviarMensajeUMCConsulta(pag->pag-1,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
+	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
 	int *p;
 	recv(umc,&p,sizeof(int),0);
 	printf("VALOR VARIABLE: %d \n",p);
@@ -357,7 +357,7 @@ Pagina obtenerPagDisponible(){
 	int cantidadDeVariables = list_size(stackActual->vars);
 	Pagina pagina;
 	if (cantidadDeVariables<=0){
-		pagina.pag = pcb.paginas_codigo+1;
+		pagina.pag = pcb.paginas_codigo;
 		pagina.off = 0;
 	}else{
 		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
