@@ -18,7 +18,7 @@
 #define PUERTO_NUCLEO 6662
 #define IP_NUCLEO "127.0.0.1"
 
-int protocolo(int nucleo);
+//int protocolo(int nucleo);
 int autentificar(int);
 int enviarAnsisop(FILE*, int);
 
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 	if (!ansisop){perror("Archivo");}
 	if(enviarAnsisop(ansisop, nucleo)){printf("Error en el envio del codigo\n");}
 	char respuesta;
-	recv(nucleo,respuesta,1,0);
+	recv(nucleo,&respuesta,1,0);
 	if (!string_itoa(respuesta)){
 		printf("Ansisop rechazado\n Consola finalizada\n");
 		return -1;
@@ -48,16 +48,15 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 		int protocolo = recibirProtocolo(nucleo);
 		switch (protocolo) {
 					case 0:															//Error
-						perror("El nucleo se desconecto\n");
+						perror("El nucleo se desconecto o hubo error de protocolo\n");
 						close(nucleo);
 						return -1;
 						break;
 					case 1:														//IMPRIMIR
 						printf("el nucleo quiere que imprima\n");
 						tamanio = recibirProtocolo(nucleo);
-						texto = malloc(tamanio+1);
 						texto = recibirMensaje(nucleo,tamanio);
-						texto[tamanio+1]='\0';
+						texto[tamanio]='\0';
 						printf("%s\n",texto);
 						free (texto);
 						break;
@@ -76,7 +75,12 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 
 int autentificar(int conexion){
 	send(conexion, "soy_una_consola", 15, 0);
-	return (recibirProtocolo(conexion));			//ME DEVUELVE EL PUERTO DE LA UMC o 0 si hubo error
+	char respuesta;
+	int bytesRecibidosH = recv(conexion, &respuesta, 1, 0);
+	if (bytesRecibidosH <= 0) {
+		return 0;
+	}
+	return htonl(respuesta);
 }
 
 int enviarAnsisop(FILE* archivo, int sockNucleo){

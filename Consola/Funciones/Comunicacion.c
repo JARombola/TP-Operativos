@@ -27,7 +27,7 @@ int recibirProtocolo(int conexion){
 	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
-		return -1;}
+		return 0;}
 	int numero = atoi(protocolo);
 	free(protocolo);
 	return numero;

@@ -54,6 +54,7 @@ void atender_Bloq_SEM(int posicion);
 void atender_Terminados();
 void atenderOperacion(int op,int cpu);
 void procesar_operacion_privilegiada(int operacion, int cpu);
+int esa_consola_existe(int consola);
 int ese_PCB_hay_que_eliminarlo(int consola);
 int ese_cpu_tenia_pcb_ejecutando(int cpu);
 int revisarActividad(t_list*, fd_set*);
@@ -466,6 +467,7 @@ void atenderOperacion(int op,int cpu){
 	switch (op){
 	case 0:
 		//el cpu se desconecto y termino mal el q? o hubo un error        (en pruebas, cuando cerraba un cpu devolvia 0, en vez de -1)
+		//todo juntar con case 5
 		pidMalo = ese_cpu_tenia_pcb_ejecutando(cpu);
 		if(pidMalo){
 			operacion = 3;
@@ -504,7 +506,7 @@ void atenderOperacion(int op,int cpu){
 		break;
 	case 4:
 		//imprimir o imprimirTexto
-		consola = recibirProtocolo(cpu); //todo el cpu me tiene que mandar a quien, el pcb->id
+		consola = recibirProtocolo(cpu);
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu, tamanio);   //texto o valor
 		if(esa_consola_existe(consola)){
@@ -539,14 +541,17 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		//recibo nombre de variable compartida, devuelvo su valor
 		posicion = (int)dictionary_get(globales,identificador);
 		valor = globalesValores[posicion];
-		send(cpu, header(valor), 4, 0);
+		valor = htonl(valor);
+		send(cpu, &valor, 4, 0);
 		break;
 	case 2:
 		//grabar valor en variable compartida
-		//recibo el nombre de una variable y un valor -> guardo
-		valor = recibirProtocolo(cpu);
+		//recibo el nombre de una variable y un valor -> guardo y devuelvo valor
+		valor = ntohl(recibirMensaje(cpu,4));
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
+		valor = htonl(valor);
+		send(cpu, &valor, 4, 0);
 		break;
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea
@@ -591,7 +596,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		break;
 	}
 }
-int esa_consola_existe(consola){
+int esa_consola_existe(int consola){
 	int buscarIgual(int elemLista){
 		return (consola==elemLista);}
 	if(list_any_satisfy(consolas,(void*)buscarIgual)){
@@ -646,15 +651,16 @@ void finalizarProgramaUMC(int id){
 }
 void finalizarProgramaConsola(int consola, int codigo){
 	 //codigo: el ansisop termino 2=ok / 3=mal
-	 int cod = htonl(codigo);
-	 send(consola, &cod, 4, 0);
+	 char* cod = header(codigo);
+	 send(consola, cod, 4, 0);
 }
 void enviarTextoConsola(int consola, char* texto){
 	 char* mensaje = string_new();
-	 string_append(&mensaje, "1");
-	 agregarHeader(texto);
+	 int uno = 1;
+	 string_append(&mensaje, header(uno));
+	 agregarHeader(&texto);
 	 string_append(&mensaje, texto);
-	 send(conexionUMC, mensaje, string_length(mensaje), 0);
+	 send(consola, mensaje, string_length(mensaje), 0);
 	 free(mensaje);
 }
 
