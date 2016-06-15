@@ -1,4 +1,4 @@
-/*
+ /*
  * swap.c
  *
  *  Created on: 28/4/2016
@@ -9,15 +9,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <string.h>
-#include <commons/config.h>
 #include <commons/bitarray.h>
 #include <commons/collections/list.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "Funciones/Comunicacion.h"
-
-
-#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
 typedef struct {
 	int pid;
@@ -25,22 +21,10 @@ typedef struct {
 }t_paquete_lectura;
 
 typedef struct{
-	int puerto;
-	char* ip;
-	char* nombre_swap;
-	int cantidadPaginas;
-	int tamPagina;
-	int retardoAcceso;
-	int retardoCompactacion;
-}datosConfiguracion;
-
-typedef struct{
 	int proceso,inicio,paginas;
 }traductor_marco;
 
-struct sockaddr_in crearDireccion(int puerto, char* ip);
-int comprobarCliente(int);
-int leerConfiguracion(char*, datosConfiguracion**);
+
 void* crearArchivoSwap();
 int guardarDatos(int,int,int);
 int buscarEspacioLibre(int);
@@ -50,6 +34,7 @@ int eliminarProceso(int);
 void verMarcos();
 char* leerEnParticion(t_paquete_lectura*);
 
+
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
 int pagsLibres;
@@ -58,7 +43,7 @@ t_list* tablaPaginas;
 
 int main(int argc, char* argv[]){
 
-	int conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
+	int	conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
 
 	datosSwap=malloc(sizeof(datosConfiguracion));
 
@@ -146,43 +131,6 @@ int main(int argc, char* argv[]){
 
 //-----------------------------------FUNCIONES-----------------------------------
 
-int comprobarCliente(int cliente){
-	char* bufferHandshake = malloc(10);
-	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);				//lo paso a string para comparar
-	bufferHandshake[bytesRecibidosH] = '\0';
-	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
-		free(bufferHandshake);
-		send(cliente, "Hola_umc", 8, 0);
-		return 1;}
-	free(bufferHandshake);
-	return 0;													//No era la UMC :/
-}
-
-int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
-	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
-	if (archivoConfiguracion == NULL) {
-		return 0;
-	} else {
-		int cantidadKeys = config_keys_amount(archivoConfiguracion);
-		if (cantidadKeys < 7) {
-			return 0;
-		} else {
-			(*datos)->puerto = buscarInt(archivoConfiguracion, "PUERTO");
-			char* nombreSwap=string_new();
-			string_append(&nombreSwap,config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP"));
-			(*datos)->nombre_swap =nombreSwap;
-			(*datos)->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
-			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAM_PAGINA");
-			(*datos)->retardoAcceso = buscarInt(archivoConfiguracion, "RETARDO_ACCESO");
-			(*datos)->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
-			char* ip=string_new();
-			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
-			(*datos)->ip=ip;
-			config_destroy(archivoConfiguracion);
-			return 1;
-		}
-	}
-}
 void* crearArchivoSwap(){
 	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
@@ -303,12 +251,10 @@ int compactar(){
 			//Y actualizar la tablaPaginas: al proceso que moviste actualizarle la pag de inicio.
 		}
 	}
-	
+
 	/*Con lo del memcpy todo esto no es necesario :)
 	//Administro el contenido de dicho proceso página a página
-	
 	pagInicialLectura = progAnsis->inicio;
-
 			for(k=0; k<progAnsis->paginas; k++){
 				// empiezo a hacer la lectura
 				progAnsis->inicio = pagInicialLectura;
@@ -352,7 +298,7 @@ void* buscar(int pid, int pag){
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
-	int pos=datosProceso->inicio*datosSwap->tamPagina;
+	int pos=datosProceso->inicio+pag*datosSwap->tamPagina;
 	memcpy(pagina,archivoSwap+pos,datosSwap->tamPagina);
 	memcpy(pagina+datosSwap->tamPagina,"\0",1);
 	printf("PAG %d - Datos:  %s-\n",pos/datosSwap->tamPagina,(char*)pagina);
@@ -388,5 +334,3 @@ void verMarcos(){
 		printf("Pos %d | Ocupado:%d\n",i,bitarray_test_bit(bitArray,i));
 	}
 }
-
-

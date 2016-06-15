@@ -17,26 +17,22 @@
 #include "Funciones/Paginas.h"
 
 #define esIgual(a,b) string_equals_ignore_case(a,b)
-#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 #define marcosTotal datosMemoria->marco_size*datosMemoria->marcos
 
 
-
-int leerConfiguracion(char*, datosConfiguracion**);
-int autentificar(int);
-int comprobarCliente(int);
-void mostrarTablaPag(traductor_marco*);
-int aceptarNucleo(int,struct sockaddr_in);
 //COMPLETAR...........................................................
-void* enviarBytes(int proceso,int pagina,int offset,int size, int operacion);
-int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
-int finalizarPrograma(int);
+
 void consola();
 void atenderNucleo(int);
 void atenderCpu(int);
-int inicializarPrograma(int);					// a traves del socket recibe el PID + Cant de Paginas + Codigo
 int esperarRespuestaSwap();
+
+int inicializarPrograma(int);					// a traves del socket recibe el PID + Cant de Paginas + Codigo
+void* enviarBytes(int proceso,int pagina,int offset,int size, int operacion);
+int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
+int finalizarPrograma(int);
 //-----MENSAJES----
+void mostrarTablaPag(traductor_marco*);
 
 //COMANDOS--------------
 
@@ -50,6 +46,7 @@ t_log* archivoLog;
 
 
 int main(int argc, char* argv[]) {
+
 	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
 
 	int nucleo,nuevo_cliente,sin_size = sizeof(struct sockaddr_in);
@@ -62,8 +59,9 @@ int main(int argc, char* argv[]) {
 	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
+	printf("ALGORITMO: %d\n",datosMemoria->algoritmo);
 	////////////////////////////////////////////////
-	datosMemoria->algoritmo=1;														//todo CAMBIAR ALGORITMO
+	//datosMemoria->algoritmo=1;														//todo CAMBIAR ALGORITMO
 	///////////////////////////////////////////////////
 	vectorMarcos=(int*) malloc(datosMemoria->marcos*sizeof(int*));
 	memoria = (void*) malloc(marcosTotal);
@@ -131,118 +129,6 @@ int main(int argc, char* argv[]) {
 }
 
 
-//------------------------------------------------------------FUNCIONES
-int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
-	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
-	if (archivoConfiguracion == NULL) {
-		return 0;
-	} else {
-		int cantidadKeys = config_keys_amount(archivoConfiguracion);
-		if (cantidadKeys < 9) {
-			return 0;
-		} else {
-			(*datos)->puerto_umc=buscarInt(archivoConfiguracion, "PUERTO_UMC");
-			(*datos)->puerto_swap=buscarInt(archivoConfiguracion, "PUERTO_SWAP");
-			(*datos)->marcos=buscarInt(archivoConfiguracion, "MARCOS");
-			(*datos)->marco_size=buscarInt(archivoConfiguracion, "MARCO_SIZE");
-			(*datos)->marco_x_proc=buscarInt(archivoConfiguracion, "MARCO_X_PROC");
-			(*datos)->entradas_tlb=buscarInt(archivoConfiguracion, "ENTRADAS_TLB");
-			(*datos)->retardo=buscarInt(archivoConfiguracion, "RETARDO");
-			char* ip=string_new();
-			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
-			(*datos)->ip=ip;
-			char* ipSwap=string_new();
-			string_append(&ipSwap,config_get_string_value(archivoConfiguracion,"IP_SWAP"));
-			(*datos)->ip_swap=ipSwap;
-			config_destroy(archivoConfiguracion);
-		}
-	}
-	return 1;
-}
-
-int autentificar(int conexion) {
-	send(conexion, "soy_la_umc", 10, 0);
-	char* bufferHandshakeSwap = malloc(8);
-	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 9, 0);
-	if (bytesRecibidosH <= 0) {
-		registrarError(archivoLog,"Error al conectarse con la Swap");
-		free (bufferHandshakeSwap);
-		return 0;
-	}
-	free (bufferHandshakeSwap);
-	return 1;
-}
-
-int comprobarCliente(int nuevoCliente) {
-	char* bufferHandshake = malloc(15);
-	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
-	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
-	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
-		free(bufferHandshake);
-		return 1;
-	} else if (string_equals_ignore_case("soy_el_nucleo", bufferHandshake)) {
-		free(bufferHandshake);
-		return 2;
-	}
-	free(bufferHandshake);
-	return 0;
-}
-
-int aceptarNucleo(int umc,struct sockaddr_in direccionCliente){
-	int nuevo_cliente;
-	int tam=sizeof(struct sockaddr_in);
-	do {
-		nuevo_cliente = accept(umc, (void *) &direccionCliente,(void *) &tam);
-
-	} while (comprobarCliente(nuevo_cliente) != 2);												//Espero la conexion del nucleo
-	int tamPagEnvio = ntohl(datosMemoria->marco_size);
-	send(nuevo_cliente, &tamPagEnvio, 4, 0);													//Le envio el tamaño de pagina
-	registrarInfo(archivoLog,"Nucleo aceptado!");
-	return nuevo_cliente;
-}
-
-
-//-----------------------------------------------OPERACIONES UMC-------------------------------------------------
-
-void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
-	int posicion=buscar(proceso, pagina);
-	if (posicion!=-1){
-		void* datos=(void*) malloc(size);
-		memcpy(datos,memoria+posicion+offset,size);
-		void* a=(void*)malloc(size+1);
-		memcpy(a,datos,size);
-		memcpy(a+size,"\0",1);
-		printf("Envio: %s\n",a);
-		free(a);
-		return datos;//}
-	}
-	char* mje=string_new();
-	string_append(&mje,"-1");
-	return mje;				//No existe la pag
-}
-
-
-int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
-	int buscarMarco(traductor_marco* fila){
-			return (fila->proceso==proceso && fila->pagina==pagina);}
-	void modificada(traductor_marco* fila){
-		if(buscarMarco(fila)){fila->modificada=1;}
-	}
-
-	int posicion=buscar(proceso,pagina);
-	if(posicion==-1){								//no existe la pagina
-		return -1;
-	}
-	posicion+=offset;
-	memcpy(memoria+posicion,&buffer,size);
-	void* a=malloc(4);
-	memcpy(&a,memoria+posicion,4);
-	printf("Guardé: %d\n",a);
-	list_iterate(tabla_de_paginas,(void*)modificada);
-	printf("Pagina modificada\n");
-	return posicion;
-}
-
 //--------------------------------------------HILOS------------------------
 void consola(){
 	int procesoBuscar;
@@ -259,7 +145,7 @@ void consola(){
 		} else {
 			if (esIgual(comando, "dump")) {
 				scanf("%d",&VELOCIDAD);
-				int pos=buscar(6,VELOCIDAD);
+				int pos=buscar(5,VELOCIDAD);
 				void* mje=malloc(datosMemoria->marco_size+1);
 				memcpy(mje,memoria+pos,datosMemoria->marco_size);
 				memcpy(mje+datosMemoria->marco_size, "\0",1);
@@ -386,6 +272,7 @@ void mostrarTablaPag(traductor_marco* fila) {
 }
 
 
+//-----------------------------------------------OPERACIONES UMC-------------------------------------------------
 
 int inicializarPrograma(int conexion) {
 	int espacio_del_codigo;
@@ -421,6 +308,47 @@ int inicializarPrograma(int conexion) {
 	return 2;
 }
 
+
+void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
+	int posicion=buscar(proceso, pagina);
+	if (posicion!=-1){
+		void* datos=(void*) malloc(size);
+		memcpy(datos,memoria+posicion+offset,size);
+		void* a=(void*)malloc(size+1);
+		memcpy(a,datos,size);
+		memcpy(a+size,"\0",1);
+		printf("Envio: %s\n",a);
+		free(a);
+		return datos;//}
+	}
+	char* mje=string_new();
+	string_append(&mje,"-1");
+	return mje;				//No existe la pag
+}
+
+
+int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
+	int buscarMarco(traductor_marco* fila){
+			return (fila->proceso==proceso && fila->pagina==pagina);}
+	void modificada(traductor_marco* fila){
+		if(buscarMarco(fila)){fila->modificada=1;}
+	}
+
+	int posicion=buscar(proceso,pagina);
+	if(posicion==-1){								//no existe la pagina
+		return -1;
+	}
+	posicion+=offset;
+	memcpy(memoria+posicion,&buffer,size);
+	void* a=malloc(4);
+	memcpy(&a,memoria+posicion,4);
+	printf("Guardé: %d\n",a);
+	list_iterate(tabla_de_paginas,(void*)modificada);
+	printf("Pagina modificada\n");
+	return posicion;
+}
+
+
 int finalizarPrograma(int procesoEliminar){
     int paginasDelProceso(traductor_marco* entradaTabla){
         return (entradaTabla->proceso==procesoEliminar);
@@ -451,7 +379,7 @@ int esperarRespuestaSwap(){
 	char*respuesta = malloc(3);
 	recv(conexionSwap, respuesta, 2, 0);
 	respuesta[2] = '\0';
-	int aceptado = string_equals_ignore_case(respuesta, "ok");
+	int aceptado = esIgual(respuesta, "ok");
 	free(respuesta);
 	return aceptado;
 }

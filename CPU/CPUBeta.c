@@ -433,9 +433,18 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor){
 	char* mensaje = string_new();
 	valor=htonl(valor);
-	string_append_with_format(&mensaje,"3%s%s%s%s\0",toStringInt(proceso),toStringInt(pag-1),toStringInt(off),toStringInt(size));
+	char* pid=toStringInt(proceso);
+	char* pagina=toStringInt(pag);
+	char* offset=toStringInt(off);
+	char* tam=toStringInt(size);
+	string_append_with_format(&mensaje,"3%s%s%s%s\0",pid,pagina,offset,tam);
 	send(umc,mensaje,string_length(mensaje),0);
 	send(umc,&valor,sizeof(int),0);
+	free(mensaje);
+	free(pid);
+	free(pagina);
+	free(offset);
+	free(tam);
 	char* resp=malloc(5);
 	recv(umc,resp,4,0);
 	if (atoi(resp)){
@@ -443,7 +452,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	}else{
 		printf("Cagamos\n");
 	}
-	free(mensaje);
+	free(resp);
 }
 
 void enviarMensajeNucleoConsulta(char* variable){

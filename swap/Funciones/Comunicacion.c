@@ -6,6 +6,33 @@
  */
 
 #include "Comunicacion.h"
+#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
+
+int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
+	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
+	if (archivoConfiguracion == NULL) {
+		return 0;
+	} else {
+		int cantidadKeys = config_keys_amount(archivoConfiguracion);
+		if (cantidadKeys < 7) {
+			return 0;
+		} else {
+			(*datos)->puerto = buscarInt(archivoConfiguracion, "PUERTO");
+			char* nombreSwap=string_new();
+			string_append(&nombreSwap,config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP"));
+			(*datos)->nombre_swap =nombreSwap;
+			(*datos)->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
+			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAM_PAGINA");
+			(*datos)->retardoAcceso = buscarInt(archivoConfiguracion, "RETARDO_ACCESO");
+			(*datos)->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
+			char* ip=string_new();
+			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
+			(*datos)->ip=ip;
+			config_destroy(archivoConfiguracion);
+			return 1;
+		}
+	}
+}
 
 struct sockaddr_in crearDireccion(int puerto,char* ip){
 	struct sockaddr_in direccion;
@@ -14,6 +41,21 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 	direccion.sin_port = htons(puerto);
 	return direccion;
 }
+
+int comprobarCliente(int cliente){
+	char* bufferHandshake = malloc(10);
+	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);				//lo paso a string para comparar
+	bufferHandshake[bytesRecibidosH] = '\0';
+	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
+		free(bufferHandshake);
+		send(cliente, "Hola_umc", 8, 0);
+		return 1;}
+	free(bufferHandshake);
+	return 0;													//No era la UMC :/
+}
+
+
+
 
 int conectar(int puerto,char* ip){   							//Con la swap
 	struct sockaddr_in direccion=crearDireccion(puerto, ip);
