@@ -40,36 +40,36 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 		return -1;
 	}
 	printf("Ansisop enviado con éxito\n");
+
 	while (1){
-//		char *mensaje;
-//		mensaje = string_new();
-//		scanf("%s", mensaje);
-//		int longitud = htonl(string_length(mensaje));
-//		send(nucleo, &longitud, sizeof(int32_t), 0);
-//		send(nucleo, mensaje, string_length(mensaje), 0); //envia datos por teclado*/
-//
-//		//recibo de nucleo
-//
-//		switch (protocolo(nucleo)) { //misma idea de aceptar clientes nuevos del nucleo
-//					case 0:															//Error
-//						perror("El nucleo se desconecto\n");
-//						close(nucleo);
-//						// intentar conectar? o sin nucleo el programa tiene que terminar forzosamente?
-//						return -1;
-//						break;
-//					case 1:														//IMPRIMIR
-//						printf("el nucleo quiere que imprima\n");
-//						break;
-//					case 2:														//IMPRIMIR TEXTO
-//						printf("el nucleo quiere que imprima texto\n");
-//						break;
-//					}
-//				/*	luego, tengo otro protocolo de tamanio? o directo recibo lo que tengo que imprimir?
-//					char* bufferC = malloc(protocoloC * sizeof(char) + 1);
-//					bytesRecibidosC = recv(unaConsola, bufferC, protocoloC, 0);
-//					bufferC[protocoloC + 1] = '\0';
-//					printf("cliente: %d, me llegaron %d bytes con %s\n", unaConsola,bytesRecibidosC, bufferC);*/
-//
+		//recibo de nucleo
+		int tamanio;
+		char* texto;
+		int protocolo = recibirProtocolo(nucleo);
+		switch (protocolo) {
+					case 0:															//Error
+						perror("El nucleo se desconecto\n");
+						close(nucleo);
+						return -1;
+						break;
+					case 1:														//IMPRIMIR
+						printf("el nucleo quiere que imprima\n");
+						tamanio = recibirProtocolo(nucleo);
+						texto = malloc(tamanio+1);
+						texto = recibirMensaje(nucleo,tamanio);
+						texto[tamanio+1]='\0';
+						printf("%s\n",texto);
+						free (texto);
+						break;
+					case 2:														//TERMINO BIEN
+						printf("el programa finalizo con exito\n");
+						return -1;
+						break;
+					case 3:														//TERMINO MAL
+						printf("hubo un error en la ejecucion del programa\n");
+						return -1;
+						break;
+					}
 	}
 	return 0;
 }
@@ -102,24 +102,3 @@ int enviarAnsisop(FILE* archivo, int sockNucleo){
 	if(enviados==string_length(codigo)){return 0;}										//Envio ok
 	return 1;																			//Error
 }
-
-int protocolo(int nucleo) {
-	char* buffer = malloc(2);
-	int bytesRecibidos = recv(nucleo, buffer, 1, 0);
-	buffer[bytesRecibidos] = '\0'; 								//lo paso a string para comparar
-	if(bytesRecibidos <= 0){ 						//se desconecto
-		printf("Error\n");
-		free(buffer);
-		return 0;
-	}
-	if (strcmp("1", buffer) == 0) {//quiere imprimir
-		free(buffer);
-		return 1;
-	} else if (strcmp("2", buffer) == 0) { //quiere imprimir texto
-		free(buffer);
-		return 2;
-	}
-	free(buffer);
-	return -1;
-}
-

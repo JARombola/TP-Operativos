@@ -78,6 +78,7 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep);
 PCB* desSerializarMensajeCPU(char* char_pcb);
 void enviarPCBaCPU(int, char*);
 void finalizarProgramaUMC(int id);
+void finalizarProgramaConsola(int consola, int codigo);
 
 
 datosConfiguracion* datosNucleo;
@@ -512,13 +513,13 @@ void atender_Ejecuciones(){
 
  }
  void atender_Terminados(){
-
+	 int cod=2;
 	 while(1){
 		 sem_wait(&sem_Terminado);
 	 	 PCB* pcbTerminado = malloc(sizeof(PCB));
 	 	 pcbTerminado = queue_pop(colaTerminados);
-	 	 //todo avisar consola que termino bien el programa
 	 	 finalizarProgramaUMC(pcbTerminado->id);
+	 	 finalizarProgramaConsola(pcbTerminado->id, cod);
 	 	 sem_post(&sem_Nuevos);
 	 	 free(pcbTerminado);
 	 }
@@ -534,9 +535,10 @@ void atenderOperacion(int op,int cpu){
 		//el cpu se desconecto y termino mal el q? o hubo un error        (en pruebas, cuando cerraba un cpu devolvia 0, en vez de -1)
 		pidMalo = ese_cpu_tenia_pcb_ejecutando(cpu);
 		if(pidMalo){
-			//todo avisar consola que hubo error en ejecucion
-		 	 finalizarProgramaUMC(pidMalo);
-		 	 sem_post(&sem_Nuevos);
+			operacion = 3;
+		 	finalizarProgramaConsola(pidMalo, operacion);
+		 	finalizarProgramaUMC(pidMalo);
+		 	sem_post(&sem_Nuevos);
 		}
 		list_remove(cpus, cpu);
 		printf("Se desconecto o envio algo mal el CPU en %d, eliminado\n",cpu);
@@ -578,7 +580,8 @@ void atenderOperacion(int op,int cpu){
 	case 5:
 		//error en el ansisop (memoria o sintaxis)
 		consola = recibirProtocolo(cpu);
-		//aviso consola que hubo un error en la ejecucion
+		operacion = 3;
+	 	finalizarProgramaConsola(consola, operacion);
 		break;
 	}
 
@@ -706,6 +709,12 @@ void finalizarProgramaUMC(int id){
 	 string_append(&mensaje, "4");
 	 string_append(&mensaje, header(id));
 	 send(conexionUMC, mensaje, string_length(mensaje), 0);
+	 free(mensaje);
+}
+void finalizarProgramaConsola(int consola, int codigo){
+	 //codigo: el ansisop termino 2=ok / 3=mal
+	 int cod = htonl(&codigo);
+	 send(consola, cod, 4, 0);
 }
 
 PCB* desSerializarMensajeCPU(char* char_pcb){
