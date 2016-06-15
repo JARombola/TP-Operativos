@@ -5,7 +5,7 @@
  *      Author: utnso
  */
 
-#include <commons/config.h>
+
 #include <sys/select.h>
 #include <commons/collections/dictionary.h>
 #include <commons/collections/queue.h>
@@ -17,23 +17,6 @@
 #include "Funciones/Comunicacion.h"
 #include "Funciones/json.h"
 
-
-#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra) 	//MACRO
-
-typedef struct {
-	int puerto_nucleo;
-	int puerto_umc;
-	char* ip_umc;
-	char* ip;
-	int quantum;
-	int quantum_sleep;
-	char** sem_ids;
-	char** sem_init;		//TRANSFORMAR CON (atoi) - gracias (:
-	char** io_ids;
-	char** io_sleep;		//LO MISMO
-	char** shared_vars;
-	int tamStack;
-} datosConfiguracion;
 
 typedef struct{
 	PCB* pcb;
@@ -54,11 +37,11 @@ pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 t_queue *colaNuevos, *colaListos,*colaTerminados, *colaCPUs;
 sem_t sem_Nuevos, sem_Listos,sem_Terminado;
 
-int autentificarUMC(int);
-int leerConfiguracion(char*, datosConfiguracion**);
+
+
 t_dictionary* crearDiccionarioGlobales(char** keys);
 t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO);
-int comprobarCliente(int);
+
 PCB* crearPCB(char*);
 int calcularPaginas(char*);
 void mostrar(int*);
@@ -240,37 +223,7 @@ int main(int argc, char* argv[]) {
 
 //--------------------------------------LECTURA CONFIGURACION
 
-int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
-	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
-	if (archivoConfiguracion == NULL) {
-		return 0;
-	} else {
-		int cantidadKeys = config_keys_amount(archivoConfiguracion);
-		if (cantidadKeys < 12) {
-			return 0;
-		} else {
-			(*datos)->puerto_nucleo = buscarInt(archivoConfiguracion, "PUERTO_NUCLEO");
-			(*datos)->puerto_umc= buscarInt(archivoConfiguracion, "PUERTO_UMC");
-			(*datos)->quantum = buscarInt(archivoConfiguracion, "QUANTUM");
-			(*datos)->quantum_sleep = buscarInt(archivoConfiguracion,
-					"QUANTUM_SLEEP");
-			(*datos)->sem_ids = config_get_array_value(archivoConfiguracion,"SEM_ID");
-			(*datos)->sem_init = config_get_array_value(archivoConfiguracion,"SEM_INIT");
-			(*datos)->io_ids = config_get_array_value(archivoConfiguracion,"IO_ID");
-			(*datos)->io_sleep = config_get_array_value(archivoConfiguracion,"IO_SLEEP");
-			(*datos)->shared_vars = config_get_array_value(archivoConfiguracion,"SHARED_VARS");
-			(*datos)->tamStack=buscarInt(archivoConfiguracion,"STACK_SIZE");
-			char* ip=string_new();
-			string_append(&ip,config_get_string_value(archivoConfiguracion,"IP"));
-			(*datos)->ip =ip;
-			char* ipUMC=string_new();
-			string_append(&ipUMC,config_get_string_value(archivoConfiguracion,"IP_UMC"));
-			(*datos)->ip_umc = ipUMC;
-			config_destroy(archivoConfiguracion);
-			return 1;
-		}
-	}
-}
+
 t_dictionary* crearDiccionarioGlobales(char** keys){
 	int i=0;
 	t_dictionary* diccionario=dictionary_create();
@@ -285,6 +238,7 @@ t_dictionary* crearDiccionarioGlobales(char** keys){
 	}
 	return diccionario;
 }
+
 t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
 	int i=0;
 	t_dictionary* diccionario=dictionary_create();
@@ -316,31 +270,7 @@ t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
 }
 
 
-int autentificarUMC(int conexion) {
-	send(conexion, "soy_el_nucleo", 13, 0);
-	int tamPagina;
-	int bytesRecibidosH = recv(conexion, &tamPagina, 4, 0);
-	if (bytesRecibidosH <= 0) {
-		printf("Rechazado por la UMC\n");
-		return 0;
-	}
-	return htonl(tamPagina);					//ME ENVIA EL TAMAÑO DE PAGINA
-}
 
-int comprobarCliente(int nuevoCliente) {
-	char* bufferHandshake = malloc(16);
-	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
-	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
-	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
-		free(bufferHandshake);
-		return 1;
-	} else if (string_equals_ignore_case("soy_una_consola", bufferHandshake)) {
-		free(bufferHandshake);
-		return 2;
-	}
-	free(bufferHandshake);
-	return 0;
-}
 //----------------------------------------PCB------------------------------------------------------
 
 void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
@@ -482,6 +412,7 @@ void atender_Ejecuciones(){
 		 free(mensajeCPU);
 	 }
  }
+
  void atender_Bloq_ES(int posicion){
 	 printf("[HILO DE E/S nro %d]: se creo el hilo %d de E/S\n",posicion,posicion);
 	 int miSLEEP = dispositivosSleeps[posicion];
@@ -496,6 +427,7 @@ void atender_Ejecuciones(){
 		 free(pcbBloqueando);
 	 }
  }
+
  void atender_Bloq_SEM(int posicion){
 	 printf("[HILO DE SEMAFORO nro %d]: se creo el hilo %d de Semaforos de variables globales\n",posicion,posicion);
 	 while(1){
@@ -512,7 +444,6 @@ void atender_Ejecuciones(){
 
  }
  void atender_Terminados(){
-
 	 while(1){
 		 sem_wait(&sem_Terminado);
 	 	 PCB* pcbTerminado = malloc(sizeof(PCB));
@@ -581,12 +512,16 @@ void atenderOperacion(int op,int cpu){
 		//aviso consola que hubo un error en la ejecucion
 		break;
 	}
-
 }
+
 void procesar_operacion_privilegiada(int operacion, int cpu){
 		int tamanioNombre, posicion, unidadestiempo,valor,tamanio;
 		char *identificador,*texto;
 		PCB*pcbDesSerializado;
+		if (operacion){
+			tamanioNombre = recibirProtocolo(cpu);
+			identificador = recibirMensaje(cpu,tamanioNombre);
+		}
 	switch (operacion){
 	case 0:
 		printf("el cpu mando mal la operacion privilegiada, todo mal\n");
@@ -595,8 +530,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 1:
 		//obtener valor de variable compartida
 		//recibo nombre de variable compartida, devuelvo su valor
-		tamanioNombre = recibirProtocolo(cpu);
-		identificador = recibirMensaje(cpu,tamanioNombre);
 		posicion = (int)dictionary_get(globales,identificador);
 		valor = globalesValores[posicion];
 		send(cpu, header(valor), 4, 0);
@@ -604,8 +537,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 2:
 		//grabar valor en variable compartida
 		//recibo el nombre de una variable y un valor -> guardo
-		tamanioNombre = recibirProtocolo(cpu);
-		identificador = recibirMensaje(cpu,tamanioNombre);
 		valor = recibirProtocolo(cpu);
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
@@ -613,8 +544,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea
 		//recibo el identificador del semaforo
-		tamanioNombre = recibirProtocolo(cpu);
-		identificador = recibirMensaje(cpu,tamanioNombre);
 		posicion = (int)dictionary_get(semaforos,identificador);
 		sem_getvalue(&semaforosGlobales[posicion],&valor);
 		if(valor){					//si es mas de 0, semaforo libre
@@ -633,16 +562,12 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 4:
 		//signal a un semaforo, post
 		//recibo el identificador del semaforo
-		tamanioNombre = recibirProtocolo(cpu);
-		identificador = recibirMensaje(cpu,tamanioNombre);
 		posicion = (int)dictionary_get(semaforos,identificador);
 		sem_post(&semaforosGlobales[posicion]);
 		break;
 	case 5:
 		//pedido E/S, va a bloqueado
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
-		tamanioNombre = recibirProtocolo(cpu);
-		identificador = recibirMensaje(cpu,tamanioNombre);
 		unidadestiempo = recibirProtocolo(cpu);
 		posicion = (int)dictionary_get(dispositivosES,identificador);
 
@@ -659,29 +584,26 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		break;
 	}
 }
+
 int ese_PCB_hay_que_eliminarlo(int consola){ //devuelve si esa consola esta en la lista de eliminadas
 	int buscarIgual(int elemLista){
-		if(consola==elemLista){
-			return 1;
-		}else{return 0;}
-	}
+		return (consola==elemLista);}
+
 	if(list_any_satisfy(listConsolasParaEliminarPCB,(void*)buscarIgual)){
 		list_remove_by_condition(listConsolasParaEliminarPCB,(void*)buscarIgual);
-		return 1;
-	}return 0;
+		return 1;}
+	return 0;
 }
+
 int ese_cpu_tenia_pcb_ejecutando(cpu){ //devuelve el pid si el cpu estaba ejecutando un pcb
 	int buscarIgual(pidEjecutandose* elemLista){
-		if(cpu==elemLista->cpu){
-			return 1;
-		}else{return 0;}
-	}
+		return(cpu==elemLista->cpu);}
+
 	if(list_any_satisfy(listaEjecuciones, (void*)buscarIgual)){
 		pidEjecutandose* pidencpu = list_find(listaEjecuciones, (void*)buscarIgual);
 		list_remove_by_condition(listaEjecuciones, (void*)buscarIgual);
-		return pidencpu->pid;
-	}else{
-		return 0;}
+		return pidencpu->pid;}
+	return 0;
 }
 
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
@@ -715,6 +637,7 @@ PCB* desSerializarMensajeCPU(char* char_pcb){
 
 	return pcbDevuelto;
 }
+
 void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	char* mensaje = string_new();
 	string_append(&mensaje, "1");

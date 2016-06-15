@@ -268,7 +268,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
-	enviarMensajeUMCConsulta(pag->pag-1,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
+	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
 	int *p;
 	recv(umc,&p,sizeof(int),0);
 	printf("VALOR VARIABLE: %d \n",p);
@@ -357,7 +357,7 @@ Pagina obtenerPagDisponible(){
 	int cantidadDeVariables = list_size(stackActual->vars);
 	Pagina pagina;
 	if (cantidadDeVariables<=0){
-		pagina.pag = pcb.paginas_codigo+1;
+		pagina.pag = pcb.paginas_codigo;
 		pagina.off = 0;
 	}else{
 		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
@@ -433,9 +433,18 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor){
 	char* mensaje = string_new();
 	valor=htonl(valor);
-	string_append_with_format(&mensaje,"3%s%s%s%s\0",toStringInt(proceso),toStringInt(pag-1),toStringInt(off),toStringInt(size));
+	char* pid=toStringInt(proceso);
+	char* pagina=toStringInt(pag);
+	char* offset=toStringInt(off);
+	char* tam=toStringInt(size);
+	string_append_with_format(&mensaje,"3%s%s%s%s\0",pid,pagina,offset,tam);
 	send(umc,mensaje,string_length(mensaje),0);
 	send(umc,&valor,sizeof(int),0);
+	free(mensaje);
+	free(pid);
+	free(pagina);
+	free(offset);
+	free(tam);
 	char* resp=malloc(5);
 	recv(umc,resp,4,0);
 	if (atoi(resp)){
@@ -443,7 +452,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	}else{
 		printf("Cagamos\n");
 	}
-	free(mensaje);
+	free(resp);
 }
 
 void enviarMensajeNucleoConsulta(char* variable){

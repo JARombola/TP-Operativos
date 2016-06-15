@@ -19,19 +19,13 @@ typedef struct{
 	int proceso, pagina, marco, enMemoria, modificada;
 }traductor_marco;
 
-typedef struct{
-	char *ip, *ip_swap;				//PASAR A IP CON: inet_addr() / o inet_ntoa()
-	int puerto_umc, puerto_swap, marcos, marco_size, marco_x_proc, entradas_tlb, retardo, algoritmo;
-}datosConfiguracion;
 
 typedef struct{
-	int proceso;
-	t_queue*colaMarcos;
+	int proceso, posClock;
 }unClock;
 
 extern t_list* tablaClocks;
 extern t_list* tabla_de_paginas;
-extern datosConfiguracion* datosMemoria;
 extern int conexionSwap;
 extern void* memoria;
 extern t_log* archivoLog;
