@@ -1,7 +1,10 @@
 #!/home/utnso/tp-2016-1c-CodeBreakers/Consola/Debug/Consola
 begin
 variables a,b
+:inicio
 a=3
+:perro
 b=5
+:gato
 a=b+12
 end

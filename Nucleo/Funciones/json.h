@@ -34,6 +34,7 @@ typedef struct{
 	t_list* stack; // Lista de Stack
 }PCB;
 
+void copiar(char*, char*, int);
 void filtrar(char* linea);
 void eliminarComentarios(char* linea);
 void eliminarSaltosDeLinea(char* linea);
