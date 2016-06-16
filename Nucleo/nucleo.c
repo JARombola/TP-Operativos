@@ -297,7 +297,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 		send(consola,"0",1,0);}
 	else{
 			send(consola,"1",1,0);
-			pcbNuevo = crearPCB(codigo);
+			pcbNuevo = crearPCB(string_substring_from(codigo,4));
 			pcbNuevo->id=consola;							//Se le asigna al proceso como ID el numero de consola que lo envía.
 	if(aceptado==1){
 			printf("Código enviado a la UMC\nNuevo PCB en cola de READY!\n");
