@@ -197,7 +197,7 @@ char* pedirLinea(){
 		longitud,
 		proceso = pcb.id;
 
-	start = pcb.indices.instrucciones_serializado[pcb.pc].start-4;
+	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
