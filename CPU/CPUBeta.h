@@ -47,6 +47,7 @@ int CODIGO_SIGNAL = 0;
 int CODIGO_CONSULTA_UMC = 0;
 int TAMANIO_PAGINA = 1;
 int quantum_sleep;
+int status;
 
 
 

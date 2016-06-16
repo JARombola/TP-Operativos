@@ -179,6 +179,7 @@ int procesarCodigo(){
 	Variable* b = list_get(vars,1);
 	printf("%c\n",a->id);
 	printf("%c\n",b->id);
+//	notificarStatusAlNucleo();
 	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
 }
@@ -264,8 +265,18 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	enviarMensajeNucleoConsulta(variable);
-	return atoi(esperarRespuesta(nucleo));
+	char* mensaje = string_new();
+	string_append(&mensaje, "00020001");
+	string_append(&mensaje, toStringInt(strlen(variable)));
+	string_append(&mensaje, variable);
+	string_append(&mensaje, "\0");
+	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
+	char* respuesta = malloc(10*sizeof(char));
+	recv(nucleo,respuesta,4,0);
+	int valor = atoi(respuesta);
+	free(respuesta);
+	return valor;
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
@@ -319,6 +330,7 @@ void finalizar() {
 	list_remove(pcb.stack,tamanioStack-1);
 	if (tamanioStack == 1){
 		finalizado = 1;
+		status = 1;
 	}
 }
 
