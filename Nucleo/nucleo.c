@@ -322,7 +322,7 @@ PCB* crearPCB(char* codigo) {
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
 	pcb->indices = *metadata;
 	pcb->paginas_codigo = calcularPaginas(codigo);
-	pcb->pc = metadata->instruccion_inicio;
+	pcb->pc = 0; //metadata->instruccion_inicio;
 	pcb->stack = list_create();
 //	pcbProceso->PID=ultimoPID++;
 //	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion

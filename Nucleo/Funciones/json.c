@@ -100,10 +100,15 @@ char* toStringInstruccion(t_intructions instruccion,char separador){
 
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 	char* char_instrucciones=string_new();
+
 	int i;
 	for (i = 0 ; i< tamanio; i++){
-		string_append(&char_instrucciones, toStringInt(instrucciones->offset));
-		string_append(&char_instrucciones, toStringInt(instrucciones->start));
+		char* start=toStringInt(instrucciones->start);
+		char* offset=toStringInt(instrucciones->offset);
+		string_append(&char_instrucciones, offset);
+		string_append(&char_instrucciones, start);
+		free(start);
+		free(offset);
 		instrucciones++;
 	}
 	return char_instrucciones;
@@ -111,16 +116,25 @@ char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 
 t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio){
 	t_intructions* instrucciones = malloc(tamanio*sizeof(t_intructions));
-	int i;
-	for (i=0;i<tamanio;i++){
-		instrucciones[i].offset = atoi(string_substring(char_instrucciones,i*8,4));
-		instrucciones[i].start = atoi(string_substring(char_instrucciones,i*8+4,4));
-	}
+		int i;
+		for (i=0;i<tamanio;i++){
+			char* offset=string_substring(char_instrucciones,i*8,4);
+			instrucciones[i].offset = atoi(offset);
+			free(offset);
+			char* start=string_substring(char_instrucciones,i*8+4,4);
+			instrucciones[i].start = atoi(start);
+			free(start);
+		}
 	return instrucciones;
 }
 
-
-
+void copiar(char *destino, char *origen,int cantidad) {
+  int i=0;
+	for(;i<cantidad;i++){
+      *destino++ = *origen++;
+   }
+   *destino = '\0';
+}
 
 char* toStringMetadata(t_metadata_program meta, char separador){
 	char* char_meta=string_new();
@@ -140,18 +154,16 @@ char* toStringMetadata(t_metadata_program meta, char separador){
 	free(cantFunc);
 	free(cantEtiq);
 	if (meta.etiquetas != NULL){
-		//memcpy(char_meta,meta.etiquetas,meta.etiquetas_size);
-		//t_puntero_instruccion* b=metadata_buscar_etiqueta("perro",asd,meta.etiquetas_size);
 
-//		printf("PUNTERO : %d\n",b);
 	}
 	if (meta.instrucciones_size!=0){
-		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
+		char* char_instrucciones=toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size);
 		string_append(&char_meta, char_instrucciones);
 		free(char_instrucciones);
 	}
 	return char_meta;
 }
+
 
 t_metadata_program fromStringMetadata(char* char_meta,char separador){
 	t_metadata_program meta;
@@ -280,7 +292,7 @@ u_int32_t valorInstruccion(char * char_meta,int subindice,int indice){
 
 char* toStringList(t_list* lista, char simbol){
 	int i;
-	char* char_list = malloc(5*sizeof(char));
+	char* char_list = string_new();
 	char* elemento;
 	char barra[2];
 	barra[0] = simbol;
@@ -290,9 +302,8 @@ char* toStringList(t_list* lista, char simbol){
 	for (i=0; i< list_size(lista);i++){
 		elemento = list_get(lista,i);
 		longitud = strlen(elemento);
-		char_list = realloc(char_list,((strlen(elemento)+longitud+1)*sizeof(char)));
-		strcat(char_list,elemento);
-		strcat(char_list,barra);
+		string_append(&char_list,elemento);
+		string_append(&char_list,barra);
 	}
 	return char_list;
 }
@@ -387,11 +398,12 @@ t_list* fromStringListStack(char* char_stack){
 	int indice = 0;
 	int subIndice;
 	t_list* lista_stack = list_create();
+	Stack* stack;
 	for(i=0; i<strlen(char_stack);i++){
 		subIndice = indice;
 		if (char_stack[i]=='-'){
 			indice = i-1;
-			Stack* stack = fromStringStack(toSubString(char_stack,subIndice,indice));
+			stack = fromStringStack(toSubString(char_stack,subIndice,indice));
 			list_add(lista_stack,stack);
 			indice = i+1;
 		}
@@ -401,7 +413,7 @@ t_list* fromStringListStack(char* char_stack){
 
 char* toStringListStack(t_list* lista_stack){
 	int i;
-	char* char_lista_stack = malloc(sizeof(char));
+	char* char_lista_stack = string_new();
 	char_lista_stack[0] = '\0';
 	Stack* stack;
 	char barra[2] = "-";
@@ -409,22 +421,20 @@ char* toStringListStack(t_list* lista_stack){
 	for (i=0; i<list_size(lista_stack);i++){
 		stack = list_get(lista_stack,i);
 		char_stack = toStringStack(*stack);
-		char_lista_stack = realloc(char_lista_stack, (strlen(char_lista_stack)+ strlen(char_stack)+2)*sizeof(char));
-		strcat(char_lista_stack,char_stack);
-		strcat(char_lista_stack,barra);
+		string_append(&char_lista_stack,char_stack);
+		string_append(&char_lista_stack,barra);
 		free(char_stack);
 	}
 	return char_lista_stack;
 }
 
 char* toStringStack(Stack stack){
-	char* char_stack;
+	char* char_stack=string_new();
 	char* char_args = toStringListPagina(stack.args);
 	char* char_retpos = toStringInt(stack.retPos);
 	char* char_ret_var = toStringPagina(stack.retVar);
 	char* char_var_list = toStringListVariables(stack.vars);
-	char_stack = malloc((strlen(char_args)+strlen(char_retpos)+strlen(char_ret_var)+strlen(char_var_list)+10)*sizeof(char));
-	sprintf(char_stack,"%s_%s_%s_%s_",char_args,char_retpos,char_ret_var,char_var_list);
+	string_append_with_format(&char_stack,"%s_%s_%s_%s_",char_args,char_retpos,char_ret_var,char_var_list);
 	free(char_args);
 	free(char_retpos);
 	free(char_ret_var);
@@ -557,10 +567,14 @@ t_list* fromStringListVariables(char* char_list){
 char* toStringVariable(Variable variable){
 	char* pagina = toStringPagina(variable.pagina);
 	char* char_variable = string_new();
-	strcpy(char_variable,pagina);
-	char_variable[strlen(pagina)]=variable.id;
-	char_variable[strlen(pagina)+1]='\0';
+	char* id=malloc(2);
+	id[0]=variable.id;
+	id[1]='\0';
+	string_append(&char_variable,pagina);
+	string_append(&char_variable,id);
+	string_append(&char_variable,"\0");
 	free(pagina);
+	free(id);
 	return char_variable;
 }
 
