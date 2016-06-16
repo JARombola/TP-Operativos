@@ -297,7 +297,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 		send(consola,"0",1,0);}
 	else{
 			send(consola,"1",1,0);
-			pcbNuevo = crearPCB(codigo);
+			pcbNuevo = crearPCB(string_substring_from(codigo,4));
 			pcbNuevo->id=consola;							//Se le asigna al proceso como ID el numero de consola que lo envía.
 	if(aceptado==1){
 			printf("Código enviado a la UMC\nNuevo PCB en cola de READY!\n");
@@ -324,13 +324,6 @@ PCB* crearPCB(char* codigo) {
 	pcb->paginas_codigo = calcularPaginas(codigo);
 	pcb->pc = metadata->instruccion_inicio;
 	pcb->stack = list_create();
-//	pcbProceso->PID=ultimoPID++;
-//	pcbProceso->PC = metadata->instruccion_inicio;								//Pos de la primer instruccion
-//	pcbProceso->indiceCodigo=metadata->instrucciones_serializado;
-//	pcbProceso->cantEtiquetas=metadata->etiquetas_size;
-//	pcbProceso->etiquetas=metadata->etiquetas;
-//	pcbProceso->cantInstrucciones=metadata->instrucciones_size;
-//	pcbProceso->indiceStack=string_length(codigo)+1;
 	return pcb;
 }
 
@@ -677,5 +670,6 @@ void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	string_append(&mensaje, "1");
 	agregarHeader(&pcbSerializado);
 	string_append(&mensaje,pcbSerializado);
+	string_append(&mensaje,"\0");
 	send(cpu, mensaje, string_length(mensaje), 0);
 }

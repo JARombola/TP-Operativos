@@ -209,8 +209,9 @@ void atenderCpu(int conexion){
 			switch (operacion) {
 			case 2:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
 				datos=enviarBytes(proceso,pagina,offset,size,operacion);
-					send(conexion,datos,size,0);
-					free(datos);
+				if (string_equals_ignore_case(datos,"-1")){size=1;}			//size=1 => La cpu sabe que hubo un error xq no recibe 4 bytes
+				send(conexion,datos,size,0);
+				free(datos);
 				break;
 			case 3:													//3 = Guardar Valor
 				recv(conexion,&buffer,sizeof(int),0);
@@ -322,7 +323,7 @@ void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
 		return datos;//}
 	}
 	char* mje=string_new();
-	string_append(&mje,"-1");
+	string_append(&mje,"-1\0");
 	return mje;				//No existe la pag
 }
 

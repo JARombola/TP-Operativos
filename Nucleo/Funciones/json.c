@@ -120,8 +120,6 @@ t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio)
 }
 
 
-
-
 char* toStringMetadata(t_metadata_program meta, char separador){
 	char* char_meta=string_new();
 	char* inicio=toStringInt(meta.instruccion_inicio);
@@ -140,10 +138,15 @@ char* toStringMetadata(t_metadata_program meta, char separador){
 	free(cantFunc);
 	free(cantEtiq);
 	if (meta.etiquetas != NULL){
-		//memcpy(char_meta,meta.etiquetas,meta.etiquetas_size);
-		//t_puntero_instruccion* b=metadata_buscar_etiqueta("perro",asd,meta.etiquetas_size);
-
-//		printf("PUNTERO : %d\n",b);
+		int i=0;
+		for(i=0;i<meta.etiquetas_size;i++){			//< o <= ?
+			if(meta.etiquetas[i]=='\0'){
+				meta.etiquetas[i]='@';
+			}
+		}
+		meta.etiquetas[meta.etiquetas_size]='\0';
+		printf("etiquetas:%s\n",meta.etiquetas);
+		string_append(&char_meta,meta.etiquetas);
 	}
 	if (meta.instrucciones_size!=0){
 		char* char_instrucciones = (toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size));
@@ -171,8 +174,14 @@ t_metadata_program fromStringMetadata(char* char_meta,char separador){
 			meta.cantidad_de_etiquetas = atoi(cantEtiquetas);
 			free(cantEtiquetas);
 		if (meta.etiquetas_size>0){
+			int i=0;
 			meta.etiquetas = toSubString(char_meta,20,(20+meta.etiquetas_size-1));
-			meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,24),meta.instrucciones_size);
+			for(;i<meta.etiquetas_size;i++){
+				if(meta.etiquetas[i]=='@'){
+					meta.etiquetas[i]='\0';
+				}
+			}
+			meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,20+meta.etiquetas_size),meta.instrucciones_size);
 		}else{
 			meta.etiquetas =NULL;
 			meta.instrucciones_serializado = fromStringInstrucciones(string_substring_from(char_meta,20),meta.instrucciones_size);

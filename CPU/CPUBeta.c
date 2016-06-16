@@ -157,7 +157,8 @@ int procesarPeticion(){
 
 	printf("Hardcodeado: %s\n",pcb_char);
 	pcb = fromStringPCB(pcb_char);
-
+	//t_puntero_instruccion a=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	//printf("PERRO: %d\n",a);
 	procesarCodigo();
 	free(pcb_char);
 	return 0;
@@ -197,7 +198,7 @@ char* pedirLinea(){
 		longitud,
 		proceso = pcb.id;
 
-	start = pcb.indices.instrucciones_serializado[pcb.pc].start-4;
+	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
@@ -216,7 +217,7 @@ char* pedirLinea(){
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
 		string_append(&respuestaFinal, respuesta);
-		printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
+	//	printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
 		respuesta='\0';
 		free(respuesta);
 		pag++;
@@ -261,7 +262,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	Variable* var;
 	var = (Variable*) list_find(variables,(void*)variableBuscada);
 	if ( var!=NULL){
-		return (int)&(var->pagina);				// POR QUE HAY UN "&" AHI!?!?!?!?  porq retorna un puntero  todo
+		return (int)&(var->pagina);
 	}
 	return -1;
 }
@@ -269,10 +270,13 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
+	//int *p;
 	int *p;
-	recv(umc,&p,sizeof(int),0);
+	int recibidos=recv(umc,&p,sizeof(int),0);
+	if (recibidos!=sizeof(int)){
+		printf("___________________Cabum me exploto la UMC __________________\n");			//todo
+	}
 	printf("VALOR VARIABLE: %d \n",p);
-	//if (!recibirProtocolo(umc)) printf("Cabum me exploto la UMC \n");
 	//char* respuesta=esperarRespuesta(umc);
 	//int resp=atoi(respuesta);
 	//free(respuesta);
@@ -450,7 +454,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	if (atoi(resp)){
 		printf("Asignacion ok\n");
 	}else{
-		printf("Cagamos\n");
+		printf("Cagamos\n");			//todo murió el proceso, abortar quantum y avisar al núcleo
 	}
 	free(resp);
 }
