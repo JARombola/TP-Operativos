@@ -81,6 +81,7 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pe
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
 void saltoDeLinea(t_nombre_etiqueta t_nombre_etiqueta);
 void parsear(char* instruccion);
+t_puntero_instruccion retornar(t_valor_variable retorno);
 
 
 AnSISOP_funciones functions = {
@@ -96,6 +97,7 @@ AnSISOP_funciones functions = {
 		.AnSISOP_irAlLabel 				= saltoDeLinea,
 		.AnSISOP_llamarConRetorno		= llamarConRetorno,
 		.AnSISOP_entradaSalida			= entradaSalida,
+		.AnSISOP_retornar               = retornar,
 };
 AnSISOP_kernel kernel_functions = {
 		.AnSISOP_signal = signalHola,

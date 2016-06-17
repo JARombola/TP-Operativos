@@ -239,6 +239,7 @@ t_puntero definirVariable(t_nombre_variable variable) {
 	Variable* var = crearVariable(variable);
 	printf("Variable %c creada\n", var->id);
 	sumarEnLasVariables(var);
+	printf("Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
 	return  (int)var;
 }
 
@@ -303,7 +304,9 @@ t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 	printf("Llamada con retorno a : %s \n", etiqueta);
 	Stack* stack = malloc(sizeof(Stack));
-	stack->retPos = donde_retornar;
+	Pagina* paginaReturn = (Pagina*) donde_retornar;
+	stack->retVar = *paginaReturn;
+	stack->retPos = pcb.pc;
 	stack->vars = list_create();
 	Pagina pag = obtenerPagDisponible();
 	Pagina* pagina = malloc(sizeof(Pagina));
@@ -389,10 +392,22 @@ void finalizar() {
 	printf("Finalizado \n");
 	int tamanioStack = list_size(pcb.stack);
 	printf("remueve: %d \n", tamanioStack-1);
+
+	if (tamanioStack >1){
+		Stack* stackActual = obtenerStack();
+		pcb.pc = stackActual->retPos;
+	}
 	list_remove(pcb.stack,tamanioStack-1);
 	if (tamanioStack == 1){
 		finalizado = 1;
 	}
+}
+
+t_puntero_instruccion retornar(t_valor_variable retorno){
+	Stack* stackActual = obtenerStack();
+	int puntero = (int)&(stackActual->retVar);
+	printf("Pagina: %d, off: %d, size: %d \n",stackActual->retVar.pag,stackActual->retVar.off,stackActual->retVar.tamanio);
+	return puntero;
 }
 
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------
