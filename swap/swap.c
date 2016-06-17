@@ -25,7 +25,7 @@ typedef struct{
 }traductor_marco;
 
 
-void* crearArchivoSwap();
+int crearArchivoSwap();
 int guardarDatos(int,int,int);
 int buscarEspacioLibre(int);
 void* buscar(int, int);
@@ -110,7 +110,9 @@ int main(int argc, char* argv[]){
 	//----------------Recibo datos de la UMC
 	int operacion=1, PID, cantPaginas, pagina;
 	while (operacion){
-		operacion = atoi((char*)recibirMensaje(conexionUmc,1));
+		char* codOp=(char*)recibirMensaje(conexionUmc,1);
+		operacion = atoi(codOp);
+		free(codOp);
 		PID = recibirProtocolo(conexionUmc);
 		switch (operacion){
 		case 1:															//Almacenar codigo, PROTOCOLO: [1° PID, 2° Cant paginas (4 bytes c/u))]
@@ -132,6 +134,7 @@ int main(int argc, char* argv[]){
 				pagina=recibirProtocolo(conexionUmc);
 				void* datos=buscar(PID,pagina);
 				send(conexionUmc,datos,datosSwap->tamPagina,0);
+				free(datos);
 				break;
 
 		case 3:																//eliminar ansisop
@@ -147,7 +150,7 @@ int main(int argc, char* argv[]){
 
 //-----------------------------------FUNCIONES-----------------------------------
 
-void* crearArchivoSwap(){
+int crearArchivoSwap(){				//todo modificar tamaños
 	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
 	int fd_archivo=open(datosSwap->nombre_swap,O_RDWR);

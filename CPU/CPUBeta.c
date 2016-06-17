@@ -18,6 +18,7 @@ int main(){
 	crearHiloSignal();
 
 	conectarseAlNucleo();
+
 	if (nucleo < 0) return -1;
 
 	conectarseALaUMC();
@@ -177,6 +178,7 @@ int procesarCodigo(){
 			return -1;
 		}
 		parsear(linea);
+		free(linea);
 		quantum--;
 		pcb.pc++;
 	}
@@ -352,7 +354,6 @@ void signalHola(t_nombre_semaforo identificador_semaforo){
 void imprimir(t_valor_variable valor){
 	printf("Imprimir %d \n", valor);
 	char* mensaje = string_new();
-	recv(nucleo,mensaje,100,0);
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
 	char* valorOk=string_itoa(valor);
@@ -366,6 +367,7 @@ void imprimir(t_valor_variable valor){
 	if (verificador != 1){
 		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
 	}
+	free(tamanioValor);
 }
 
 void imprimirTexto(char* texto) {
@@ -452,12 +454,8 @@ int tienePermiso(char* autentificacion){
 	return 1;
 }
 
-void saltoDeLinea(int cantidad, void* funcion){
-	if (cantidad == 0){
-		pcb.pc = metadata_buscar_etiqueta(funcion,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-		return;
-	}
-	pcb.pc++;
+void saltoDeLinea(t_nombre_etiqueta t_nombre_etiqueta){
+	pcb.pc = metadata_buscar_etiqueta(t_nombre_etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
 }
 
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){

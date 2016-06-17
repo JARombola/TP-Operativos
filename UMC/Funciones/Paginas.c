@@ -15,9 +15,6 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 	}
 	int posicion;
 	traductor_marco* encontrada;
-	if(pag==13){
-		int p=2;
-	}
 	if (list_any_satisfy(tabla_de_paginas,(void*)paginaBuscada)) {				//Esta "registrada" la pag (Existe)
 		//Consultar tlb
 		/*encontrada=list_find(tlb,(void*paginaBuscada);
@@ -38,6 +35,7 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 			free(pedido);
 			recv(conexionSwap, datos, datosMemoria->marco_size, 0);
 			encontrada=guardarPagina(datos, proceso, pag);
+			free(datos);
 		}
 							//Actualizar tlb
 		//}
