@@ -15,6 +15,9 @@ int buscar(int proceso, int pag) {				//todo busqueda en la TLB
 	}
 	int posicion;
 	traductor_marco* encontrada;
+	if(pag==13){
+		int p=2;
+	}
 	if (list_any_satisfy(tabla_de_paginas,(void*)paginaBuscada)) {				//Esta "registrada" la pag (Existe)
 		//Consultar tlb
 		/*encontrada=list_find(tlb,(void*paginaBuscada);
@@ -101,7 +104,6 @@ int buscarMarcoLibre(int pid) {
 			return (marco->marco == pos);
 		}
 		int clockDelProceso(unClock* marco){
-			printf("PROCESO:%d\n",marco->proceso);
 			return(marco->proceso==pid);
 		}
 		void eliminarClock(unClock* clock){
@@ -154,16 +156,22 @@ int buscarMarcoLibre(int pid) {
 				}
 				if (vectorMarcos[pos] == 1 && !modificada) {														//Se va de la UMC
 					if (datosMarco->modificada) {														//Estaba modificada => se la mando a la swap
-						char* mje = string_new();
-						string_append(&mje, "1");
-						string_append(&mje, header(datosMarco->proceso));
-						string_append(&mje,header(0));
-						string_append(&mje,	memoria+ datosMarco->marco* datosMemoria->marco_size);
-						string_append(&mje, header(datosMarco->pagina));
-						string_append(&mje, header(0));
-						string_append(&mje, "\0");
-						send(conexionSwap, mje, string_length(mje), 0);
-						free(mje);
+						char* mje1 = string_new();
+						string_append(&mje1, "1");
+						string_append(&mje1, header(datosMarco->proceso));
+						string_append(&mje1,header(0));											//Cantidad de paginas nuevas... 0, no necesito agregar ninguna, solo modifico
+						string_append(&mje1,"\0");
+						char* mje2 = string_new();
+						string_append(&mje2, header(datosMarco->pagina));
+						string_append(&mje2, "\0");
+						int tamanioDatos=string_length(mje1)+datosMemoria->marco_size+string_length(mje2);
+						void* datos=malloc(tamanioDatos);
+						memcpy(datos,mje1,string_length(mje1));
+						memcpy(datos+string_length(mje1),memoria+datosMarco->marco*datosMemoria->marco_size,datosMemoria->marco_size);
+						memcpy(datos+string_length(mje1)+datosMemoria->marco_size,mje2,string_length(mje2));
+						free(mje1);
+						free(mje2);
+						send(conexionSwap, datos, tamanioDatos, 0);
 					}
 					vectorMarcos[pos] = 2;
 					printf("Marco eliminado: %d\n", pos);
@@ -270,7 +278,6 @@ int buscarMarcoLibre(int pid) {
     }
     return -1;                                                                                        //No hay marcos para darle
 }*/
-
 int marcosAsignados(int pid, int operacion){
 	int marcosDelProceso(traductor_marco* marco){
 		return (marco->proceso==pid && marco->marco>=0);
