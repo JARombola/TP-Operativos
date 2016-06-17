@@ -147,7 +147,7 @@ int procesarPeticion(){
 				perror("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
-		quantum = 10;
+		quantum = 100;
 		printf("Eldel nucleo:%s\n",pcbRecibido);
 
 		if (pcbRecibido[0] == '\0'){
@@ -168,7 +168,7 @@ int procesarCodigo(){
 	finalizado = 0;errorAnsisop=0;
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
-	while ((quantum>0) && (!finalizado) && (!errorAnsisop) && (!bloqueado)){
+	while ((quantum>0) && (!finalizado)){
 		//sleep(quantum_sleep);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
@@ -206,9 +206,7 @@ char* pedirLinea(){
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
-
 	size_page = longitud;
-
 	char* respuestaFinal = string_new();
 	while (longitud>0) {
 		if (longitud > TAMANIO_PAGINA - off) {
@@ -248,13 +246,13 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	}
 	printf("Obtener posicion de %c\n", variable);
 	Stack* stack = obtenerStack();
-
 	t_list* variables = stack->vars;
 	Variable* var;
 	var = (Variable*) list_find(variables,(void*)variableBuscada);
 	if ( var!=NULL){
 		return (int)&(var->pagina);
 	}
+	printf("asd\n");
 	return -1;
 }
 
@@ -296,16 +294,20 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 }
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
+	printf("Ir a Label \n");
 	return metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
 }
 
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
+	printf("Llamada con retorno a : %s \n", etiqueta);
 	Stack* stack = malloc(sizeof(Stack));
 	stack->retPos = donde_retornar;
 	stack->vars = list_create();
 	Pagina pag = obtenerPagDisponible();
 	Pagina* pagina = malloc(sizeof(Pagina));
 	pagina = &pag;
+	pcb.pc = metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	printf("Salto a: %d\n", pcb.pc);
 	list_add(stack->vars,pagina);
 	list_add(pcb.stack,stack);
 }
@@ -350,6 +352,7 @@ void signalHola(t_nombre_semaforo identificador_semaforo){
 void imprimir(t_valor_variable valor){
 	printf("Imprimir %d \n", valor);
 	char* mensaje = string_new();
+	recv(nucleo,mensaje,100,0);
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
 	char* valorOk=string_itoa(valor);
@@ -357,7 +360,6 @@ void imprimir(t_valor_variable valor){
 	string_append(&mensaje,tamanioValor);
 	string_append(&mensaje,valorOk);
 	free(valorOk);
-	//printf("Mensaje al Nucleo para imprimir: %s\n",mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	int verificador = recibirProtocolo(nucleo);
@@ -373,7 +375,6 @@ void imprimirTexto(char* texto) {
 	string_append(&mensaje,toStringInt(pcb.id));
 	string_append(&mensaje,toStringInt(strlen(texto)));
 	string_append(&mensaje,texto);
-	//printf("Mensaje al Nucleo para imprimir Texto: %s\n",mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	int verificador = recibirProtocolo(nucleo);
@@ -385,6 +386,7 @@ void imprimirTexto(char* texto) {
 void finalizar() {
 	printf("Finalizado \n");
 	int tamanioStack = list_size(pcb.stack);
+	printf("remueve: %d \n", tamanioStack-1);
 	list_remove(pcb.stack,tamanioStack-1);
 	if (tamanioStack == 1){
 		finalizado = 1;

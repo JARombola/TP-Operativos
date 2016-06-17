@@ -1,11 +1,16 @@
+function f
+textPrint Adios Mundo Cruel
+return 1
+end
+
 begin
 	variables a,b
-a=3
 b=5
 a=b+12
-b=!Global
 !Global=a
 a=!Global
-a=a
 print a
+textPrint Hola Mundo
+b<-f
+print b
 end

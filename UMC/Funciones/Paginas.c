@@ -172,6 +172,7 @@ int buscarMarcoLibre(int pid) {
 						free(mje1);
 						free(mje2);
 						send(conexionSwap, datos, tamanioDatos, 0);
+						free(datos);
 					}
 					vectorMarcos[pos] = 2;
 					printf("Marco eliminado: %d\n", pos);
