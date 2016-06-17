@@ -67,10 +67,12 @@ void funcionSenial(int n){
 
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
+		FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+		if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
-		return -1;
+		return -1;}
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
@@ -132,7 +134,9 @@ void conectarseALaUMC(){
 }
 
 int procesarPeticion(){
+	int quantum_sleep;
 	char* pcb_char;
+
 	quantum = recibirProtocolo(nucleo);
 	quantum_sleep=recibirProtocolo(nucleo);
 	pcb_char = esperarRespuesta(nucleo);
@@ -145,13 +149,16 @@ int procesarPeticion(){
 	}
 	quantum = 10;
 	printf("Eldel nucleo:%s\n",pcb_char);
+	//strcpy(pcb_char, "000600680000000600000000000000150006000400210004002500070029000400360004004000040000");
 
 	if (pcb_char[0] == '\0'){
 		perror("Error: Error de conexion con el nucleo\n");
-		return 0;
-	}
+		return 0;}
 
+	printf("Hardcodeado: %s\n",pcb_char);
 	pcb = fromStringPCB(pcb_char);
+	//t_puntero_instruccion a=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	//printf("PERRO: %d\n",a);
 	procesarCodigo();
 	free(pcb_char);
 	return 0;
@@ -162,7 +169,7 @@ int procesarCodigo(){
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
 	while ((quantum>0) && (!finalizado)){
-		//sleep(quantum_sleep);
+		//sleep(3);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 		if (linea[0] == '\0'){
@@ -171,6 +178,7 @@ int procesarCodigo(){
 		}
 		parsear(linea);
 		quantum--;
+//		saltoDeLinea(1,NULL);
 		pcb.pc++;
 	}
 	Stack* s = obtenerStack();
@@ -179,7 +187,6 @@ int procesarCodigo(){
 	Variable* b = list_get(vars,1);
 	printf("%c\n",a->id);
 	printf("%c\n",b->id);
-//	notificarStatusAlNucleo();
 	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
 }
@@ -192,7 +199,7 @@ char* pedirLinea(){
 		proceso = pcb.id;
 
 	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
-	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;
+	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
 
@@ -210,6 +217,7 @@ char* pedirLinea(){
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
 		string_append(&respuestaFinal, respuesta);
+	//	printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
 		respuesta='\0';
 		free(respuesta);
 		pag++;
@@ -218,6 +226,18 @@ char* pedirLinea(){
 	}
 	string_append(&respuestaFinal, "\0");
 	return respuestaFinal;
+
+
+	/*char* linea = string_new();
+	switch (quantum){
+	case 10: string_append(&linea,"variables a,b"); break;
+	case 9: string_append(&linea,"a=3"); break;
+	case 8: string_append(&linea,"b=5"); break;
+	case 7: string_append(&linea,"a=12+b"); break;
+	case 6: string_append(&linea,"end"); break;
+	}
+	return linea;*/
+
 }
 
 
@@ -249,14 +269,18 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
-	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
+	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
+	//int *p;
 	int *p;
 	int recibidos=recv(umc,&p,sizeof(int),0);
 	if (recibidos!=sizeof(int)){
 		printf("___________________Cabum me exploto la UMC __________________\n");			//todo
 	}
-	printf("VALOR VARIABLE: %d \n",*p);
-	return *p;
+	printf("VALOR VARIABLE: %d \n",p);
+	//char* respuesta=esperarRespuesta(umc);
+	//int resp=atoi(respuesta);
+	//free(respuesta);
+	return p;
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
@@ -265,18 +289,8 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	char* mensaje = string_new();
-	string_append(&mensaje, "00020001");
-	string_append(&mensaje, toStringInt(strlen(variable)));
-	string_append(&mensaje, variable);
-	string_append(&mensaje, "\0");
-	send(nucleo, mensaje,strlen(mensaje),0);
-	free(mensaje);
-	char* respuesta = malloc(10*sizeof(char));
-	recv(nucleo,respuesta,4,0);
-	int valor = atoi(respuesta);
-	free(respuesta);
-	return valor;
+	enviarMensajeNucleoConsulta(variable);
+	return atoi(esperarRespuesta(nucleo));
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
@@ -330,7 +344,6 @@ void finalizar() {
 	list_remove(pcb.stack,tamanioStack-1);
 	if (tamanioStack == 1){
 		finalizado = 1;
-		status = 1;
 	}
 }
 
@@ -393,9 +406,12 @@ int tienePermiso(char* autentificacion){
 	return 1;
 }
 
-void saltoDeLinea(void* funcion){
-	pcb.pc = metadata_buscar_etiqueta(funcion,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	pcb.pc--;
+void saltoDeLinea(int cantidad, void* funcion){
+	if (cantidad == 0){
+		pcb.pc = metadata_buscar_etiqueta(funcion,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+		return;
+	}
+	pcb.pc++;
 }
 
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){

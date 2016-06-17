@@ -46,8 +46,6 @@ int CODIGO_WAIT = 0;
 int CODIGO_SIGNAL = 0;
 int CODIGO_CONSULTA_UMC = 0;
 int TAMANIO_PAGINA = 1;
-int quantum_sleep;
-int status;
 
 
 
@@ -80,7 +78,7 @@ void enviarMensajeNucleoConsulta(char* variable);
 void enviarMensajeNucleoAsignacion(char* variable, int valor);
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pedir linea codigo, 1 = pedir valor almacenado
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
-void saltoDeLinea(void* funcion);
+void saltoDeLinea(int cantidad, void* funcion);
 void parsear(char* instruccion);
 
 AnSISOP_funciones functions = {
