@@ -3,4 +3,6 @@ begin
 a=3
 b=5
 a=b+12
+b=!Global
+a=b
 end

@@ -243,31 +243,44 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
-	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
+	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
 
-	int *p;
-	int recibidos=recv(umc,&p,sizeof(int),0);
+	int valor;
+	int recibidos=recv(umc,&valor,sizeof(int),0);
 	if (recibidos!=sizeof(int)){
 		printf("___________________Cabum me exploto la UMC __________________\n");			//todo
 	}
-	printf("VALOR VARIABLE: %d \n",p);
-	//char* respuesta=esperarRespuesta(umc);
-	//int resp=atoi(respuesta);
-	//free(respuesta);
-	return p;
+	printf("VALOR VARIABLE: %d \n",valor);
+	return valor;
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
+	printf("Asignar\n");
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	enviarMensajeNucleoConsulta(variable);
-	return atoi(esperarRespuesta(nucleo));
+	printf("Obtener Valor Comparido de: %s\n", variable);
+	char* mensaje = string_new();
+	string_append(&mensaje, "00020001");
+	string_append(&mensaje, toStringInt(strlen(variable)+1));
+	string_append(&mensaje, "!");
+	string_append(&mensaje, variable);
+	string_append(&mensaje, "\0");
+	send(nucleo, mensaje,strlen(mensaje),0);
+	printf("Ak le mando al nucleo : %s \n", mensaje);
+	free(mensaje);
+	char* respuesta = malloc(10*sizeof(char));
+	recv(nucleo,respuesta,4,0);
+
+	int valor = atoi(respuesta);
+	free(respuesta);
+	return valor;
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
+	printf("Asignar valor compatido \n");
 	enviarMensajeNucleoAsignacion(variable,valor);
 	return atoi(esperarRespuesta(nucleo));
 }
