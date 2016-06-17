@@ -403,11 +403,10 @@ void finalizar() {
 	}
 }
 
-t_puntero_instruccion retornar(t_valor_variable retorno){
+void retornar(t_valor_variable retorno){
 	Stack* stackActual = obtenerStack();
 	int puntero = (int)&(stackActual->retVar);
 	asignar(puntero,retorno);
-	return puntero;
 }
 
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------

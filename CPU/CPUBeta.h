@@ -81,7 +81,7 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pe
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
 void saltoDeLinea(t_nombre_etiqueta t_nombre_etiqueta);
 void parsear(char* instruccion);
-t_puntero_instruccion retornar(t_valor_variable retorno);
+void retornar(t_valor_variable retorno);
 
 
 AnSISOP_funciones functions = {
