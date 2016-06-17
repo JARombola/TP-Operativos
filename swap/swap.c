@@ -249,6 +249,7 @@ int compactar(){
 
 	list_sort(tablaPaginas,inicioMenorMayor);
 
+	usleep(datosSwap->retardoCompactacion*1000);
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		// pregunta si la pagina esta vacia, y si esta vacia es 0, entonces lo niega, devuelve 1 y entra al if
 		if (!bitarray_test_bit(bitArray,i)){
