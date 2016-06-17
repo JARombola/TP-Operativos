@@ -292,7 +292,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	enviarMensajeNucleoAsignacion(variable,valor);
 	int valor_nucleo;
 	recv(nucleo,&valor_nucleo,4,0);
-	return valor_nucleo;
+	return ntohl(valor_nucleo);
 }
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
@@ -352,9 +352,12 @@ void imprimir(t_valor_variable valor){
 	char* mensaje = string_new();
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
-	string_append(&mensaje,"0004");
-	string_append(&mensaje,toStringInt(valor));
-	printf("Mensaje al Nucleo para imprimir: %s\n",mensaje);
+	char* valorOk=string_itoa(valor);
+	char* tamanioValor=toStringInt(string_length(valorOk));
+	string_append(&mensaje,tamanioValor);
+	string_append(&mensaje,valorOk);
+	free(valorOk);
+	//printf("Mensaje al Nucleo para imprimir: %s\n",mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	int verificador = recibirProtocolo(nucleo);
@@ -370,7 +373,7 @@ void imprimirTexto(char* texto) {
 	string_append(&mensaje,toStringInt(pcb.id));
 	string_append(&mensaje,toStringInt(strlen(texto)));
 	string_append(&mensaje,texto);
-	printf("Mensaje al Nucleo para imprimir Texto: %s\n",mensaje);
+	//printf("Mensaje al Nucleo para imprimir Texto: %s\n",mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	int verificador = recibirProtocolo(nucleo);
