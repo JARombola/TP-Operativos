@@ -547,6 +547,8 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		free(valor_char);
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
+		valor=htonl(valor);
+		send(cpu,&valor,4,0);
 		break;
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea

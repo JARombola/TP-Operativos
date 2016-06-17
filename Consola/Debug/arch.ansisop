@@ -4,5 +4,7 @@ a=3
 b=5
 a=b+12
 b=!Global
-a=b
+!Global=a
+a=!Global
+a=a
 end

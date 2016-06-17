@@ -1,8 +1,10 @@
 #!/home/utnso/tp-2016-1c-CodeBreakers/Consola/Debug/Consola
 begin
 variables a,b
+io Disco 100
+!tiempo3=2
 :inicio
-a=3
+a=!tiempo3+2
 :perro
 b=5
 :gato
