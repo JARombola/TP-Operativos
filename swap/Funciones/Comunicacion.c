@@ -77,13 +77,15 @@ int recibirProtocolo(int conexion){
 }
 
 void* recibirMensaje(int conexion, int tamanio){
-	void* mensaje=(void*)malloc(tamanio+1);
+	void* mensaje=(void*)malloc(tamanio);
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
 		return "a";}
-	memcpy(mensaje+tamanio,"\0",1);
+	/*int p;
+	memcpy(&p,mensaje,4);
+	printf("Recibí_________ %d\n",p);*/
 	return mensaje;
 }
 

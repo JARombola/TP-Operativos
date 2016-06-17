@@ -319,7 +319,7 @@ void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
 		void* a=(void*)malloc(size+1);
 		memcpy(a,datos,size);
 		memcpy(a+size,"\0",1);
-		printf("Envio: %s\n",a);
+		printf("Pag: %d -> Envio: %s\n",pagina,a);
 		free(a);
 		return datos;//}
 	}

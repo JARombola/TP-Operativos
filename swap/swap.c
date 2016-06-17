@@ -32,7 +32,6 @@ void* buscar(int, int);
 int compactar();
 int eliminarProceso(int);
 void verMarcos();
-char* leerEnParticion(t_paquete_lectura*);
 
 
 datosConfiguracion *datosSwap;
@@ -76,21 +75,6 @@ int main(int argc, char* argv[]){
 	if (!bindear(swap_servidor, direccionSWAP)) {printf("Error en el bind, Adios!\n");
 		return 1;
 	}
-	// PRUEBA COMPACTAR
-	int Proc =1;
-	int datos = 1;
-	int cantPag = 5;
-	guardarDatos(datos,cantPag,Proc);
-	Proc++;
-	guardarDatos(datos, cantPag, Proc);
-	Proc++;
-	guardarDatos(datos, cantPag, Proc);
-	Proc++;
-	eliminarProceso(1);
-	verMarcos();
-	compactar();
-	verMarcos();
-
 ///////////////////////////////
 	printf("Esperando UMC...\n");
 	listen(swap_servidor, 5);
@@ -151,7 +135,7 @@ int main(int argc, char* argv[]){
 //-----------------------------------FUNCIONES-----------------------------------
 
 int crearArchivoSwap(){				//todo modificar tamaños
-	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
+	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=100 bs=100",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
 	int fd_archivo=open(datosSwap->nombre_swap,O_RDWR);
 	archivoSwap=(void*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_PRIVATE,(int)fd_archivo,0);
@@ -187,11 +171,11 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
 		posicion=recibirProtocolo(conexionUmc);
 		posicion+=proceso->inicio;					//donde arranca el proceso + pag
-		posicion*=datosSwap->tamPagina;
 		printf("Pagina modificada\n");
+		size=datosSwap->tamPagina;
 	}
 	//memcpy(donde voy a guardar, que es lo que voy a guardar, tamanio)
-	memcpy(archivoSwap + posicion * datosSwap->tamPagina, datos, size);
+	memcpy(archivoSwap + posicion*datosSwap->tamPagina, datos, size);
 	/*void* p=malloc(size+1);				//Para comprobar lo que guardó
 	memcpy(p,archivoSwap+posicion*datosSwap->tamPagina,size);
 	memcpy(p+size,"\0",1);

@@ -164,6 +164,9 @@ int buscarMarcoLibre(int pid) {
 						string_append(&mje2, "\0");
 						int tamanioDatos=string_length(mje1)+datosMemoria->marco_size+string_length(mje2);
 						void* datos=malloc(tamanioDatos);
+						/*int x;
+						memcpy(&x,memoria+datosMarco->marco*datosMemoria->marco_size,4);
+						printf("____________X: %d\n",x);*/
 						memcpy(datos,mje1,string_length(mje1));
 						memcpy(datos+string_length(mje1),memoria+datosMarco->marco*datosMemoria->marco_size,datosMemoria->marco_size);
 						memcpy(datos+string_length(mje1)+datosMemoria->marco_size,mje2,string_length(mje2));
@@ -171,6 +174,11 @@ int buscarMarcoLibre(int pid) {
 						free(mje2);
 						send(conexionSwap, datos, tamanioDatos, 0);
 						free(datos);
+						char resp[3];
+						recv(conexionSwap,resp,2,0);				//"ok" o "no"
+				/*		if (string_equals_ignore_case(resp,"ok")){
+							printf("TODO PEOLA\n");
+						}*/
 					}
 					vectorMarcos[pos] = 2;
 					printf("Marco eliminado: %d\n", pos);
