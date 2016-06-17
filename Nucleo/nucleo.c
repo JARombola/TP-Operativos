@@ -162,6 +162,7 @@ int main(int argc, char* argv[]) {
 			perror("Error en el select");
 			//exit(EXIT_FAILURE);
 		}
+		printf("Entré\n");
 		socketARevisar = revisarActividad(consolas, &descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
@@ -200,7 +201,7 @@ int main(int argc, char* argv[]) {
 							cpu=nuevo_cliente;
 							printf("Acepté un nuevo cpu\n");
 //							queue_push(colaCPUs, &nuevo_cliente);
-//							list_add(cpus, (void *) nuevo_cliente);
+							list_add(cpus, (void *) nuevo_cliente);
 							break;
 
 						case 2:						//CONSOLA, RECIBO EL CODIGO
@@ -322,7 +323,7 @@ PCB* crearPCB(char* codigo) {
 	t_metadata_program *metadata = metadata_desde_literal(codigo);
 	pcb->indices = *metadata;
 	pcb->paginas_codigo = calcularPaginas(codigo);
-	pcb->pc = 0; //metadata->instruccion_inicio;
+	pcb->pc = metadata->instruccion_inicio;
 	pcb->stack = list_create();
 	return pcb;
 }
@@ -488,14 +489,14 @@ void atenderOperacion(int op,int cpu){
 		procesar_operacion_privilegiada(operacion, cpu);
 		break;
 	case 3:
-		//termino el ansisop, va a listos
+		//termino el ansisop, va a Terminado
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
 		pcbDesSerializado = desSerializarMensajeCPU(texto);
 		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->id);
-		queue_push(colaCPUs, &cpu);
-		queue_push(colaTerminados, pcbDesSerializado);
-		sem_post(&sem_Terminado);
+//		queue_push(colaCPUs, &cpu);
+//		queue_push(colaTerminados, pcbDesSerializado);
+//		sem_post(&sem_Terminado);
 		break;
 	case 4:
 		//imprimir o imprimirTexto

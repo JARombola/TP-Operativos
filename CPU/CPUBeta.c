@@ -59,8 +59,8 @@ void funcionSenial(int n){
 		printf("Por que me cerraste? \n");
 		sleep(2);
 		printf("Mentira, bye\n");
-		send(umc,"0",1,0);
-	//	send(nucleo,error,4,0);
+		finalizado=0;						//Para que entre bien en enviarMjeFinNucleo
+		enviarMjeFinANucleo(1);
 		exit(0);
 		break;
 	}
@@ -68,12 +68,10 @@ void funcionSenial(int n){
 
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
-		FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
-		if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
-		return -1;}
+		return -1;
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
@@ -141,7 +139,6 @@ int procesarPeticion(){
 		quantum = recibirProtocolo(nucleo);
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
-
 		if (quantum<=0){
 			close(nucleo);
 			close(umc);
@@ -181,7 +178,6 @@ int procesarCodigo(){
 		}
 		parsear(linea);
 		quantum--;
-//		saltoDeLinea(1,NULL);
 		pcb.pc++;
 	}
 	if(finalizado){
@@ -227,7 +223,6 @@ char* pedirLinea(){
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
 		string_append(&respuestaFinal, respuesta);
-	//	printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
 		respuesta='\0';
 		free(respuesta);
 		pag++;
@@ -236,7 +231,6 @@ char* pedirLinea(){
 	}
 	string_append(&respuestaFinal, "\0");
 	return respuestaFinal;
-
 }
 
 
@@ -302,6 +296,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
+	printf("Asignar valor compatido \n");
 	enviarMensajeNucleoAsignacion(variable,valor);
 	return atoi(esperarRespuesta(nucleo));
 }

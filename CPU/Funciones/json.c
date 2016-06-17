@@ -161,7 +161,6 @@ char* toStringMetadata(t_metadata_program meta, char separador){
 			}
 		}
 		meta.etiquetas[meta.etiquetas_size]='\0';
-		printf("etiquetas:%s\n",meta.etiquetas);
 		string_append(&char_meta,meta.etiquetas);
 	}
 	if (meta.instrucciones_size!=0){
