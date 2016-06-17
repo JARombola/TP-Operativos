@@ -82,16 +82,16 @@ int main(int argc, char* argv[]) {
 	int max_desc, nuevo_cliente,sin_size = sizeof(struct sockaddr_in) ;
 	struct sockaddr_in direccionCliente;
 	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);//todo agregar el destroy
+	pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
 	//--------------------------------CONFIGURACION-----------------------------
 
 	datosNucleo=malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigNucleo", &datosNucleo) || leerConfiguracion("../ConfigNucleo", &datosNucleo))){
-			printf("Error archivo de configuracion\n FIN.");return 1;}
+			printf("Error archivo de configuracion\n FIN.\n");return 1;}
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
-/*	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
-	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
+	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
+/*	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
 	dispositivosES = crearDiccionarioSEMyES(datosNucleo->io_ids,datosNucleo->io_sleep,1);
 
 	//---------------------------------PLANIFICACION PCB-----------------------------------
@@ -198,7 +198,7 @@ int main(int argc, char* argv[]) {
 
 						case 1:											//CPU
 							send(nuevo_cliente, &mjeCpu, 4, 0);
-							cpu=nuevo_cliente;
+							cpu=nuevo_cliente; //borrar despues
 							printf("Acepté un nuevo cpu\n");
 //							queue_push(colaCPUs, &nuevo_cliente);
 							list_add(cpus, (void *) nuevo_cliente);
@@ -238,7 +238,7 @@ t_dictionary* crearDiccionarioGlobales(char** keys){
 	globalesValores=malloc(i * sizeof(uint32_t)); //deberia estar arriba del i-- ?
 	i--;
 	for(;i>=0;i--){
-		globalesValores[i]=0;
+		globalesValores[i]=1;//todo un 1 para probar
 	}
 	return diccionario;
 }
@@ -428,7 +428,7 @@ void atender_Ejecuciones(){
  void atender_Bloq_SEM(int posicion){
 	 printf("[HILO DE SEMAFORO nro %d]: se creo el hilo %d de Semaforos de variables globales\n",posicion,posicion);
 	 while(1){
-		 sem_wait(&semaforosGlobales[posicion]);
+		 sem_wait(&semaforosGlobales[posicion]);//todo si se activa, desbloquea a todos
 		 if(!queue_is_empty(colasSEM[posicion])){
 			 PCB* pcbBloqueando = queue_pop(colasSEM[posicion]);
 		 	 queue_push(colaListos, pcbBloqueando);
@@ -519,7 +519,7 @@ void atenderOperacion(int op,int cpu){
 
 void procesar_operacion_privilegiada(int operacion, int cpu){
 		int tamanioNombre, posicion, unidadestiempo,valor,tamanio;
-		char *identificador,*texto;
+		char *identificador,*texto,*valor_char;
 		PCB*pcbDesSerializado;
 		if (operacion){
 			tamanioNombre = recibirProtocolo(cpu);
@@ -533,25 +533,28 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 1:
 		//obtener valor de variable compartida
 		//recibo nombre de variable compartida, devuelvo su valor
-		posicion = (int)dictionary_get(globales,identificador);
+		posicion = (int)dictionary_get(globales,identificador); //todo puede no existir?
 		valor = globalesValores[posicion];
-		valor = htonl(valor);
-		send(cpu, &valor, 4, 0);
+		valor=htonl(valor);
+		send(cpu,&valor,4,0);
 		break;
 	case 2:
 		//grabar valor en variable compartida
 		//recibo el nombre de una variable y un valor -> guardo y devuelvo valor
-		valor = ntohl(recibirMensaje(cpu,4));
+		tamanio=recibirProtocolo(cpu);
+		valor_char=recibirMensaje(cpu,tamanio);
+		valor=atoi(valor_char);
+		free(valor_char);
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
-		valor = htonl(valor);
-		send(cpu, &valor, 4, 0);
+		valor=htonl(valor);
+		send(cpu,&valor,4,0);
 		break;
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea
 		//recibo el identificador del semaforo
 		posicion = (int)dictionary_get(semaforos,identificador);
-		sem_getvalue(&semaforosGlobales[posicion],&valor);
+		sem_getvalue(&semaforosGlobales[posicion],&valor); //todo el contador aca
 		if(valor){					//si es mas de 0, semaforo libre
 			send(cpu, "ok", 2, 0);
 			sem_wait(&semaforosGlobales[posicion]);
