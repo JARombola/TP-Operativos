@@ -506,7 +506,7 @@ void atenderOperacion(int op,int cpu){
 		if(esa_consola_existe(consola)){
 			enviarTextoConsola(consola, texto);
 		}
-		send(cpu,"1",1,0);
+		send(cpu,"0001",4,0);
 		free(texto);
 		break;
 	case 5:
