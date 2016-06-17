@@ -377,7 +377,7 @@ int finalizarPrograma(int procesoEliminar){
 }
 
 int esperarRespuestaSwap(){
-	char*respuesta = malloc(3);
+	char *respuesta = malloc(3);
 	recv(conexionSwap, respuesta, 2, 0);
 	respuesta[2] = '\0';
 	int aceptado = esIgual(respuesta, "ok");
