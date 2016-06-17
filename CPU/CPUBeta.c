@@ -290,7 +290,9 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
 	printf("Asignar valor compatido \n");
 	enviarMensajeNucleoAsignacion(variable,valor);
-	return valor;							//Cambié, para que quiero el valor de la variable? ...
+	int valor_nucleo;
+	recv(nucleo,&valor_nucleo,4,0);
+	return valor_nucleo;
 }
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
@@ -311,9 +313,7 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	printf("Entrada/Salida\n");
 	char* mensaje=string_new();
-	//char* operacion=toStringInt(5);
 	string_append(&mensaje,"00020005");
-//	free(operacion);
 	char* tamanio=toStringInt(string_length(dispositivo));
 	string_append(&mensaje,tamanio);
 	free(tamanio);
@@ -349,16 +349,34 @@ void signalHola(t_nombre_semaforo identificador_semaforo){
 
 void imprimir(t_valor_variable valor){
 	printf("Imprimir %d \n", valor);
-	char* valor_char = header(valor);
-	char* protocolo = header(CODIGO_IMPRESION);
-	char mensaje[10];
-	sprintf(mensaje,"%s%s", protocolo, valor_char);
+	char* mensaje = string_new();
+	string_append(&mensaje,"0004");
+	string_append(&mensaje,toStringInt(pcb.id));
+	string_append(&mensaje,"0004");
+	string_append(&mensaje,toStringInt(valor));
+	printf("Mensaje al Nucleo para imprimir: %s\n",mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
+	int verificador = recibirProtocolo(nucleo);
+	if (verificador != 1){
+		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+	}
 }
 
 void imprimirTexto(char* texto) {
 	printf("ImprimirTexto: %s \n", texto);
-	enviarMensajeConProtocolo(nucleo,texto, CODIGO_IMPRESION);
+	char* mensaje = string_new();
+	string_append(&mensaje,"0004");
+	string_append(&mensaje,toStringInt(pcb.id));
+	string_append(&mensaje,toStringInt(strlen(texto)));
+	string_append(&mensaje,texto);
+	printf("Mensaje al Nucleo para imprimir Texto: %s\n",mensaje);
+	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
+	int verificador = recibirProtocolo(nucleo);
+	if (verificador != 1){
+		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+	}
 }
 
 void finalizar() {

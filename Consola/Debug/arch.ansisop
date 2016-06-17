@@ -7,4 +7,5 @@ b=!Global
 !Global=a
 a=!Global
 a=a
+print a
 end
