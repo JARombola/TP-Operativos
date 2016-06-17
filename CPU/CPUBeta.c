@@ -8,7 +8,7 @@ void hiloSignal();
 void funcionSenial(int n);
 int enviarMjeFinANucleo(int);
 
-int ejecutar=1,murio=0,errorAnsisop;
+int ejecutar=1,murio=0,errorAnsisop=0,bloqueado=0;
 
 int main(){
 	printf("CPU estable...[%d] \n",process_getpid());
@@ -168,7 +168,7 @@ int procesarCodigo(){
 	finalizado = 0;errorAnsisop=0;
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
-	while ((quantum>0) && (!finalizado) && (!errorAnsisop)){
+	while ((quantum>0) && (!finalizado) && (!errorAnsisop) && (!bloqueado)){
 		//sleep(quantum_sleep);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
@@ -186,6 +186,10 @@ int procesarCodigo(){
 	}
 	if(errorAnsisop){
 		printf("Error durante la ejecución, abortando...\n");
+		return 1;
+	}
+	if(bloqueado){
+		printf("Proceso Bloqueado\n");
 		return 1;
 	}
 	return 0;
@@ -322,7 +326,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
 	free(mensaje);
-	quantum=-1;										//turbio, si
+	bloqueado=1;										//turbio, si
 }
 
 void wait(t_nombre_semaforo identificador_semaforo){
@@ -333,7 +337,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	respuesta[2]='\0';
 	int meBloquearon=string_equals_ignore_case(respuesta,"no");
 	if(meBloquearon){
-		quantum=-1;							//turbio, si
+		bloqueado=1;							//turbio, si
 	}
 }
 
@@ -473,6 +477,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	if (atoi(resp)){
 		printf("Asignacion ok\n");
 	}else{
+	//	errorAnsisop=1;
 		printf("Cagamos\n");			//todo murió el proceso, abortar quantum y avisar al núcleo
 	}
 	free(resp);
@@ -482,9 +487,10 @@ int enviarMjeFinANucleo(int terminado){
 	char* pcbEnvio;
 	char* mensajeParaNucleo=string_new();
 	char* codOperacion;
-	if(!terminado){							//Terminó el quantum
+	if(!terminado || bloqueado){							//Terminó el quantum
+		if(!terminado){						//si se bloqueo, no le tengo que mandar este codigo xq el nucleo esta esperando directamente el pcb
 		codOperacion=toStringInt(1);
-		string_append(&mensajeParaNucleo,codOperacion);
+		string_append(&mensajeParaNucleo,codOperacion);}
 		pcbEnvio=toStringPCB(pcb);
 		string_append(&mensajeParaNucleo,toStringInt(string_length(pcbEnvio)));
 		string_append(&mensajeParaNucleo,pcbEnvio);
@@ -500,13 +506,13 @@ int enviarMjeFinANucleo(int terminado){
 			free(pcbEnvio);
 			free(tamPCB);
 		}
-		else{													//error ansisop
+		else{												//error ansisop
 			codOperacion=toStringInt(0);
 			char* id=string_itoa(pcb.id);
 			string_append(&mensajeParaNucleo,codOperacion);
 			string_append(&mensajeParaNucleo,id);
 			free(id);
-		}
+			}
 	}
 	free(codOperacion);
 	char* estadoCPU;
@@ -521,6 +527,10 @@ int enviarMjeFinANucleo(int terminado){
 	string_append(&mensajeParaNucleo,"\0");
 	sleep(10);
 	send(nucleo,mensajeParaNucleo,string_length(mensajeParaNucleo),0);
+	terminado=0;
+	bloqueado=0;
+	finalizado=0;
+	errorAnsisop=0;
 	return 1;
 }
 
@@ -554,5 +564,3 @@ void enviarMensajeNucleoAsignacion(char* variable, int valor){
 	send(nucleo,mje,string_length(mje),0);
 	free(mje);
 }
-
-
