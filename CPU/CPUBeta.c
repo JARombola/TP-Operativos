@@ -59,7 +59,6 @@ void funcionSenial(int n){
 		sleep(2);
 		printf("Mentira, bye\n");
 		send(umc,"0",1,0);
-	//	send(nucleo,error,4,0);
 		exit(0);
 		break;
 	}
@@ -67,12 +66,10 @@ void funcionSenial(int n){
 
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
-		FILE* archivoDeConfiguracion = fopen("/home/utnso/tp-2016-1c-CodeBreakers/CPU/ArchivoDeConfiguracionCPU.txt","r");
-		if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
-		return -1;}
+		return -1;
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
@@ -136,31 +133,28 @@ void conectarseALaUMC(){
 int procesarPeticion(){
 	int quantum_sleep;
 	char* pcb_char;
+	while(1){
+		quantum = recibirProtocolo(nucleo);
+		quantum_sleep=recibirProtocolo(nucleo);
+		pcb_char = esperarRespuesta(nucleo);
 
-	quantum = recibirProtocolo(nucleo);
-	quantum_sleep=recibirProtocolo(nucleo);
-	pcb_char = esperarRespuesta(nucleo);
-
-	if (quantum<=0){
-		close(nucleo);
-		close(umc);
+		if (quantum<=0){
+			close(nucleo);
+			close(umc);
+				perror("Error: Error de conexion con el nucleo\n");
+			return 0;
+		}
+		quantum = 10;
+		printf("Eldel nucleo:%s\n",pcb_char);
+		if (pcb_char[0] == '\0'){
 			perror("Error: Error de conexion con el nucleo\n");
-		return 0;
+			return 0;}
+
+		printf("Hardcodeado: %s\n",pcb_char);
+		pcb = fromStringPCB(pcb_char);
+		procesarCodigo();
+		free(pcb_char);
 	}
-	quantum = 10;
-	printf("Eldel nucleo:%s\n",pcb_char);
-	//strcpy(pcb_char, "000600680000000600000000000000150006000400210004002500070029000400360004004000040000");
-
-	if (pcb_char[0] == '\0'){
-		perror("Error: Error de conexion con el nucleo\n");
-		return 0;}
-
-	printf("Hardcodeado: %s\n",pcb_char);
-	pcb = fromStringPCB(pcb_char);
-	//t_puntero_instruccion a=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	//printf("PERRO: %d\n",a);
-	procesarCodigo();
-	free(pcb_char);
 	return 0;
 }
 
@@ -169,7 +163,7 @@ int procesarCodigo(){
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
 	while ((quantum>0) && (!finalizado)){
-		//sleep(3);
+		//sleep(quantum_sleep);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 		if (linea[0] == '\0'){
@@ -178,15 +172,8 @@ int procesarCodigo(){
 		}
 		parsear(linea);
 		quantum--;
-//		saltoDeLinea(1,NULL);
 		pcb.pc++;
 	}
-	Stack* s = obtenerStack();
-	t_list* vars = s->vars;
-	Variable* a = list_get(vars,0);
-	Variable* b = list_get(vars,1);
-	printf("%c\n",a->id);
-	printf("%c\n",b->id);
 	printf("Finalizado el Proceso de Codigo...\n");
 	return 0;
 }
@@ -217,7 +204,6 @@ char* pedirLinea(){
 		recv(umc, respuesta, size_page, 0);
 		respuesta[size_page]='\0';
 		string_append(&respuestaFinal, respuesta);
-	//	printf("Le pedi pag: %d, off: %d y size: %d y me respondio : %s \n", pag,off,size_page,respuesta);
 		respuesta='\0';
 		free(respuesta);
 		pag++;
@@ -226,18 +212,6 @@ char* pedirLinea(){
 	}
 	string_append(&respuestaFinal, "\0");
 	return respuestaFinal;
-
-
-	/*char* linea = string_new();
-	switch (quantum){
-	case 10: string_append(&linea,"variables a,b"); break;
-	case 9: string_append(&linea,"a=3"); break;
-	case 8: string_append(&linea,"b=5"); break;
-	case 7: string_append(&linea,"a=12+b"); break;
-	case 6: string_append(&linea,"end"); break;
-	}
-	return linea;*/
-
 }
 
 
@@ -270,7 +244,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);			//1 = obtener valor, 0 = obtener linea
-	//int *p;
+
 	int *p;
 	int recibidos=recv(umc,&p,sizeof(int),0);
 	if (recibidos!=sizeof(int)){

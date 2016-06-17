@@ -145,7 +145,7 @@ void consola(){
 		} else {
 			if (esIgual(comando, "dump")) {
 				scanf("%d",&VELOCIDAD);
-				int pos=buscar(5,VELOCIDAD);
+				int pos=buscar(6,VELOCIDAD);
 				void* mje=malloc(datosMemoria->marco_size+1);
 				memcpy(mje,memoria+pos,datosMemoria->marco_size);
 				memcpy(mje+datosMemoria->marco_size, "\0",1);
