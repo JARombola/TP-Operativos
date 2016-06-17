@@ -147,7 +147,6 @@ int procesarPeticion(){
 		}
 		quantum = 10;
 		printf("Eldel nucleo:%s\n",pcbRecibido);
-		//strcpy(pcb_char, "000600680000000600000000000000150006000400210004002500070029000400360004004000040000");
 
 		if (pcbRecibido[0] == '\0'){
 			perror("Error: Error de conexion con el nucleo\n");
@@ -156,8 +155,7 @@ int procesarPeticion(){
 		printf("Hardcodeado: %s\n",pcbRecibido);
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
-		//t_puntero_instruccion a=metadata_buscar_etiqueta("perro",pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-		//printf("PERRO: %d\n",a);
+
 		int terminado=procesarCodigo();
 		enviarMjeFinANucleo(terminado);
 	}
@@ -169,7 +167,7 @@ int procesarCodigo(){
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
 	while ((quantum>0) && (!finalizado) && (!errorAnsisop)){
-		//sleep(3);
+		//sleep(quantum_sleep);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 		if (linea[0] == '\0'){
@@ -188,12 +186,6 @@ int procesarCodigo(){
 		printf("Error durante la ejecución, abortando...\n");
 		return 1;
 	}
-	/*Stack* s = obtenerStack();
-	t_list* vars = s->vars;
-	Variable* a = list_get(vars,0);
-	Variable* b = list_get(vars,1);
-	printf("%c\n",a->id);
-	printf("%c\n",b->id);*/
 	return 0;
 }
 
@@ -205,7 +197,7 @@ char* pedirLinea(){
 		proceso = pcb.id;
 
 	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
-	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;//-1 para evitar el \n
+	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
 
@@ -297,8 +289,18 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
 	printf("Asignar valor compatido \n");
-	enviarMensajeNucleoAsignacion(variable,valor);
-	return atoi(esperarRespuesta(nucleo));
+	char* mensaje = string_new();
+	string_append(&mensaje, "00020002");
+ 	string_append(&mensaje, toStringInt(strlen(variable)+1));
+ 	string_append(&mensaje, "!");
+ 	string_append(&mensaje, variable);
+ 	string_append(&mensaje, "0004");
+ 	string_append(&mensaje, toStringInt(valor));
+ 	send(nucleo, mensaje,strlen(mensaje),0);
+ 	free(mensaje);
+ 	int respuesta;
+ 	recv(nucleo,&respuesta,sizeof(int),0);
+ 	return (ntohl(respuesta));
 }
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
