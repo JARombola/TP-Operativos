@@ -357,12 +357,22 @@ void imprimir(t_valor_variable valor){
 	if (verificador != 1){
 		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
 	}
-
 }
 
 void imprimirTexto(char* texto) {
 	printf("ImprimirTexto: %s \n", texto);
-	enviarMensajeConProtocolo(nucleo,texto, CODIGO_IMPRESION);
+	char* mensaje = string_new();
+	string_append(&mensaje,"0004");
+	string_append(&mensaje,toStringInt(pcb.id));
+	string_append(&mensaje,toStringInt(strlen(texto)));
+	string_append(&mensaje,texto);
+	printf("Mensaje al Nucleo para imprimir Texto: %s\n",mensaje);
+	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
+	int verificador = recibirProtocolo(nucleo);
+	if (verificador != 1){
+		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+	}
 }
 
 void finalizar() {
