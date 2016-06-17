@@ -406,7 +406,7 @@ void finalizar() {
 t_puntero_instruccion retornar(t_valor_variable retorno){
 	Stack* stackActual = obtenerStack();
 	int puntero = (int)&(stackActual->retVar);
-	printf("Pagina: %d, off: %d, size: %d \n",stackActual->retVar.pag,stackActual->retVar.off,stackActual->retVar.tamanio);
+	asignar(puntero,retorno);
 	return puntero;
 }
 
