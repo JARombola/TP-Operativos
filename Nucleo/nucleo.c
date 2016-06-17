@@ -506,6 +506,7 @@ void atenderOperacion(int op,int cpu){
 		if(esa_consola_existe(consola)){
 			enviarTextoConsola(consola, texto);
 		}
+		send(cpu,"1",1,0);
 		free(texto);
 		break;
 	case 5:
@@ -560,7 +561,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			sem_wait(&semaforosGlobales[posicion]);
 		}else{						//si es 0, semaforo bloqueado
 			send(cpu, "no", 2, 0);						//=> Pido el pcb
-			tamanio=recibirProtocolo(cpu);				//.... ni pregunten...culpa del CPU (re-aprovechar una funcion, sorry)
 			tamanio = recibirProtocolo(cpu); 			//tamaño del pcb
 			texto = recibirMensaje(cpu,tamanio);		//PCB
 			pcbDesSerializado = desSerializarMensajeCPU(texto);
@@ -581,7 +581,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		tamanio=recibirProtocolo(cpu);
 		unidadestiempo = atoi(recibirMensaje(cpu,tamanio));
 		posicion = (int)dictionary_get(dispositivosES,identificador);
-		tamanio=recibirProtocolo(cpu);					//.... ni pregunten...culpa del CPU (re-aprovechar una funcion, sorry)
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
 		pcbDesSerializado = desSerializarMensajeCPU(texto);
