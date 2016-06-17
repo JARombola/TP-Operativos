@@ -42,7 +42,7 @@ int CODIGO_ASIGNACION_NUCLEO = 0;
 int CODIGO_FINALIZACION = 0;
 int CODIGO_DESREFERENCIA_UMC = 0;
 int CODIGO_DESREFERENCIA_NUCLEO = 0;
-int CODIGO_WAIT = 0;
+int CODIGO_WAIT = 3;
 int CODIGO_SIGNAL = 0;
 int CODIGO_CONSULTA_UMC = 0;
 int TAMANIO_PAGINA = 1;
@@ -67,6 +67,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable);
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor);
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar);
+void entradaSalida(t_nombre_dispositivo,int tiempo);
 void wait(t_nombre_semaforo identificador_semaforo);
 void signalHola(t_nombre_semaforo identificador_semaforo);
 
@@ -81,6 +82,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 void saltoDeLinea(int cantidad, void* funcion);
 void parsear(char* instruccion);
 
+
 AnSISOP_funciones functions = {
 		.AnSISOP_definirVariable		= definirVariable,
 		.AnSISOP_obtenerPosicionVariable= obtenerPosicionVariable,
@@ -93,6 +95,7 @@ AnSISOP_funciones functions = {
 		.AnSISOP_asignarValorCompartida = asignarValorCompartida,
 		.AnSISOP_irAlLabel 				= irAlLabel,
 		.AnSISOP_llamarConRetorno		= llamarConRetorno,
+		.AnSISOP_entradaSalida			= entradaSalida,
 };
 AnSISOP_kernel kernel_functions = {
 		.AnSISOP_signal = signalHola,

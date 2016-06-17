@@ -316,9 +316,34 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 	list_add(pcb.stack,stack);
 }
 
+void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
+	printf("Entrada/Salida\n");
+	char* mensaje=string_new();
+	char* operacion=toStringInt(5);
+	string_append(&mensaje,operacion);
+	free(operacion);
+	char* tamanio=toStringInt(string_length(dispositivo));
+	string_append(&mensaje,tamanio);
+	free(tamanio);
+	string_append(&mensaje,dispositivo);
+	char* tiempoEspera=toStringInt(tiempo);
+	string_append(&mensaje,tiempoEspera);
+	free(tiempoEspera);
+	string_append(&mensaje,"\0");
+	send(nucleo,mensaje,string_length(mensaje),0);
+	quantum=-1;										//turbio, si
+}
+
 void wait(t_nombre_semaforo identificador_semaforo){
 	printf("Wait: %s", identificador_semaforo);
 	enviarMensajeConProtocolo(nucleo,identificador_semaforo,CODIGO_WAIT);
+	char respuesta[3];
+	recv(nucleo,respuesta,2,0);
+	respuesta[2]='\0';
+	int meBloquearon=string_equals_ignore_case(respuesta,"no");
+	if(meBloquearon){
+		quantum=-1;							//turbio, si
+	}
 }
 
 void signalHola(t_nombre_semaforo identificador_semaforo){
@@ -470,6 +495,7 @@ int enviarMjeFinANucleo(int terminado){
 		codOperacion=toStringInt(1);
 		string_append(&mensajeParaNucleo,codOperacion);
 		pcbEnvio=toStringPCB(pcb);
+		string_append(&mensajeParaNucleo,toStringInt(string_length(pcbEnvio)));
 		string_append(&mensajeParaNucleo,pcbEnvio);
 		free(pcbEnvio);
 	}
@@ -516,11 +542,11 @@ void enviarMensajeNucleoAsignacion(char* variable, int valor){
 	char* mje=string_new();
 	string_append(&mje,"00020002");
 	string_append(&variable,"\0");
-	string_append(&mje,atoi(string_length(variable)+1));
+	string_append(&mje,toStringInt(string_length(variable)+1));
 	string_append(&mje,"!");
 	string_append(&mje,variable);
 	char* numero=string_itoa(valor);
-	string_append(&mje,atoi(string_length(numero)));
+	string_append(&mje,toStringInt(string_length(numero)));
 	string_append(&mje,numero);
 	string_append(&mje,"\0");
 	free(numero);

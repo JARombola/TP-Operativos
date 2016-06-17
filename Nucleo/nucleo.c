@@ -547,8 +547,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		free(valor_char);
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
-		valor=htonl(valor);
-		send(cpu,&valor,4,0);
 		break;
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea
@@ -559,9 +557,10 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			send(cpu, "ok", 2, 0);
 			sem_wait(&semaforosGlobales[posicion]);
 		}else{						//si es 0, semaforo bloqueado
-			send(cpu, "no", 2, 0);
-			tamanio = recibirProtocolo(cpu); //entonces pido el pcb
-			texto = recibirMensaje(cpu,tamanio);
+			send(cpu, "no", 2, 0);						//=> Pido el pcb
+			tamanio=recibirProtocolo(cpu);				//.... ni pregunten...culpa del CPU (re-aprovechar una funcion, sorry)
+			tamanio = recibirProtocolo(cpu); 			//tamaño del pcb
+			texto = recibirMensaje(cpu,tamanio);		//PCB
 			pcbDesSerializado = desSerializarMensajeCPU(texto);
 			queue_push(colasSEM[posicion], pcbDesSerializado); //mando el pcb a bloqueado
 			sem_post(&semaforosGlobales[posicion]);
@@ -579,7 +578,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
 		unidadestiempo = recibirProtocolo(cpu);
 		posicion = (int)dictionary_get(dispositivosES,identificador);
-
+		tamanio=recibirProtocolo(cpu);					//.... ni pregunten...culpa del CPU (re-aprovechar una funcion, sorry)
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
 		pcbDesSerializado = desSerializarMensajeCPU(texto);
