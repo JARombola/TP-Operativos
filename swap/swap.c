@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
 	if(!crearArchivoSwap()){
 		printf("Error al crear archivo Swap\n");
 	}
-	verMarcos();
+	//verMarcos();
 /*	memcpy(archivoSwap,"be",2);
 	verMarcos();*/
 
@@ -76,7 +76,22 @@ int main(int argc, char* argv[]){
 	if (!bindear(swap_servidor, direccionSWAP)) {printf("Error en el bind, Adios!\n");
 		return 1;
 	}
+	// PRUEBA COMPACTAR
+	int Proc =1;
+	int datos = 1;
+	int cantPag = 5;
+	guardarDatos(datos,cantPag,Proc);
+	Proc++;
+	guardarDatos(datos, cantPag, Proc);
+	Proc++;
+	guardarDatos(datos, cantPag, Proc);
+	Proc++;
+	eliminarProceso(1);
+	verMarcos();
+	compactar();
+	verMarcos();
 
+///////////////////////////////
 	printf("Esperando UMC...\n");
 	listen(swap_servidor, 5);
 
@@ -90,6 +105,7 @@ int main(int argc, char* argv[]){
 		if (conexionUmc == -1){perror("Una conexion rechazada\n");}
 	}while(!comprobarCliente(conexionUmc));
 	printf("UMC Conectada!\n");
+
 
 	//----------------Recibo datos de la UMC
 	int operacion=1, PID, cantPaginas, pagina;
@@ -153,8 +169,10 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 	void* datos;
 	traductor_marco* proceso=list_find(tablaPaginas,(void*)existeProceso);
 	if (proceso==NULL){								//No existe el proceso => guardo el ansisop
-		int tamanio = recibirProtocolo(conexionUmc);
-		datos = recibirMensaje(conexionUmc, tamanio);
+		//int tamanio = recibirProtocolo(conexionUmc);
+		int tamanio = 200;
+		//datos = recibirMensaje(conexionUmc, tamanio);
+		datos = "aaaaaaaaa1";
 		posicion = buscarEspacioLibre(cantPaginas);
 		nuevaFila->inicio = posicion;
 		nuevaFila->paginas = cantPaginas;
@@ -165,9 +183,11 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		printf("Nuevo ansisop\n");
 	}
 	else{												//actualizar pagina
-		datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
+		//datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
+		datos = "aaaaaaaaaaaaaa1";
 		size=datosSwap->tamPagina;
-		posicion=recibirProtocolo(conexionUmc);
+		//posicion=recibirProtocolo(conexionUmc);
+		posicion = 4;
 		posicion*=datosSwap->tamPagina;
 		posicion+=proceso->inicio;					//donde arranca el proceso + pag
 		printf("Pagina modificada\n");
@@ -179,7 +199,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 	memcpy(p+size,"\0",1);
 	printf("%s\n",p);
 	free(p);*/
-	free(datos);
+	//free(datos);
 	return 1;
 }
 
@@ -210,72 +230,54 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 
 
 int compactar(){
-	int pos=0;
-	int i;
-	int contador=0;
-	int compactado=0;
-	int inicio=0;
-	int j;
-	int k;
-	char* contenidoPagina;
-	int pagInicialLectura;
-	t_paquete_lectura* paqueteLecturaAux;
-	traductor_marco* progAnsis;
 
-	/*int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
+	int i;
+	int j;
+	traductor_marco* procesoAMover;
+	int libre;
+	int cont, cantidadProcesos=0;
+
+	bool inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
 		return (marco1->inicio<marco2->inicio);
 	}
-	int proximoProceso(traductor_marco* proceso){
-		if (proceso->inicio>=i*datosSwap->tamPagina){
+	bool proximoProceso(traductor_marco* proceso){
+		if (proceso->inicio>=i){
 			return 1;
 		}
 		return 0;
 	}
-	list_sort(tablaPaginas,inicioMenorMayor);*/
+
+	list_sort(tablaPaginas,inicioMenorMayor);
+
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		// pregunta si la pagina esta vacia, y si esta vacia es 0, entonces lo niega, devuelve 1 y entra al if
 		if (!bitarray_test_bit(bitArray,i)){
-				//traductor_marco* procesoAMover=list_find(tablaPaginas,proximoProceso);
-				// ahora tengo que encontrar una pagina ocupada para ponerla en el lugar de la pagina vacia
-								for (j=i;j<datosSwap->cantidadPaginas;j++){	//Vas a necesitar un contador para esto, no va a servir j<cantPaginas :/
-									// me fijo si encuentro una pagina ocupada
-									if (bitarray_test_bit(bitArray,j)){
-										// seteo el bit array de i a 1 porque ahora esta ocupada
-										bitarray_set_bit(bitArray,i);
-										// limpio el valor del bit de j porque ahora va a estar vacia
-										bitarray_clean_bit(bitArray,j);
-									}
+				libre = i;
+				cantidadProcesos++;
+				//printf("libre %d\n", libre);
+				// busque el proximo proceso ocupado a mover
+				procesoAMover=list_find(tablaPaginas,proximoProceso);
+					for (cont=0;cont<procesoAMover->paginas;cont++){
+							// limpio el valor del bit de inicio+cont porque ahora va a estar vacia
+							bitarray_clean_bit(bitArray,procesoAMover->inicio+cont);
+							// seteo el bit array de libre+cont a 1 porque ahora esta ocupada
+							bitarray_set_bit(bitArray,libre+cont);
+							//printf("modifique el bitarray\n");
+					}
 
-								}
+		}
 			//Después de actualizar los marcos hay que copiar las paginas... (memcpy)
 			//Y actualizar la tablaPaginas: al proceso que moviste actualizarle la pag de inicio.
-		}
+			memcpy(archivoSwap+ libre * datosSwap->tamPagina, archivoSwap+ procesoAMover->inicio * datosSwap->tamPagina, procesoAMover->paginas * datosSwap->tamPagina);
+			// el que estaba ocupado ahora va a empezar a partir del que estaba libre para compactarlo
+			// como la tablaPaginas esta compuesta por procesos, aca la estaria actualizando
+			procesoAMover->inicio = libre;
+			if(cantidadProcesos == list_size(tablaPaginas)) break;
 	}
 
-	/*Con lo del memcpy todo esto no es necesario :)
-	//Administro el contenido de dicho proceso página a página
-	pagInicialLectura = progAnsis->inicio;
-			for(k=0; k<progAnsis->paginas; k++){
-				// empiezo a hacer la lectura
-				progAnsis->inicio = pagInicialLectura;
-				// estructura que tiene el PID y el numero de pagina que le mando a memoria
-				paqueteLecturaAux = (t_paquete_lectura*) malloc(sizeof(t_paquete_lectura));
-				paqueteLecturaAux->pid = progAnsis->proceso;
-				paqueteLecturaAux->numPagina = k;
-				contenidoPagina = leerEnParticion(paqueteLecturaAux);
-				free(paqueteLecturaAux);
-			}*/
 	return 1;
 }
 
-
-char* leerEnParticion(t_paquete_lectura* paquete){
-	// hay que hacerlo con memcpy del archivoSwap, proximamente
-	printf("Voy a leer la pagina (%d) del pid (%d)\n", paquete->numPagina, paquete->pid);
-	int byteInicial=0;
-	char* data = malloc(datosSwap->tamPagina);
-return data;
-}
 
 
 
