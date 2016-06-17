@@ -1,16 +1,12 @@
 #include "sockets.h"
 
 int conectar(int puerto,char* ip){
-
 	struct sockaddr_in direccServ;
 	direccServ.sin_family = AF_INET;
 	direccServ.sin_addr.s_addr = inet_addr(ip);
 	direccServ.sin_port = htons(puerto);
-
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-
 	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
-
 	return conexion;
 }
 void enviarMensaje(int conexion, char* mensaje){
@@ -19,6 +15,7 @@ void enviarMensaje(int conexion, char* mensaje){
 	string_append(&mensajeReal,header(longitud));
 	string_append(&mensajeReal,mensaje);
 	send(conexion,mensajeReal,strlen(mensajeReal),0);
+	free(mensajeReal);
 }
 
 void enviarMensajeConProtocolo(int conexion, char* mensaje, int protocolo){
@@ -28,6 +25,7 @@ void enviarMensajeConProtocolo(int conexion, char* mensaje, int protocolo){
 	string_append(&mensajeReal,header(longitud));
 	string_append(&mensajeReal,mensaje);
 	send(conexion,mensajeReal,strlen(mensajeReal),0);
+	free(mensajeReal);
 }
 
 int autentificar(int conexion, char* autor){
@@ -36,10 +34,8 @@ int autentificar(int conexion, char* autor){
 }
 
 int esperarConfirmacion(int conexion){
-
 	int bufferHandshake;
 	int bytesRecibidos = recv(conexion, &bufferHandshake, 4 , 0);
-
 	if (bytesRecibidos <= 0) {
 		return 0;
 	}
@@ -69,19 +65,15 @@ int crearServidor(int puerto){
 
 int esperarConexion(int servidor,char* autentificacion){
 	int cliente = aceptar(servidor);
-
 	if (cliente <= 0){
 		return -1;
 		printf("Error de conexion\n");
 	}
-
 	autentificacion = esperarRespuesta(cliente);
-
 	if (!(tienePermiso(autentificacion))){
 		close(cliente);
 		return 0;
 	}
-
 	send(cliente,"ok",2,0);
 	return cliente;
 }

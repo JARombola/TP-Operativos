@@ -197,7 +197,6 @@ void atenderCpu(int conexion){
 
 	registrarTrace(archivoLog, "Nuevo CPU-");
 	int salir = 0, operacion, proceso, pagina, offset, buffer, size;
-	char* resp;
 	void* datos;
 	while (!salir) {
 		operacion = atoi(recibirMensaje(conexion, 1));
@@ -216,6 +215,7 @@ void atenderCpu(int conexion){
 			case 3:													//3 = Guardar Valor
 				recv(conexion,&buffer,sizeof(int),0);
 				buffer=ntohl(buffer);
+				char* resp;
 				if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
 					resp=header(0);
 				}else{resp=header(1);}
@@ -270,16 +270,16 @@ void mostrarTablaPag(traductor_marco* fila) {
 	memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
 	memcpy(asd + datosMemoria->marco_size , "\0", 1);
 	printf("-[%s]\n", asd);
+	free(asd);
 }
 
 
 //-----------------------------------------------OPERACIONES UMC-------------------------------------------------
 
 int inicializarPrograma(int conexion) {
-	int espacio_del_codigo;
 	int PID=recibirProtocolo(conexion);							//PID + PaginasNecesarias
 	int paginasNecesarias=recibirProtocolo(conexion);
-	espacio_del_codigo = recibirProtocolo(conexion);
+	int espacio_del_codigo = recibirProtocolo(conexion);
 	char* codigo = recibirMensaje(conexion, espacio_del_codigo);			//CODIGO
 	//printf("Codigo: %s-\n",codigo);
 	int i;
@@ -296,6 +296,7 @@ int inicializarPrograma(int conexion) {
 	string_append(&programa, header(paginasNecesarias));
 	string_append(&programa, codigo);
 	string_append(&programa, "\0");
+	free(codigo);
 	send(conexionSwap, programa, string_length(programa), 0);
 	free(programa);
 	int aceptadoSwap= esperarRespuestaSwap();
