@@ -241,6 +241,7 @@ int compactar(){
 
 	list_sort(tablaPaginas,(void*)inicioMenorMayor);
 
+	usleep(datosSwap->retardoCompactacion*1000);
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		if (!bitarray_test_bit(bitArray,i)){
 				libre = i;
