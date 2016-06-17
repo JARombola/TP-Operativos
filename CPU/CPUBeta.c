@@ -68,10 +68,12 @@ void funcionSenial(int n){
 
 
 int levantarArchivoDeConfiguracion(){
-	FILE* archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+	FILE* archivoDeConfiguracion = fopen("../ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
+		archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+		if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
-		return -1;
+		return -1;}
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
 	char puertoDelNucleo [6];
@@ -280,25 +282,19 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	printf("Obtener Valor Comparido de: %s\n", variable);
- 	char* mensaje = string_new();
- 	string_append(&mensaje, "00020001");
- 	string_append(&mensaje, toStringInt(strlen(variable)+1));
- 	string_append(&mensaje, "!");
- 	string_append(&mensaje, variable);
- 	string_append(&mensaje, "\0");
- 	send(nucleo, mensaje,strlen(mensaje),0);
- 	printf("Ak le mando al nucleo : %s \n", mensaje);
- 	free(mensaje);
+	printf("Obtener Valor Compartido de: %s", variable);
+ 	enviarMensajeNucleoConsulta(variable);
  	int valor;
  	recv(nucleo,&valor,sizeof(int),0);
- 	return (ntohl(valor));
+ 	valor=ntohl(valor);
+ 	printf("--> Valor recibido:%d\n",valor);
+ 	return (valor);
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
 	printf("Asignar valor compatido \n");
 	enviarMensajeNucleoAsignacion(variable,valor);
-	return atoi(esperarRespuesta(nucleo));
+	return valor;							//Cambié, para que quiero el valor de la variable? ...
 }
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
@@ -319,18 +315,21 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	printf("Entrada/Salida\n");
 	char* mensaje=string_new();
-	char* operacion=toStringInt(5);
-	string_append(&mensaje,operacion);
-	free(operacion);
+	//char* operacion=toStringInt(5);
+	string_append(&mensaje,"00020005");
+//	free(operacion);
 	char* tamanio=toStringInt(string_length(dispositivo));
 	string_append(&mensaje,tamanio);
 	free(tamanio);
 	string_append(&mensaje,dispositivo);
-	char* tiempoEspera=toStringInt(tiempo);
+	char* tiempoEspera=string_itoa(tiempo);
+	int longitudTiempo=string_length(tiempoEspera);
+	string_append(&mensaje,toStringInt(longitudTiempo));
 	string_append(&mensaje,tiempoEspera);
 	free(tiempoEspera);
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
+	free(mensaje);
 	quantum=-1;										//turbio, si
 }
 
@@ -535,22 +534,33 @@ int enviarMjeFinANucleo(int terminado){
 
 
 void enviarMensajeNucleoConsulta(char* variable){
-
+	char* mensaje = string_new();
+	string_append(&mensaje, "00020001");
+	char* tamVariable=toStringInt(strlen(variable)+1);
+	string_append(&mensaje, tamVariable);
+	free(tamVariable);
+	string_append(&mensaje, "!");
+	string_append(&mensaje, variable);
+	string_append(&mensaje, "\0");
+	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
 }
 
 void enviarMensajeNucleoAsignacion(char* variable, int valor){
 	char* mje=string_new();
 	string_append(&mje,"00020002");
-	string_append(&variable,"\0");
 	string_append(&mje,toStringInt(string_length(variable)+1));
 	string_append(&mje,"!");
 	string_append(&mje,variable);
-	char* numero=string_itoa(valor);
-	string_append(&mje,toStringInt(string_length(numero)));
-	string_append(&mje,numero);
+	char* numeroChar=string_new();
+	string_append(&numeroChar,string_itoa(valor));
+	string_append(&numeroChar,"\0");
+	string_append(&mje,toStringInt(string_length(numeroChar)));
+	string_append(&mje,numeroChar);
 	string_append(&mje,"\0");
-	free(numero);
+	free(numeroChar);
 	send(nucleo,mje,string_length(mje),0);
+	free(mje);
 }
 
 

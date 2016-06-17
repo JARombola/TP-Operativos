@@ -91,9 +91,9 @@ int main(int argc, char* argv[]) {
 			printf("Error archivo de configuracion\n FIN.\n");return 1;}
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
 	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
-/*	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
+//	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
 	dispositivosES = crearDiccionarioSEMyES(datosNucleo->io_ids,datosNucleo->io_sleep,1);
-
+/*
 	//---------------------------------PLANIFICACION PCB-----------------------------------
 
 	sem_init(&sem_Nuevos, 0, 0);
@@ -540,7 +540,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		break;
 	case 2:
 		//grabar valor en variable compartida
-		//recibo el nombre de una variable y un valor -> guardo y devuelvo valor
+		//recibo el nombre de una variable y un valor -> guardo valor
 		tamanio=recibirProtocolo(cpu);
 		valor_char=recibirMensaje(cpu,tamanio);
 		valor=atoi(valor_char);
@@ -576,7 +576,8 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 5:
 		//pedido E/S, va a bloqueado
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
-		unidadestiempo = recibirProtocolo(cpu);
+		tamanio=recibirProtocolo(cpu);
+		unidadestiempo = atoi(recibirMensaje(cpu,tamanio));
 		posicion = (int)dictionary_get(dispositivosES,identificador);
 		tamanio=recibirProtocolo(cpu);					//.... ni pregunten...culpa del CPU (re-aprovechar una funcion, sorry)
 		tamanio = recibirProtocolo(cpu);
