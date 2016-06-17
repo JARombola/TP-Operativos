@@ -172,10 +172,8 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 	void* datos;
 	traductor_marco* proceso=list_find(tablaPaginas,(void*)existeProceso);
 	if (proceso==NULL){								//No existe el proceso => guardo el ansisop
-		//int tamanio = recibirProtocolo(conexionUmc);
-		int tamanio = 200;
-		//datos = recibirMensaje(conexionUmc, tamanio);
-		datos = "aaaaaaaaa1";
+		int tamanio = recibirProtocolo(conexionUmc);
+		datos = recibirMensaje(conexionUmc, tamanio);
 		posicion = buscarEspacioLibre(cantPaginas);
 		nuevaFila->inicio = posicion;
 		nuevaFila->paginas = cantPaginas;
@@ -186,13 +184,10 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		printf("Nuevo ansisop\n");
 	}
 	else{												//actualizar pagina
-		//datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
-		datos = "aaaaaaaaaaaaaa1";
-		size=datosSwap->tamPagina;
-		//posicion=recibirProtocolo(conexionUmc);
-		posicion = 4;
-		posicion*=datosSwap->tamPagina;
+		datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
+		posicion=recibirProtocolo(conexionUmc);
 		posicion+=proceso->inicio;					//donde arranca el proceso + pag
+		posicion*=datosSwap->tamPagina;
 		printf("Pagina modificada\n");
 	}
 	//memcpy(donde voy a guardar, que es lo que voy a guardar, tamanio)
@@ -202,7 +197,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 	memcpy(p+size,"\0",1);
 	printf("%s\n",p);
 	free(p);*/
-	//free(datos);
+	free(datos);
 	return 1;
 }
 
@@ -233,69 +228,41 @@ int buscarEspacioLibre(int cantPaginas){							//todo debe buscar espacios CONTI
 
 
 int compactar(){
-
-	int i;
-	int j;
+	int i,inicioAnterior;
 	traductor_marco* procesoAMover;
 	int libre;
-	int cont, cantidadProcesos=0;
-
-	bool inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
+	int cont;
+	int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
 		return (marco1->inicio<marco2->inicio);
 	}
-	bool proximoProceso(traductor_marco* proceso){
-		if (proceso->inicio>=i){
-			return 1;
-		}
-		return 0;
+	int proximoProceso(traductor_marco* proceso){
+		return (proceso->inicio>=i);
 	}
 
-	list_sort(tablaPaginas,inicioMenorMayor);
+	list_sort(tablaPaginas,(void*)inicioMenorMayor);
 
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
-		// pregunta si la pagina esta vacia, y si esta vacia es 0, entonces lo niega, devuelve 1 y entra al if
 		if (!bitarray_test_bit(bitArray,i)){
 				libre = i;
-				cantidadProcesos++;
 				//printf("libre %d\n", libre);
 				// busque el proximo proceso ocupado a mover
-				procesoAMover=list_find(tablaPaginas,proximoProceso);
+				procesoAMover=list_find(tablaPaginas,(void*)proximoProceso);
+				if (procesoAMover!=NULL){
+					inicioAnterior=procesoAMover->inicio;
 					for (cont=0;cont<procesoAMover->paginas;cont++){
-							// limpio el valor del bit de inicio+cont porque ahora va a estar vacia
-							bitarray_clean_bit(bitArray,procesoAMover->inicio+cont);
-							// seteo el bit array de libre+cont a 1 porque ahora esta ocupada
-							bitarray_set_bit(bitArray,libre+cont);
-							//printf("modifique el bitarray\n");
-					}
-
-		}
-			//Después de actualizar los marcos hay que copiar las paginas... (memcpy)
-			//Y actualizar la tablaPaginas: al proceso que moviste actualizarle la pag de inicio.
-			memcpy(archivoSwap+ libre * datosSwap->tamPagina, archivoSwap+ procesoAMover->inicio * datosSwap->tamPagina, procesoAMover->paginas * datosSwap->tamPagina);
+								bitarray_clean_bit(bitArray,inicioAnterior+cont);				//porque ahora va a estar vacia
+								bitarray_set_bit(bitArray,libre+cont);									//Ahora va a estar ocupada
+								//printf("modifique el bitarray\n");
+						}
+			memcpy(archivoSwap+ libre * datosSwap->tamPagina, archivoSwap+inicioAnterior * datosSwap->tamPagina, procesoAMover->paginas * datosSwap->tamPagina);		//Modifique los marcos, ahora copio los datos
 			// el que estaba ocupado ahora va a empezar a partir del que estaba libre para compactarlo
 			// como la tablaPaginas esta compuesta por procesos, aca la estaria actualizando
-			procesoAMover->inicio = libre;
-			if(cantidadProcesos == list_size(tablaPaginas)) break;
+			procesoAMover->inicio = libre;}
+			else{i=datosSwap->cantidadPaginas;}							//No hay mas procesos para mover => salgo del for
+		}
 	}
-
 	return 1;
 }
-
-
-
-
-	/*	int pos,a=1;
-	for (pos = 0 ; (pos<datosSwap->cantidadPaginas) && a ;pos++){
-		if (!bitarray_test_bit(bitArray,pos)){a=0;}
-	}
-	for(a=0;a<cantPaginas;a++){					//Marca las paginas como ocupadas
-		//printf("%d",bitarray_test_bit(bitArray,pos+a));
-		bitarray_set_bit(bitArray,pos+a);
-		//printf("%d\n",bitarray_test_bit(bitArray,pos+a));
-	}
-	pagsLibres-=a;
-	return (pos-1);
-}*/
 
 void* buscar(int pid, int pag){
 	int proceso(traductor_marco* fila){
