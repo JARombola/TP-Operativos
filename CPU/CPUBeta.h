@@ -32,11 +32,9 @@ char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionCPU.txt";
 char IP_NUCLEO[50];
 char IP_UMC[50];
 int PUERTO_UMC = 0;
-int quantum = 1;
 int status = 0;
 
-
-int finalizado;
+int finalizado = 0;
 int CODIGO_IMPRESION = 0;
 int CODIGO_ASIGNACION_UMC = 0;
 int CODIGO_ASIGNACION_NUCLEO = 0;
@@ -48,14 +46,16 @@ int CODIGO_SIGNAL = 0;
 int CODIGO_CONSULTA_UMC = 0;
 int TAMANIO_PAGINA = 1;
 
-
-
 int levantarArchivoDeConfiguracion();
 void conectarseAlNucleo();
 void conectarseALaUMC();
 int procesarPeticion();
-int procesarCodigo();
+void procesarCodigo(int quantum, int quantum_sleep);
 char* pedirLinea();
+
+void crearHiloSignal();
+void hiloSignal();
+void cerrarCPU(int senial);
 
 t_puntero definirVariable(t_nombre_variable variable);
 t_puntero obtenerPosicionVariable(t_nombre_variable variable);
@@ -70,7 +70,7 @@ t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar);
 void entradaSalida(t_nombre_dispositivo,int tiempo);
 void wait(t_nombre_semaforo identificador_semaforo);
-void signalHola(t_nombre_semaforo identificador_semaforo);
+void post(t_nombre_semaforo identificador_semaforo);
 
 Variable* crearVariable(char variable);
 Pagina obtenerPagDisponible();
@@ -101,8 +101,20 @@ AnSISOP_funciones functions = {
 		.AnSISOP_retornar               = retornar,
 };
 AnSISOP_kernel kernel_functions = {
-		.AnSISOP_signal = signalHola,
+		.AnSISOP_signal = post,
 		.AnSISOP_wait = wait,
 };
+
+/*
+ * Finalizado:
+ *   1) Finalizado Ok
+ * 	 2) Entrada / Salida
+ * 	 3) Wait Bloqueante
+ * 	 4) Quantum
+ * Finalizado-Error:
+ * 	-1) Error de conexion UMC
+ * 	-2) Error de conexion Nucleo
+ * 	-9) Error turbio.. nunca deberia entrar ak
+ */
 
 #endif /* CPUBETA_H_ */
