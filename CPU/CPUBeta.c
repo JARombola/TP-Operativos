@@ -349,8 +349,19 @@ void wait(t_nombre_semaforo identificador_semaforo){
 }
 
 void signalHola(t_nombre_semaforo identificador_semaforo){
-	printf("Signal: %s", identificador_semaforo);
-	enviarMensajeConProtocolo(nucleo,identificador_semaforo,CODIGO_SIGNAL);
+	printf("Signal: %s\n", identificador_semaforo);
+	char* mensaje = string_new();
+	string_append(&mensaje,"00020004");
+	string_append(&mensaje,toStringInt(strlen(identificador_semaforo)));
+	string_append(&mensaje,identificador_semaforo);
+	printf("Le mando el mensaje al nucleo: %s \n", mensaje);
+	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
+	int verificador = recibirProtocolo(nucleo);
+	printf("Recibi del nucleo %d\n", verificador);
+	if (verificador != 1){
+		printf("Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
+	}
 }
 
 

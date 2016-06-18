@@ -565,6 +565,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case 4:
 		//signal a un semaforo, post
 		//recibo el identificador del semaforo
+		send(cpu,"0001",4,0);
 		posicion = (int)dictionary_get(semaforos,identificador);
 		if(!contadorSemaforo[posicion]){
 			sem_post(&semaforosGlobales[posicion]); //si esta en 0, activo el hilo para que los desbloquee
