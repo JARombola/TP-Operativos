@@ -139,7 +139,10 @@ int procesarPeticion(){
 		}
 
 		printf("Quantum recibido: %d\n",quantum);
-		quantum = 100;
+		quantum = 100;printf("Quantum hardcodeado: %d\n",quantum);
+
+		printf("Quantum Sleep recibido: %d\n",quantum_sleep);
+		quantum_sleep = 0;printf("Quantum Sleep recibido: %d\n",quantum_sleep);
 
 		if (pcbRecibido[0] == '\0'){
 			perror("Error: Error de conexion con el nucleo\n");
@@ -159,19 +162,20 @@ void procesarCodigo(int quantum, int quantum_sleep){
 	printf("Iniciando Proceso de Codigo...\n");
 	char* linea;
 	while (!finalizado){
-
+		printf("Ronda: %d\n\n\n", pcb.pc);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
 
 		if (!finalizado){
 			parsear(linea);
+			printf("\nFin del parser\n");
 			free(linea);
 			quantum--;
 			pcb.pc++;
 			sleep(quantum_sleep);
 		}
 
-		if ((!finalizado) && (!quantum)){
+		if ((!finalizado) && (!quantum)){;
 			finalizado = 4;
 			char* mensaje = string_new();
 			string_append(&mensaje,"0001");
@@ -183,7 +187,26 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
 			free(mensaje);
+			printf("Fin de Quantum \n");
 		}
+	}
+	if (finalizado<0){
+		switch(finalizado){
+		case -1:
+			close(nucleo);
+			close(umc);
+			break;
+		case -2:
+			close(umc);
+			close(nucleo);
+			break;
+		case -9:
+			send(nucleo,"0000",4,0);
+			finalizado = 0;
+			break;
+		}
+	}else{
+		finalizado = 0;
 	}
 }
 
