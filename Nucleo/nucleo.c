@@ -66,7 +66,6 @@ t_dictionary *globales,*semaforos,*dispositivosES;
 int tamPagina=0,*dispositivosSleeps, *globalesValores, *contadorSemaforo, conexionUMC;
 sem_t *semaforosES,*semaforosGlobales;
 t_queue **colasES,**colasSEM;
-int cpu;
 
 
 int main(int argc, char* argv[]) {
@@ -86,9 +85,9 @@ int main(int argc, char* argv[]) {
 			printf("Error archivo de configuracion\n FIN.\n");return 1;}
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
 	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
-//	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
+	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
 	dispositivosES = crearDiccionarioSEMyES(datosNucleo->io_ids,datosNucleo->io_sleep,1);
-/*
+
 	//---------------------------------PLANIFICACION PCB-----------------------------------
 
 	sem_init(&sem_Nuevos, 0, 0);
@@ -102,19 +101,10 @@ int main(int argc, char* argv[]) {
 	colaCPUs=queue_create();
 
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
-*/
 
-//	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
-//	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);
 
-	//-----------------------------------pcb para probar bloqueo de E/S
-	/*PCB*pcbprueba=malloc(sizeof(PCB));
-	pcbprueba->id=5;
-	pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
-	pcbParaBloquear->pcb = pcbprueba;
-	pcbParaBloquear->ut = 6;
-	queue_push(colasES[1], pcbParaBloquear);
-	sem_post(&semaforosES[1]);*/
+	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
+	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);
 
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -157,7 +147,7 @@ int main(int argc, char* argv[]) {
 			perror("Error en el select");
 			//exit(EXIT_FAILURE);
 		}
-		printf("Entré\n");
+		printf("Entré al select\n");
 		socketARevisar = revisarActividad(consolas, &descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
@@ -193,9 +183,8 @@ int main(int argc, char* argv[]) {
 
 						case 1:											//CPU
 							send(nuevo_cliente, &mjeCpu, 4, 0);
-							cpu=nuevo_cliente; //borrar despues
-							printf("Acepté un nuevo cpu\n");
-//							queue_push(colaCPUs, &nuevo_cliente);
+							printf("Acepté un nuevo cpu, el %d\n",nuevo_cliente);
+							queue_push(colaCPUs, (void *)nuevo_cliente);
 							list_add(cpus, (void *) nuevo_cliente);
 							break;
 
@@ -262,7 +251,7 @@ t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
 		contadorSemaforo = malloc((i+1)*sizeof(uint32_t));
 		for(;i>=0;i--){
 			sem_init(&semaforosGlobales[i], 0, 0);		//vector de semaforos de los hilos
-			contadorSemaforo = atoi(init[i]);			//vector de "semaforos" de las variables globales
+			contadorSemaforo[i] = atoi(init[i]);			//vector de "semaforos" de las variables globales
 			colasSEM[i] = queue_create();						//vector de colas
 			pthread_create(&thread, &attr, (void*)atender_Bloq_SEM, (void*)i);
 		}
@@ -299,16 +288,16 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 			pcbNuevo->id=consola;							//Se le asigna al proceso como ID el numero de consola que lo envía.
 	if(aceptado==1){
 			printf("Código enviado a la UMC\nNuevo PCB en cola de READY!\n");
-//			queue_push(colaListos, pcbNuevo);
-//			sem_post(&sem_Listos);}
+			queue_push(colaListos, pcbNuevo);
+			sem_post(&sem_Listos);
 	}else{
 	printf("Código enviado a la UMC\nNuevo PCB en cola de NEW!\n");
 			queue_push(colaNuevos, pcbNuevo);
 			sem_post(&sem_Nuevos);
 		}
 	}
-	char* pcbSerializado=serializarMensajeCPU(pcbNuevo,2,5);
-	send(cpu,pcbSerializado,string_length(pcbSerializado),0);
+	//char* pcbSerializado=serializarMensajeCPU(pcbNuevo,2,5);
+	//send(cpu,pcbSerializado,string_length(pcbSerializado),0);
 	free(codigo);
 	//list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
 }
@@ -393,7 +382,7 @@ void atender_Ejecuciones(){
 		 		 if(!queue_is_empty(colaCPUs)){
 					int cpu = (int)queue_pop(colaCPUs); //saco el socket de ese cpu disponible
 					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);
-				 	 enviarPCBaCPU(cpu, mensajeCPU);
+				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 
 					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					paso=0;
@@ -473,7 +462,7 @@ void atenderOperacion(int op,int cpu){
 		printf("el cpu termino su quantum, no necesita nada\n");
  		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
  		if(sigueCPU){
- 			queue_push(colaCPUs, &cpu);
+ 			queue_push(colaCPUs, (void*)cpu);
  		}
 		queue_push(colaListos, pcbDesSerializado);
 		sem_post(&sem_Listos);
@@ -491,7 +480,7 @@ void atenderOperacion(int op,int cpu){
 		sigueCPU = recibirProtocolo(cpu);
 		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->id);
  		if(sigueCPU){
- 			queue_push(colaCPUs, &cpu);
+ 			queue_push(colaCPUs, (void*)cpu);
  		}
 		queue_push(colaTerminados, pcbDesSerializado);
 		sem_post(&sem_Terminado);
@@ -505,7 +494,6 @@ void atenderOperacion(int op,int cpu){
 			enviarTextoConsola(consola, texto);
 		}
 		send(cpu,"0001",4,0);
-		free(texto);
 		break;
 	}
 }
@@ -558,7 +546,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			sigueCPU = recibirProtocolo(cpu);
 			queue_push(colasSEM[posicion], pcbDesSerializado); //mando el pcb a bloqueado
 	 		if(sigueCPU){
-	 			queue_push(colaCPUs, &cpu);
+	 			queue_push(colaCPUs, (void*)cpu);
 	 		}
 		}
 		break;
@@ -589,7 +577,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		queue_push(colasES[posicion], pcbParaBloquear);
 		sem_post(&semaforosES[posicion]);
  		if(sigueCPU){
- 			queue_push(colaCPUs, &cpu);
+ 			queue_push(colaCPUs, (void*)cpu);
  		}
 		break;
 	}
