@@ -152,7 +152,6 @@ int main(int argc, char* argv[]) {
 		socketARevisar = revisarActividadConsolas(&descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
-			list_add(listConsolasParaEliminarPCB,(void *) socketARevisar);
 			close(socketARevisar);
 		}
 		else {
@@ -343,10 +342,12 @@ int revisarActividadConsolas(fd_set *descriptores) {
 		int componente = (int) list_get(consolas, i);
 		if (FD_ISSET(componente, descriptores)) {
 			int protocolo = recibirProtocolo(componente);
-			if (protocolo == -1) {
-				list_remove(consolas, i);
+			if (protocolo == -1) {				//si murio de golpe, tengo que eliminar el pcb
+				list_add(listConsolasParaEliminarPCB,(void *) componente);
 				return componente;
 			}
+		list_remove(consolas, i);		//sino, me manda un 1, que termino bien
+		printf("Se desconecto la consola en %d, ya termino su programa, eliminada\n",componente);
 		}
 	}
 	return 0;
@@ -373,10 +374,12 @@ int revisarActividadCPUs(fd_set *descriptores) {
 void atender_Nuevos(){
 	while(1){
 		 sem_wait(&sem_Nuevos); //se libero un pcb en la umc
+		 if(!queue_is_empty(colaNuevos)){ //si hay alguno
 		 PCB* pcbNuevo = malloc(sizeof(PCB));
-		 pcbNuevo = queue_pop(colaNuevos);
-		 queue_push(colaListos,pcbNuevo); //entonces lo mando a Listos
-		 sem_post(&sem_Listos);
+			 pcbNuevo = queue_pop(colaNuevos);
+		 	 queue_push(colaListos,pcbNuevo); //entonces lo mando a Listos
+		 	 sem_post(&sem_Listos);
+		 }
 	}
 }
 
