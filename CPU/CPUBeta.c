@@ -56,7 +56,7 @@ void cerrarCPU(int senial){
 int levantarArchivoDeConfiguracion(){
 	FILE* archivoDeConfiguracion = fopen("../ArchivoDeConfiguracionCPU.txt","r");
 	if (archivoDeConfiguracion==NULL){
-		archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+		archivoDeConfiguracion = fopen(ARCHIVO_DE_CONFIGURACION,"r");
 		if (archivoDeConfiguracion==NULL){
 		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;}

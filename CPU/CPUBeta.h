@@ -35,15 +35,7 @@ int PUERTO_UMC = 0;
 int status = 0;
 
 int finalizado = 0;
-int CODIGO_IMPRESION = 0;
-int CODIGO_ASIGNACION_UMC = 0;
-int CODIGO_ASIGNACION_NUCLEO = 0;
-int CODIGO_FINALIZACION = 0;
-int CODIGO_DESREFERENCIA_UMC = 0;
-int CODIGO_DESREFERENCIA_NUCLEO = 0;
-int CODIGO_WAIT = 3;
-int CODIGO_SIGNAL = 0;
-int CODIGO_CONSULTA_UMC = 0;
+
 int TAMANIO_PAGINA = 1;
 
 int levantarArchivoDeConfiguracion();
