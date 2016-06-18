@@ -1,5 +1,58 @@
 #include "sockets.h"
 
+
+#define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
+#define AUTENTIFICACION "soy_un_cpu"
+
+int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
+	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
+	if (archivoConfiguracion == NULL) {
+		return 0;
+	} else {
+		int cantidadKeys = config_keys_amount(archivoConfiguracion);
+		if (cantidadKeys < 5) {
+			return 0;
+		} else {
+			(*datos)->puerto_umc=buscarInt(archivoConfiguracion, "PUERTO_UMC");
+			(*datos)->puerto_nucleo=buscarInt(archivoConfiguracion, "PUERTO_NUCLEO");
+			char* autentificacion=string_new();
+			string_append(&autentificacion,config_get_string_value(archivoConfiguracion,"AUTENTIFICACION"));
+			(*datos)->autentificacion=autentificacion;
+			char* ipUmc=string_new();
+			string_append(&ipUmc,config_get_string_value(archivoConfiguracion,"IP_UMC"));
+			(*datos)->ip_umc=ipUmc;
+			char* ipNucleo=string_new();
+			string_append(&ipNucleo,config_get_string_value(archivoConfiguracion,"IP_NUCLEO"));
+			(*datos)->ip_nucleo=ipNucleo;
+			config_destroy(archivoConfiguracion);
+		}
+	}
+	return 1;
+}
+
+int conectarseAlNucleo(int puerto, char* ip){
+	int nucleo = conectar(puerto,ip);
+	if (nucleo<0){
+		printf("Error al conectarse con el nucelo \n");
+	}
+	autentificar(nucleo,AUTENTIFICACION);
+	printf("Conexion con el nucleo OK... \n");
+	return nucleo;
+}
+
+int conectarseALaUMC(int puerto, char* ip){
+	int umc = conectar(puerto,ip);
+	if (umc<0){
+		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+	}
+	TAMANIO_PAGINA = autentificar(umc,AUTENTIFICACION);
+	if (!TAMANIO_PAGINA){
+		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+		}
+	printf("Conexion con la UMC OK...\n");
+	return umc;
+}
+
 int conectar(int puerto,char* ip){
 	struct sockaddr_in direccServ;
 	direccServ.sin_family = AF_INET;
