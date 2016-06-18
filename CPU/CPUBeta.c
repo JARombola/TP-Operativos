@@ -128,6 +128,7 @@ int procesarPeticion(){
 	while(!finalizado){
 
 		quantum = recibirProtocolo(nucleo);
+		printf("Peticion del Nucleo\n\n");
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
 
