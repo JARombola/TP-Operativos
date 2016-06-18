@@ -493,6 +493,7 @@ void atenderOperacion(int op,int cpu){
 		if(esa_consola_existe(consola)){
 			enviarTextoConsola(consola, texto);
 		}
+		free(texto);
 		send(cpu,"0001",4,0);
 		break;
 	}
@@ -501,7 +502,7 @@ void atenderOperacion(int op,int cpu){
 void procesar_operacion_privilegiada(int operacion, int cpu){
 		int tamanioNombre, posicion, unidadestiempo,valor,tamanio,sigueCPU;
 		char *identificador,*texto,*valor_char;
-		PCB*pcbDesSerializado;
+		PCB *pcbDesSerializado;
 		if (operacion){
 			tamanioNombre = recibirProtocolo(cpu);
 			identificador = recibirMensaje(cpu,tamanioNombre);
@@ -518,18 +519,20 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		valor = globalesValores[posicion];
 		valor=htonl(valor);
 		send(cpu,&valor,4,0);
+		free(identificador);
 		break;
 	case 2:
 		//grabar valor en variable compartida
-		//recibo el nombre de una variable y un valor -> guardo valor
+		//recibo el nombre de una variable y un valor -> guardo valor y devuelvo
 		tamanio=recibirProtocolo(cpu);
 		valor_char=recibirMensaje(cpu,tamanio);
 		valor=atoi(valor_char);
-		free(valor_char);
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
 		valor=htonl(valor);
 		send(cpu,&valor,4,0);
+		free(valor_char);
+		free(identificador);
 		break;
 	case 3:
 		//wait a un semaforo, si no puiede acceder, se bloquea
@@ -548,7 +551,9 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	 		if(sigueCPU){
 	 			queue_push(colaCPUs, (void*)cpu);
 	 		}
+	 		free(texto);
 		}
+		free(identificador);
 		break;
 	case 4:
 		//signal a un semaforo, post
@@ -559,12 +564,14 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			sem_post(&semaforosGlobales[posicion]); //si esta en 0, activo el hilo para que los desbloquee
 		}
 		contadorSemaforo[posicion]++;
+		free(identificador);
 		break;
 	case 5:
 		//pedido E/S, va a bloqueado
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
 		tamanio=recibirProtocolo(cpu);
-		unidadestiempo = atoi(recibirMensaje(cpu,tamanio));
+		char* ut=recibirMensaje(cpu,tamanio);
+		unidadestiempo = atoi(ut);
 		posicion = (int)dictionary_get(dispositivosES,identificador);
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
@@ -579,6 +586,9 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
  		if(sigueCPU){
  			queue_push(colaCPUs, (void*)cpu);
  		}
+ 		free(ut);
+ 		free(identificador);
+ 		free(texto);
 		break;
 	}
 }
@@ -631,10 +641,10 @@ void finalizarProgramaConsola(int consola, int codigo){
 }
 void enviarTextoConsola(int consola, char* texto){
 	 char* mensaje = string_new();
-	 int uno = 1;
-	 string_append(&mensaje, header(uno));
+	 string_append(&mensaje, header(1));
 	 agregarHeader(&texto);
 	 string_append(&mensaje, texto);
+	 string_append(&mensaje,"\0");
 	 send(consola, mensaje, string_length(mensaje), 0);
 	 free(mensaje);
 }
