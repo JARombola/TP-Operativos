@@ -62,10 +62,12 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 						break;
 					case 2:														//TERMINO BIEN
 						printf("el programa finalizo con exito\n");
+						send(nucleo,"0001",4,0);
 						return -1;
 						break;
 					case 3:														//TERMINO MAL
 						printf("hubo un error en la ejecucion del programa\n");
+						send(nucleo,"0001",4,0);
 						return -1;
 						break;
 					}
