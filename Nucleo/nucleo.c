@@ -453,11 +453,17 @@ void atender_Ejecuciones(){
 
 
 void atenderOperacion(int op,int cpu){
+#define ERROR 0
+#define QUANTUM_OK 1
+#define PRIVILEGIADA 2
+#define FIN_ANSISOP 3
+#define IMPRIMIR 4
+
 		int tamanio, consola, operacion, pidMalo, sigueCPU;
 		char* texto;
 		PCB *pcbDesSerializado;
 	switch (op){
-	case 0:
+	case ERROR:
 		//el cpu se desconecto y termino mal el q, o hubo un error
 		pidMalo = recibirProtocolo(cpu);
 		if(pidMalo){
@@ -469,7 +475,7 @@ void atenderOperacion(int op,int cpu){
 		sacar_socket_de_lista(cpus,cpu);
 		printf("Se desconecto o envio algo mal el CPU en %d, eliminado\n",cpu);
 		break;
-	case 1:
+	case QUANTUM_OK:
 		//termino bien el quantum, no necesita nada
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
@@ -483,12 +489,12 @@ void atenderOperacion(int op,int cpu){
 		queue_push(colaListos, pcbDesSerializado);
 		sem_post(&sem_Listos);
 		break;
-	case 2:
+	case PRIVILEGIADA:
 		//me pide una operacion privilegiada
 		operacion = recibirProtocolo(cpu);
 		procesar_operacion_privilegiada(operacion, cpu);
 		break;
-	case 3:
+	case FIN_ANSISOP:
 		//termino el ansisop, va a Terminado
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
@@ -501,7 +507,7 @@ void atenderOperacion(int op,int cpu){
 		queue_push(colaTerminados, pcbDesSerializado);
 		sem_post(&sem_Terminado);
 		break;
-	case 4:
+	case IMPRIMIR:
 		//imprimir o imprimirTexto
 		consola = recibirProtocolo(cpu);
 		tamanio = recibirProtocolo(cpu);
@@ -516,6 +522,13 @@ void atenderOperacion(int op,int cpu){
 }
 
 void procesar_operacion_privilegiada(int operacion, int cpu){
+#define ERROR 0
+#define OBTENER_COMPARTIDA 1
+#define GUARDAR_COMPARTIDA 2
+#define WAIT 3
+#define SIGNAL 4
+#define E_S 5
+
 		int tamanioNombre, posicion, unidadestiempo,valor,tamanio,sigueCPU;
 		char *identificador,*texto,*valor_char;
 		PCB *pcbDesSerializado;
@@ -524,11 +537,11 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			identificador = recibirMensaje(cpu,tamanioNombre);
 		}
 	switch (operacion){
-	case 0:
+	case ERROR:
 		printf("el cpu mando mal la operacion privilegiada, todo mal\n");
 		//error? o no deberia entrar aca
 		break;
-	case 1:
+	case OBTENER_COMPARTIDA:
 		//obtener valor de variable compartida
 		//recibo nombre de variable compartida, devuelvo su valor
 		posicion = (int)dictionary_get(globales,identificador);
@@ -537,7 +550,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		send(cpu,&valor,4,0);
 		free(identificador);
 		break;
-	case 2:
+	case GUARDAR_COMPARTIDA:
 		//grabar valor en variable compartida
 		//recibo el nombre de una variable y un valor -> guardo valor y devuelvo
 		tamanio=recibirProtocolo(cpu);
@@ -550,7 +563,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		free(valor_char);
 		free(identificador);
 		break;
-	case 3:
+	case WAIT:
 		//wait a un semaforo, si no puiede acceder, se bloquea
 		//recibo el identificador del semaforo
 		posicion = (int)dictionary_get(semaforos,identificador);
@@ -571,7 +584,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		}
 		free(identificador);
 		break;
-	case 4:
+	case SIGNAL:
 		//signal a un semaforo, post
 		//recibo el identificador del semaforo
 		send(cpu,"0001",4,0);
@@ -582,7 +595,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		contadorSemaforo[posicion]++;
 		free(identificador);
 		break;
-	case 5:
+	case E_S:
 		//pedido E/S, va a bloqueado
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
 		tamanio=recibirProtocolo(cpu);
