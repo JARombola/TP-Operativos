@@ -24,13 +24,13 @@ typedef struct{
 }pcbParaES;
 
 
-t_list *cpus, *consolas, *listaEjecuciones, *listConsolasParaEliminarPCB;
+t_list *cpus, *consolas, *listConsolasParaEliminarPCB, *cpusDisponibles;
 
 //estructuras para planificacion
 pthread_attr_t attr;
 pthread_t thread;
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
-t_queue *colaNuevos, *colaListos,*colaTerminados, *colaCPUs;
+t_queue *colaNuevos, *colaListos,*colaTerminados;
 sem_t sem_Nuevos, sem_Listos,sem_Terminado;
 
 
@@ -50,9 +50,11 @@ void atender_Bloq_SEM(int posicion);
 void atender_Terminados();
 void atenderOperacion(int op,int cpu);
 void procesar_operacion_privilegiada(int operacion, int cpu);
+void sacar_socket_de_lista(t_list* lista,int socket);
 int esa_consola_existe(int consola);
 int ese_PCB_hay_que_eliminarlo(int consola);
-int revisarActividad(t_list*, fd_set*);
+int revisarActividadConsolas(fd_set*);
+int revisarActividadCPUs(fd_set*);
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep);
 PCB* desSerializarMensajeCPU(char* char_pcb);
 void enviarPCBaCPU(int, char*);
@@ -94,11 +96,10 @@ int main(int argc, char* argv[]) {
 	sem_init(&sem_Listos, 0, 0);
 	sem_init(&sem_Terminado, 0, 0);
 
-	listaEjecuciones=list_create();
+	cpusDisponibles=list_create();
 	colaNuevos=queue_create();
 	colaListos=queue_create();
 	colaTerminados=queue_create();
-	colaCPUs=queue_create();
 
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
 
@@ -148,14 +149,14 @@ int main(int argc, char* argv[]) {
 			//exit(EXIT_FAILURE);
 		}
 		printf("Entré al select\n");
-		socketARevisar = revisarActividad(consolas, &descriptores);
+		socketARevisar = revisarActividadConsolas(&descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
 			list_add(listConsolasParaEliminarPCB,(void *) socketARevisar);
 			close(socketARevisar);
 		}
 		else {
-			socketARevisar = revisarActividad(cpus, &descriptores);
+			socketARevisar = revisarActividadCPUs(&descriptores);
 			if (socketARevisar) {								//Reviso actividad en cpus
 				printf("Se desconecto el CPU en %d, eliminado\n",socketARevisar);
 				close(socketARevisar);
@@ -184,7 +185,7 @@ int main(int argc, char* argv[]) {
 						case 1:											//CPU
 							send(nuevo_cliente, &mjeCpu, 4, 0);
 							printf("Acepté un nuevo cpu, el %d\n",nuevo_cliente);
-							queue_push(colaCPUs, (void *)nuevo_cliente);
+							list_add(cpusDisponibles, (void *)nuevo_cliente);
 							list_add(cpus, (void *) nuevo_cliente);
 							break;
 
@@ -336,14 +337,29 @@ for (i = 0; i < list_size(lista); i++) {
 	}
 }
 
-int revisarActividad(t_list* lista, fd_set *descriptores) {
+int revisarActividadConsolas(fd_set *descriptores) {
 	int i;
-	for (i = 0; i < list_size(lista); i++) {
-		int componente = (int) list_get(lista, i);
+	for (i = 0; i < list_size(consolas); i++) {
+		int componente = (int) list_get(consolas, i);
 		if (FD_ISSET(componente, descriptores)) {
 			int protocolo = recibirProtocolo(componente);
 			if (protocolo == -1) {
-				list_remove(lista, i);
+				list_remove(consolas, i);
+				return componente;
+			}
+		}
+	}
+	return 0;
+}
+int revisarActividadCPUs(fd_set *descriptores) {
+	int i;
+	for (i = 0; i < list_size(cpus); i++) {
+		int componente = (int) list_get(cpus, i);
+		if (FD_ISSET(componente, descriptores)) {
+			int protocolo = recibirProtocolo(componente);
+			if (protocolo == -1) {
+				list_remove(cpus, i);
+				list_remove(cpusDisponibles, i);//lo remueve de disponibles si no lo saco el hilo execute
 				return componente;
 			} else {							//el cpu me mando un mensaje, la consola nunca lo va a hacer
 				atenderOperacion(protocolo, componente);
@@ -379,8 +395,8 @@ void atender_Ejecuciones(){
 		 }else{
 		 int paso=1;
 		 	 while(paso){
-		 		 if(!queue_is_empty(colaCPUs)){
-					int cpu = (int)queue_pop(colaCPUs); //saco el socket de ese cpu disponible
+		 		 if(!list_is_empty(cpusDisponibles)){
+					int cpu = (int)list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
 					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 
@@ -450,7 +466,7 @@ void atenderOperacion(int op,int cpu){
 		 	finalizarProgramaUMC(pidMalo);
 		 	sem_post(&sem_Nuevos);
 		}
-		list_remove(cpus, cpu);
+		sacar_socket_de_lista(cpus,cpu);
 		printf("Se desconecto o envio algo mal el CPU en %d, eliminado\n",cpu);
 		break;
 	case 1:
@@ -462,7 +478,7 @@ void atenderOperacion(int op,int cpu){
 		printf("el cpu termino su quantum, no necesita nada\n");
  		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
  		if(sigueCPU){
- 			queue_push(colaCPUs, (void*)cpu);
+			list_add(cpusDisponibles, (void *)cpu);
  		}
 		queue_push(colaListos, pcbDesSerializado);
 		sem_post(&sem_Listos);
@@ -480,7 +496,7 @@ void atenderOperacion(int op,int cpu){
 		sigueCPU = recibirProtocolo(cpu);
 		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->id);
  		if(sigueCPU){
- 			queue_push(colaCPUs, (void*)cpu);
+			list_add(cpusDisponibles, (void *)cpu);
  		}
 		queue_push(colaTerminados, pcbDesSerializado);
 		sem_post(&sem_Terminado);
@@ -549,7 +565,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			sigueCPU = recibirProtocolo(cpu);
 			queue_push(colasSEM[posicion], pcbDesSerializado); //mando el pcb a bloqueado
 	 		if(sigueCPU){
-	 			queue_push(colaCPUs, (void*)cpu);
+				list_add(cpusDisponibles, (void *)cpu);
 	 		}
 	 		free(texto);
 		}
@@ -584,13 +600,18 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		queue_push(colasES[posicion], pcbParaBloquear);
 		sem_post(&semaforosES[posicion]);
  		if(sigueCPU){
- 			queue_push(colaCPUs, (void*)cpu);
+			list_add(cpusDisponibles, (void *)cpu);
  		}
  		free(ut);
  		free(identificador);
  		free(texto);
 		break;
 	}
+}
+void sacar_socket_de_lista(t_list* lista,int socket){
+	int buscarIgual(int elemLista){
+		return (socket==elemLista);}
+	list_remove_by_condition(lista,(void*)buscarIgual);
 }
 int esa_consola_existe(int consola){
 	int buscarIgual(int elemLista){
