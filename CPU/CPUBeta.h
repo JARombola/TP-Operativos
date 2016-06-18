@@ -20,16 +20,21 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+static const int CONTENIDO_VARIABLE = 20;
+static const int POSICION_MEMORIA = 0x10;
+
+int nucleo;
+int umc;
 PCB pcb;
-
+int PUERTO_NUCLEO= 0;
+char AUTENTIFICACION[100];
 char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionCPU.txt";
-
+char IP_NUCLEO[50];
+char IP_UMC[50];
 int PUERTO_UMC = 0;
-int quantum = 1;
-int status = 1;
+int status = 0;
 
-
-int finalizado;
+int finalizado = 0;
 int CODIGO_IMPRESION = 0;
 int CODIGO_ASIGNACION_UMC = 0;
 int CODIGO_ASIGNACION_NUCLEO = 0;
@@ -41,6 +46,9 @@ int CODIGO_SIGNAL = 0;
 int CODIGO_CONSULTA_UMC = 0;
 int TAMANIO_PAGINA = 1;
 
+int levantarArchivoDeConfiguracion();
+void conectarseAlNucleo();
+void conectarseALaUMC();
 int procesarPeticion();
 void procesarCodigo(int quantum, int quantum_sleep);
 char* pedirLinea();

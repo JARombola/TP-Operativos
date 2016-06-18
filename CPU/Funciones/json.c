@@ -5,22 +5,23 @@
  */
 
 char* toJsonArchivo(FILE* archivo){
-	char linea[200];
-	char* ansisop = malloc(200*sizeof(char));
-	char* final = malloc(1);
-	ansisop[0]='\0';
+	char* ansisop = string_new();
+	char caracter[2] = "";
+	char* linea = string_new();
+
 	while (!feof(archivo)){
+		while (caracter[0]!='\n'){
+			caracter[0] = fgetc(archivo);
+			caracter[1] = '\0';
+			string_append(&linea,caracter);
+		}
 		fgets(linea,200,archivo);
         filtrar(linea);
-		strcat(ansisop,linea);
-		final = realloc(final,(strlen(ansisop)+1)* sizeof(char));
-		strcpy(final,ansisop);
-		ansisop = realloc(ansisop, (strlen(ansisop)+200)* sizeof(char));
-		strcpy(ansisop, final);
+    	string_append(&ansisop,linea);
 	}
 	free(ansisop);
 	fclose(archivo);
-	return final;
+	return ansisop;
 }
 
 void filtrar(char* linea){

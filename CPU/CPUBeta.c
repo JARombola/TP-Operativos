@@ -3,24 +3,23 @@
 #include <commons/process.h>
 #include <signal.h>
 
-int nucleo, umc;
-datosConfiguracion* datosCPU;
-
 int main(){
-	quantum=-10;
-	datosCPU=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
-	if (!(leerConfiguracion("../ArchivoDeConfiguracionCPU.txt", &datosCPU) || leerConfiguracion("ArchivoDeConfiguracionCPU.txt", &datosCPU))){
-		perror("Error al abrir archivo de configuracion\n");
-		return -1;
-	}
 	printf("CPU estable...[%d] \n",process_getpid());
+
+	if(levantarArchivoDeConfiguracion()<0) return -1;
+
 	crearHiloSignal();
-	nucleo=conectarseAlNucleo(datosCPU->puerto_nucleo,datosCPU->ip_nucleo);
+
+	conectarseAlNucleo();
 	if (nucleo < 0) return -1;
-	umc=conectarseALaUMC(datosCPU->puerto_umc,datosCPU->ip_umc);
+
+	conectarseALaUMC();
 	if (umc < 0) return -1;
+
 	procesarPeticion();
+
 	printf("Cerrando CPU.. \n");
+
 	return 0;
 }
 
@@ -42,7 +41,7 @@ void cerrarCPU(int senial){
 		switch(senial){
 			case SIGUSR1:
 				printf("Rayos Me mataron con SIGUSR1\n");
-				status = 0;
+				status = 1;
 				break;
 			case SIGINT:
 				printf("Adios Mundo Cruel\n");
@@ -54,12 +53,80 @@ void cerrarCPU(int senial){
 }
 
 
+int levantarArchivoDeConfiguracion(){
+	FILE* archivoDeConfiguracion = fopen("../ArchivoDeConfiguracionCPU.txt","r");
+	if (archivoDeConfiguracion==NULL){
+		archivoDeConfiguracion = fopen("ArchivoDeConfiguracionCPU.txt","r");
+		if (archivoDeConfiguracion==NULL){
+		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
+		return -1;}
+	}
+	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
+	char puertoDelNucleo [6];
+	buscar(archivoJson,"PUERTO_NUCLEO", puertoDelNucleo);
+	PUERTO_NUCLEO = atoi(puertoDelNucleo);
+	if (PUERTO_NUCLEO == 0){
+		printf("Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
+		return -1;
+	}
+
+	buscar(archivoJson,"AUTENTIFICACION", AUTENTIFICACION);
+	if (AUTENTIFICACION[0] =='\0'){
+		printf("Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
+		return -1;
+	}
+	buscar(archivoJson,"IP_NUCLEO", IP_NUCLEO);
+	if (IP_NUCLEO[0] == '\0'){
+		printf("Error: No se ha encontrado la IP del Nucleo en el archivo de Configuracion \n");
+		return -1;
+	}
+	buscar(archivoJson,"IP_UMC", IP_UMC);
+	if (IP_UMC[0] =='\0'){
+		printf("Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
+		return -1;
+	}
+
+	char puertoDeLaUMC[6];
+	buscar(archivoJson,"PUERTO_UMC", puertoDeLaUMC);
+	PUERTO_UMC = atoi(puertoDeLaUMC);
+	if (PUERTO_UMC == 0){
+		printf("Error: No se ha encontrado el Puerto de la UMC en el archivo de Configuracion \n");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+void conectarseAlNucleo(){
+	nucleo = conectar(PUERTO_NUCLEO,IP_NUCLEO);
+	if (nucleo<0){
+		printf("Error al conectarse con el nucelo \n");
+		return;
+	}
+	autentificar(nucleo,AUTENTIFICACION);
+	printf("Conexion con el nucleo OK... \n");
+}
+
+void conectarseALaUMC(){
+	umc = conectar(PUERTO_UMC,IP_UMC);
+	if (umc<0){
+		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+	}
+	TAMANIO_PAGINA = autentificar(umc,AUTENTIFICACION);
+	if (!TAMANIO_PAGINA){
+		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+		}
+	printf("Conexion con la UMC OK...\n");
+}
+
 int procesarPeticion(){
 	char *pcbRecibido;
 	int quantum = 0;
 	int quantum_sleep = 0;
 
 	while(!finalizado){
+
 		quantum = recibirProtocolo(nucleo);
 		printf("Peticion del Nucleo\n\n");
 		quantum_sleep=recibirProtocolo(nucleo);
