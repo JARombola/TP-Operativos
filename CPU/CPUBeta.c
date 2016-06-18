@@ -2,35 +2,31 @@
 #include <pthread.h>
 #include <commons/process.h>
 #include <signal.h>
+#define ERROR_ANSISOP 0
+#define SE_VA_EL_PROCESO 1
+#define FIN_ANSISOP 3
 
 void crearHiloSignal();
 void hiloSignal();
-void funcionSenial(int n);
+void cerrarCPU(int n);
 int enviarMjeFinANucleo(int);
 
 int ejecutar=1,murio=0,errorAnsisop=0,bloqueado=0;
 
 int main(){
+	quantum=-10;
 	printf("CPU estable...[%d] \n",process_getpid());
-
 	if(levantarArchivoDeConfiguracion()<0) return -1;
-
 	crearHiloSignal();
-
 	conectarseAlNucleo();
-
 	if (nucleo < 0) return -1;
-
 	conectarseALaUMC();
 	if (umc < 0) return -1;
-
-	if (procesarPeticion()<0) return -1;
-
+	procesarPeticion();
 	printf("Cerrando CPU.. \n");
-
 	return 0;
 }
-void hiloSignal();
+
 void crearHiloSignal(){
 	pthread_t th_seniales;
 	pthread_attr_t attr;
@@ -41,29 +37,31 @@ void crearHiloSignal(){
 }
 
 void hiloSignal(){
-		signal(SIGUSR1, funcionSenial);					//(SIGUSR1) ---------> Kill -10 (ProcessPid)
-		signal(SIGINT,funcionSenial);					//(SIGINT) ---------> Ctrl+C
+		signal(SIGUSR1, cerrarCPU);					//(SIGUSR1) ---------> Kill -10 (ProcessPid)
+		signal(SIGINT,cerrarCPU);					//(SIGINT) ---------> Ctrl+C
 }
 
-void funcionSenial(int n){
-	int error;
-	switch(n){
-	case SIGUSR1:
-		printf("Me mataron con SIGUSR1\n");
+void cerrarCPU(int senial){
+	if(quantum>=0){
+		switch(senial){
+			case SIGUSR1:
+				printf("Me mataron con SIGUSR1\n");
+				murio=1;
+				break;
+			case SIGINT:
+				printf("###!@@!!###ERROR###!@@!!### -- [Deleting System32]\n");
+				sleep(2);
+				printf("Jajaj mentira, le aviso al nucleo y me voy, suerte!\n");
+				enviarMjeFinANucleo(0);
+				exit(0);
+				break;
+		}
+	}
+	else{
+		printf("###!@@!!###ERROR###!@@!!### -- [Deleting System32]\n");
 		sleep(2);
-		printf("Adios mundo cruel\n");
-		murio=1;
-		return;
-		break;
-
-	case SIGINT:
-		printf("Por que me cerraste? \n");
-		sleep(2);
-		printf("Mentira, bye\n");
-		finalizado=0;						//Para que entre bien en enviarMjeFinNucleo
-		enviarMjeFinANucleo(1);
+		printf("Jajaj mentira, suerte!\n");
 		exit(0);
-		break;
 	}
 }
 
@@ -139,6 +137,7 @@ int procesarPeticion(){
 	int quantum_sleep;
 	char *pcbRecibido;
 	while(!murio){
+		quantum=-10;
 		quantum = recibirProtocolo(nucleo);
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
@@ -148,7 +147,7 @@ int procesarPeticion(){
 				perror("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
-		quantum = 100;
+		quantum = 100; 						//todo tanto? era necesario?
 		printf("Eldel nucleo:%s\n",pcbRecibido);
 
 		if (pcbRecibido[0] == '\0'){
@@ -169,7 +168,8 @@ int procesarCodigo(){
 	finalizado = 0;errorAnsisop=0;
 	char* linea;
 	printf("Iniciando Proceso de Codigo...\n");
-	while ((quantum>0) && (!finalizado)){
+	while ((quantum>0) && (!finalizado) && (!errorAnsisop) && (!bloqueado)){
+		sleep(2);
 		//sleep(quantum_sleep);
 		linea = pedirLinea();
 		printf("Recibi: %s \n", linea);
@@ -182,19 +182,16 @@ int procesarCodigo(){
 		quantum--;
 		pcb.pc++;
 	}
-	if(finalizado){
-		printf("Finalizado el Proceso de Codigo\n");
-		return 1;
-	}
 	if(errorAnsisop){
 		printf("Error durante la ejecución, abortando...\n");
-		return 1;
+		return ERROR_ANSISOP;
 	}
-	if(bloqueado){
-		printf("Proceso Bloqueado\n");
-		return 1;
+	if(finalizado){
+		printf("Finalizado el Proceso de Codigo\n");
+		return FIN_ANSISOP;
+
 	}
-	return 0;
+	return SE_VA_EL_PROCESO;
 }
 
 char* pedirLinea(){
@@ -490,7 +487,9 @@ int tienePermiso(char* autentificacion){
 }
 
 void saltoDeLinea(t_nombre_etiqueta t_nombre_etiqueta){
-	pcb.pc = metadata_buscar_etiqueta(t_nombre_etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	char* nombre=string_substring_from(t_nombre_etiqueta,1);
+	pcb.pc = metadata_buscar_etiqueta(nombre,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	pcb.pc--;
 }
 
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
@@ -533,57 +532,54 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	if (atoi(resp)){
 		printf("Asignacion ok\n");
 	}else{
-	//	errorAnsisop=1;
+		errorAnsisop=1;
 		printf("Cagamos\n");			//todo murió el proceso, abortar quantum y avisar al núcleo
 	}
 	free(resp);
 }
 
-int enviarMjeFinANucleo(int terminado){
+int enviarMjeFinANucleo(int operacion){
 	char* pcbEnvio;
 	char* mensajeParaNucleo=string_new();
 	char* codOperacion;
-	if(!terminado || bloqueado){							//Terminó el quantum
-		if(!terminado){						//si se bloqueo, no le tengo que mandar este codigo xq el nucleo esta esperando directamente el pcb
-		codOperacion=toStringInt(1);
-		string_append(&mensajeParaNucleo,codOperacion);}
+	switch(operacion){
+
+	case ERROR_ANSISOP:														//Error en el ansisop / Murió la cpu con ctrl+c
+		codOperacion=toStringInt(operacion);
+		char* id=string_itoa(pcb.id);
+		string_append(&mensajeParaNucleo,codOperacion);
+		string_append(&mensajeParaNucleo,id);
+		free(codOperacion);
+		free(id);
+		break;
+
+	case SE_VA_EL_PROCESO:														//Terminó Q o se "bloqueo"
+		if(!bloqueado){											//o sea que terminó el Quantum => le mando el codigo de 1 (en ambos casos le mando el pcb)
+			codOperacion=toStringInt(operacion);
+			string_append(&mensajeParaNucleo,codOperacion);
+			free(codOperacion);
+		}
+		break;
+
+	case FIN_ANSISOP:														// Fin del ansisop => mando el pcb
+		codOperacion=toStringInt(operacion);
+		string_append(&mensajeParaNucleo,codOperacion);
+		free(codOperacion);
+		break;
+	}
+
+	if(operacion){									//o sea que no hubo error, le mando el pcb
 		pcbEnvio=toStringPCB(pcb);
-		string_append(&mensajeParaNucleo,toStringInt(string_length(pcbEnvio)));
-		string_append(&mensajeParaNucleo,pcbEnvio);
+		char* tamPCB=toStringInt(string_length(pcbEnvio));
+		string_append_with_format(&mensajeParaNucleo,"%s%s",tamPCB,pcbEnvio);
+		free(tamPCB);
 		free(pcbEnvio);
 	}
-	else{
-		if(finalizado){								//Terminó el ansisop
-			codOperacion=toStringInt(3);
-			string_append(&mensajeParaNucleo,codOperacion);
-			pcbEnvio=toStringPCB(pcb);
-			char* tamPCB=toStringInt(string_length(pcbEnvio));
-			string_append_with_format(&mensajeParaNucleo,"%s%s",tamPCB,pcbEnvio);
-			free(pcbEnvio);
-			free(tamPCB);
-		}
-		else{												//error ansisop
-			codOperacion=toStringInt(0);
-			char* id=string_itoa(pcb.id);
-			string_append(&mensajeParaNucleo,codOperacion);
-			string_append(&mensajeParaNucleo,id);
-			free(id);
-			}
-	}
-	free(codOperacion);
-	char* estadoCPU;
-	if(murio){									//Murió la CPU
-		estadoCPU=toStringInt(0);
-		string_append(&mensajeParaNucleo,estadoCPU);
-	}else{
-		estadoCPU=toStringInt(1);
-		string_append(&mensajeParaNucleo,estadoCPU);
-	}
-	free(estadoCPU);
+
 	string_append(&mensajeParaNucleo,"\0");
 	sleep(10);
 	send(nucleo,mensajeParaNucleo,string_length(mensajeParaNucleo),0);
-	terminado=0;
+	free(mensajeParaNucleo);
 	bloqueado=0;
 	finalizado=0;
 	errorAnsisop=0;
