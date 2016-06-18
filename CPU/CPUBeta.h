@@ -33,6 +33,7 @@ char IP_NUCLEO[50];
 char IP_UMC[50];
 int PUERTO_UMC = 0;
 int quantum = 1;
+int status = 0;
 
 
 int finalizado;

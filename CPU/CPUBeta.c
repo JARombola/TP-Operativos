@@ -338,14 +338,24 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 
 void wait(t_nombre_semaforo identificador_semaforo){
 	printf("Wait: %s", identificador_semaforo);
-	enviarMensajeConProtocolo(nucleo,identificador_semaforo,CODIGO_WAIT);
+	char* mensaje = string_new();
+	string_append(&mensaje,"00020003");
+	string_append(&mensaje,toStringInt(strlen(identificador_semaforo)));
+	string_append(&mensaje,identificador_semaforo);
+	printf("Le mando el mensaje al nucleo: %s \n", mensaje);
+	send(nucleo, mensaje,strlen(mensaje),0);
+	free(mensaje);
 	char respuesta[3];
 	recv(nucleo,respuesta,2,0);
-	respuesta[2]='\0';
-	int meBloquearon=string_equals_ignore_case(respuesta,"no");
-	if(meBloquearon){
-		bloqueado=1;							//turbio, si
-	}
+	respuesta[2]= '\0';
+	if(respuesta[0]=='o'){
+		printf("Wait ok sin problemas\n");
+	}else if(respuesta[0]=='n'){
+		printf("Semaforo bloqueante\n");
+		finalizado = 1;
+		status = 23;
+	}else printf("Error: Respuesta de el nucleo: %s\n",respuesta);
+	free(respuesta);
 }
 
 void signalHola(t_nombre_semaforo identificador_semaforo){

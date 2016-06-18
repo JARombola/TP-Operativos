@@ -3,6 +3,11 @@ textPrint Adios Mundo Cruel
 return 1
 end
 
+function g
+textPrint Hola Mundo Cruel
+return 12
+end
+
 begin
 	variables a,b
 b=5
@@ -10,7 +15,11 @@ a=b+12
 !Global=a
 a=!Global
 print a
+signal SEM1
+wait SEM1
 textPrint Hola Mundo
 b<-f
+a<-g
 print b
+print a
 end
