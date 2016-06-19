@@ -15,7 +15,7 @@ char* toJsonArchivo(FILE* archivo){
 			caracter[1] = '\0';
 			string_append(&linea,caracter);
 		}
-		fgets(linea,200,archivo);
+		string_append(&linea,"\0");
         filtrar(linea);
     	string_append(&ansisop,linea);
 	}
