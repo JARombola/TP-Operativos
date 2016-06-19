@@ -7,10 +7,11 @@
 char* toJsonArchivo(FILE* archivo){
 	char* ansisop = string_new();
 	char caracter[2] = "";
-	char* linea = string_new();
+	char* linea;
 
 	while (!feof(archivo)){
-		while (caracter[0]!='\n'){
+		linea = string_new();
+		while ((caracter[0]!='\n') && (!feof(archivo))){
 			caracter[0] = fgetc(archivo);
 			caracter[1] = '\0';
 			string_append(&linea,caracter);
@@ -18,11 +19,15 @@ char* toJsonArchivo(FILE* archivo){
 		string_append(&linea,"\0");
         filtrar(linea);
     	string_append(&ansisop,linea);
+    	free(linea);
+    	caracter[0] = ' ';
 	}
+	string_append(&ansisop,"\n\0");
 	free(ansisop);
 	fclose(archivo);
 	return ansisop;
 }
+
 
 void filtrar(char* linea){
 	sacarEspacios(linea);
