@@ -18,6 +18,10 @@
 
 #define esIgual(a,b) string_equals_ignore_case(a,b)
 #define marcosTotal datosMemoria->marco_size*datosMemoria->marcos
+#define INICIALIZAR 1
+#define ENVIAR_BYTES 2
+#define GUARDAR_BYTES 3
+#define FINALIZAR 4
 
 
 //COMPLETAR...........................................................
@@ -59,10 +63,7 @@ int main(int argc, char* argv[]) {
 	datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
 	if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
 		registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}																//El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
-	printf("ALGORITMO: %d\n",datosMemoria->algoritmo);
-	////////////////////////////////////////////////
-	//datosMemoria->algoritmo=1;														//todo CAMBIAR ALGORITMO
-	///////////////////////////////////////////////////
+
 	vectorMarcos=(int*) malloc(datosMemoria->marcos*sizeof(int*));
 	memoria = (void*) malloc(marcosTotal);
 	int j;
@@ -142,7 +143,8 @@ void consola(){
 			char* mensaje="Velocidad actualizada";
 			string_append(&mensaje,(char*)VELOCIDAD);
 			registrarInfo(archivoLog,mensaje);
-		} else {
+		}
+		else {
 			if (esIgual(comando, "dump")) {
 				scanf("%d",&VELOCIDAD);
 				int pos=buscar(6,VELOCIDAD);
@@ -153,7 +155,8 @@ void consola(){
 				free(mje);
 				/*printf("Estructuras de Memoria\n");
 				printf("Datos de Memoria\n");*/
-			} else {
+			}
+			else {
 				if (esIgual(comando, "tlb")) {
 					int pos=almacenarBytes(0,0,0,4,10);
 					void* asd=malloc(15);
@@ -167,7 +170,8 @@ void consola(){
 
 
 					printf("TLB Borrada :)\n");
-				} else {
+				}
+				else {
 					if (esIgual(comando, "memoria")) {
 						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
 						finalizarPrograma(0);
@@ -201,18 +205,20 @@ void atenderCpu(int conexion){
 	while (!salir) {
 		operacion = atoi(recibirMensaje(conexion, 1));
 		if (operacion) {
+
 			proceso = recibirProtocolo(conexion);
 			pagina = recibirProtocolo(conexion);
 			offset = recibirProtocolo(conexion);
 			size=recibirProtocolo(conexion);
 			switch (operacion) {
-			case 2:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
+
+			case ENVIAR_BYTES:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
 				datos=enviarBytes(proceso,pagina,offset,size,operacion);
 				if (string_equals_ignore_case(datos,"-1")){size=1;}			//size=1 => La cpu sabe que hubo un error xq no recibe 4 bytes
 				send(conexion,datos,size,0);
 				free(datos);
 				break;
-			case 3:													//3 = Guardar Valor
+			case GUARDAR_BYTES:													//3 = Guardar Valor
 				recv(conexion,&buffer,sizeof(int),0);
 				buffer=ntohl(buffer);
 				char* resp;
@@ -240,23 +246,22 @@ void atenderNucleo(int nucleo){
 			int operacion = atoi(recibirMensaje(nucleo,1));
 				if (operacion) {
 					switch (operacion) {
-					case 1:												//inicializar programa
-							guardar=inicializarPrograma(nucleo);
-							if (guardar){							//1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
+					case INICIALIZAR:												//inicializar programa
+						guardar=inicializarPrograma(nucleo);
+						if (guardar){							//1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
 							guardar=htonl(guardar);
 							send(nucleo,&guardar,sizeof(int),0);
-					}else{												//no lo aceptó la swap (adios ansisop)
+						}else{												//no lo aceptó la swap (adios ansisop)
 							guardar=htonl(guardar);
 							registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");
 							send(nucleo, &guardar,sizeof(int),0);}
-						break;
-					case 4:												//Finalizar programa
-							recv(nucleo,&procesoEliminar,sizeof(int),0);
-							procesoEliminar=ntohl(procesoEliminar);
-							if(finalizarPrograma(procesoEliminar)){
-							printf("Proceso %d eliminado\n",procesoEliminar);
-							}
-						break;
+					break;
+
+					case FINALIZAR:												//Finalizar programa
+						procesoEliminar=recibirProtocolo(nucleo);
+						if(finalizarPrograma(procesoEliminar)){
+						printf("Proceso %d eliminado\n",procesoEliminar);}
+					break;
 					}
 				}else{salir=1;}
 		}
