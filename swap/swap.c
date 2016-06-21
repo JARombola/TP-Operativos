@@ -15,11 +15,6 @@
 #include <fcntl.h>
 #include "Funciones/Comunicacion.h"
 
-typedef struct {
-	int pid;
-	int numPagina;
-}t_paquete_lectura;
-
 typedef struct{
 	int proceso,inicio,paginas;
 }traductor_marco;
@@ -255,7 +250,7 @@ void* buscar(int pid, int pag){
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
-	int pos=datosProceso->inicio+pag*datosSwap->tamPagina;
+	int pos=(datosProceso->inicio+pag)*datosSwap->tamPagina;
 	memcpy(pagina,archivoSwap+pos,datosSwap->tamPagina);
 	memcpy(pagina+datosSwap->tamPagina,"\0",1);
 	printf("PAG %d - Datos:  %s-\n",pos/datosSwap->tamPagina,(char*)pagina);
@@ -278,6 +273,7 @@ int eliminarProceso(int pid){
 		posicion++;
 	}
 	//free(datosProceso);
+	pagsLibres+=datosProceso->paginas;
 	printf("Lista antes: %d\n",list_size(tablaPaginas));
 	list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)eliminarEntrada);
 	printf("Lista despues: %d\n",list_size(tablaPaginas));
