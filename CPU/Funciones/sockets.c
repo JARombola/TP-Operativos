@@ -6,7 +6,7 @@ int conectar(int puerto,char* ip){
 	direccServ.sin_addr.s_addr = inet_addr(ip);
 	direccServ.sin_port = htons(puerto);
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
-	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)) != 0);
+	while (connect(conexion, (void*) &direccServ, sizeof(direccServ)));
 	return conexion;
 }
 void enviarMensaje(int conexion, char* mensaje){
@@ -35,7 +35,7 @@ int autentificar(int conexion, char* autor){
 
 int esperarConfirmacion(int conexion){
 	int bufferHandshake;
-	int bytesRecibidos = recv(conexion, &bufferHandshake, 4 , 0);
+	int bytesRecibidos = recv(conexion, &bufferHandshake, 4 , MSG_WAITALL);
 	if (bytesRecibidos <= 0) {
 		return 0;
 	}
@@ -81,7 +81,7 @@ int esperarConexion(int servidor,char* autentificacion){
 char* esperarRespuesta(int conexion){
 	char header[5];
 	char* buffer;
-	int bytes= recv(conexion, header,4,0);
+	int bytes= recv(conexion, header,4,MSG_WAITALL);
 	header[4]= '\0';
 	uint32_t tamanioPaquete = atoi(header);
 	if (bytes<=0){
@@ -89,7 +89,7 @@ char* esperarRespuesta(int conexion){
 		buffer[0] = '\0';
 	}else{
 		buffer = malloc(tamanioPaquete+1);
-		recv(conexion,buffer,tamanioPaquete,0);
+		recv(conexion,buffer,tamanioPaquete,MSG_WAITALL);
 		buffer[tamanioPaquete] = '\0';
 	}
 	return buffer;
@@ -113,7 +113,7 @@ char* header(int numero){
 
 int recibirProtocolo(int conexion){
 	char protocolo[5];
-	int bytes= recv(conexion, protocolo,4,0);
+	int bytes= recv(conexion, protocolo,4,MSG_WAITALL);
 	protocolo[4] = '\0';
 	return atoi(protocolo);
 }

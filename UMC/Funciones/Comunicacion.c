@@ -61,7 +61,7 @@ int conectar(int puerto,char* ip){   							//Con la swap
 int autentificar(int conexion) {
 	send(conexion, "soy_la_umc", 10, 0);
 	char* bufferHandshakeSwap = malloc(8);
-	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 9, 0);
+	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 9, MSG_WAITALL);
 	if (bytesRecibidosH <= 0) {
 		registrarError(archivoLog,"Error al conectarse con la Swap");
 		free (bufferHandshakeSwap);
@@ -73,7 +73,7 @@ int autentificar(int conexion) {
 
 int comprobarCliente(int nuevoCliente) {
 	char* bufferHandshake = malloc(15);
-	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
+	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, MSG_WAITALL);
 	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
 		free(bufferHandshake);
@@ -101,7 +101,7 @@ int aceptarNucleo(int umc,struct sockaddr_in direccionCliente){
 
 int recibirProtocolo(int conexion){
 	char* protocolo = malloc(5);
-	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
+	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), MSG_WAITALL);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
 		return -1;}
@@ -113,7 +113,7 @@ int recibirProtocolo(int conexion){
 
 char* recibirMensaje(int conexion, int tamanio){
 	char* mensaje=(char*)malloc(tamanio+1);
-	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
+	int bytesRecibidos = recv(conexion, mensaje, tamanio, MSG_WAITALL);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);

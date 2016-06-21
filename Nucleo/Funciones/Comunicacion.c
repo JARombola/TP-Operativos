@@ -51,7 +51,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 int autentificarUMC(int conexion) {
 	send(conexion, "soy_el_nucleo", 13, 0);
 	int tamPagina;
-	int bytesRecibidosH = recv(conexion, &tamPagina, 4, 0);
+	int bytesRecibidosH = recv(conexion, &tamPagina, 4, MSG_WAITALL);
 	if (bytesRecibidosH <= 0) {
 		printf("Rechazado por la UMC\n");
 		return 0;
@@ -61,14 +61,16 @@ int autentificarUMC(int conexion) {
 
 int comprobarCliente(int nuevoCliente) {
 	char* bufferHandshake = malloc(16);
-	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, 0);
+	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, MSG_WAITALL);
 	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
 	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
 		free(bufferHandshake);
 		return 1;
-	} else if (string_equals_ignore_case("soy_una_consola", bufferHandshake)) {
-		free(bufferHandshake);
-		return 2;
+	} else
+		{if (string_equals_ignore_case("soy_una_consola", bufferHandshake)) {
+			free(bufferHandshake);
+			return 2;
+		}
 	}
 	free(bufferHandshake);
 	return 0;
@@ -83,7 +85,7 @@ int conectar(int puerto,char* ip){   							//Con la swap
 
 int recibirProtocolo(int conexion){
 	char* protocolo = malloc(5);
-	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
+	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), MSG_WAITALL);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
 		return -1;}
@@ -95,7 +97,7 @@ int recibirProtocolo(int conexion){
 
 char* recibirMensaje(int conexion, int tamanio){
 	char* mensaje=(char*)malloc(tamanio+1);
-	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
+	int bytesRecibidos = recv(conexion, mensaje, tamanio, MSG_WAITALL);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);

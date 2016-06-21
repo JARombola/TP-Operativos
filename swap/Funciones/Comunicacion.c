@@ -44,7 +44,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 
 int comprobarCliente(int cliente){
 	char* bufferHandshake = malloc(10);
-	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, 0);				//lo paso a string para comparar
+	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, MSG_WAITALL);				//lo paso a string para comparar
 	bufferHandshake[bytesRecibidosH] = '\0';
 	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
 		free(bufferHandshake);
@@ -66,7 +66,7 @@ int conectar(int puerto,char* ip){   							//Con la swap
 
 int recibirProtocolo(int conexion){
 	char* protocolo = malloc(5);
-	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), 0);
+	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), MSG_WAITALL);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
 		return -1;}
@@ -78,7 +78,7 @@ int recibirProtocolo(int conexion){
 
 void* recibirMensaje(int conexion, int tamanio){
 	void* mensaje=(void*)malloc(tamanio);
-	int bytesRecibidos = recv(conexion, mensaje, tamanio, 0);
+	int bytesRecibidos = recv(conexion, mensaje, tamanio, MSG_WAITALL);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
