@@ -610,7 +610,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		pcbDesSerializado = desSerializarMensajeCPU(texto);
 		sigueCPU = recibirProtocolo(cpu);
 
-		pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES));
+		pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES)+sizeof(PCB));		//todo revisar, pero creo que ahora guarda bien
 		pcbParaBloquear->pcb = pcbDesSerializado;
 		pcbParaBloquear->ut = unidadestiempo;
 		queue_push(colasES[posicion], pcbParaBloquear);
