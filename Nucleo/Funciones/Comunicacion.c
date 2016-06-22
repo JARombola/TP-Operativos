@@ -49,7 +49,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 }
 
 int autentificarUMC(int conexion) {
-	send(conexion, "soy_el_nucleo", 13, 0);
+	send(conexion, "soy_nucleo1", 11, 0);
 	int tamPagina;
 	int bytesRecibidosH = recv(conexion, &tamPagina, 4, MSG_WAITALL);
 	if (bytesRecibidosH <= 0) {
@@ -59,15 +59,16 @@ int autentificarUMC(int conexion) {
 	return htonl(tamPagina);					//ME ENVIA EL TAMAÑO DE PAGINA
 }
 
+
 int comprobarCliente(int nuevoCliente) {
-	char* bufferHandshake = malloc(16);
-	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 15, MSG_WAITALL);
+	char* bufferHandshake = malloc(11);
+	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 11, MSG_WAITALL);
 	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
-	if (string_equals_ignore_case("soy_un_cpu", bufferHandshake)) {
+	if (string_equals_ignore_case("soy_una_cpu", bufferHandshake)) {
 		free(bufferHandshake);
 		return 1;
 	} else
-		{if (string_equals_ignore_case("soy_una_consola", bufferHandshake)) {
+		{if (string_equals_ignore_case("soy_consola", bufferHandshake)) {
 			free(bufferHandshake);
 			return 2;
 		}
