@@ -41,7 +41,7 @@ void cerrarCPU(int senial){
 		switch(senial){
 			case SIGUSR1:
 				printf("Rayos Me mataron con SIGUSR1\n");
-				status = 1;
+				status = 0;
 				break;
 			case SIGINT:
 				printf("Adios Mundo Cruel\n");

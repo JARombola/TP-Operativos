@@ -32,7 +32,7 @@ char ARCHIVO_DE_CONFIGURACION[60] = "ArchivoDeConfiguracionCPU.txt";
 char IP_NUCLEO[50];
 char IP_UMC[50];
 int PUERTO_UMC = 0;
-int status = 0;
+int status = 1;
 
 int finalizado = 0;
 
