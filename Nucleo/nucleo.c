@@ -344,10 +344,12 @@ int revisarActividadConsolas(fd_set *descriptores) {
 			int protocolo = recibirProtocolo(componente);
 			if (protocolo == -1) {				//si murio de golpe, tengo que eliminar el pcb
 				list_add(listConsolasParaEliminarPCB,(void *) componente);
+				list_remove(consolas, i);
 				return componente;
+			}else{
+				list_remove(consolas, i);		//sino, me manda un 1, que termino bien
+				printf("Se desconecto la consola en %d, ya termino su programa, eliminada\n",componente);
 			}
-		list_remove(consolas, i);		//sino, me manda un 1, que termino bien
-		printf("Se desconecto la consola en %d, ya termino su programa, eliminada\n",componente);
 		}
 	}
 	return 0;
@@ -375,7 +377,7 @@ void atender_Nuevos(){
 	while(1){
 		 sem_wait(&sem_Nuevos); //se libero un pcb en la umc
 		 if(!queue_is_empty(colaNuevos)){ //si hay alguno
-		 PCB* pcbNuevo = malloc(sizeof(PCB));
+			 PCB* pcbNuevo;
 			 pcbNuevo = queue_pop(colaNuevos);
 		 	 queue_push(colaListos,pcbNuevo); //entonces lo mando a Listos
 		 	 sem_post(&sem_Listos);
@@ -389,7 +391,7 @@ void atender_Ejecuciones(){
 	 while(1){
 		 sem_wait(&sem_Listos);
 		 printf("[HILO EJECUCIONES]: se activo el semaforo listo y lo frene, voy a ver los cpus disponibles\n"); //prueba
-		 PCB* pcbListo = malloc(sizeof(PCB));
+		 PCB* pcbListo;
 		 pcbListo = queue_pop(colaListos);
 		 if(ese_PCB_hay_que_eliminarlo(pcbListo->id)){
 			 printf("La consola del proceso %d no existe mas, se lo eliminara\n",pcbListo->id);
@@ -418,6 +420,7 @@ void atender_Ejecuciones(){
 	 int miSLEEP = dispositivosSleeps[posicion];
 	 while(1){
 	 	 sem_wait(&semaforosES[posicion]);
+	 	 printf("soy el io %d\n",posicion);
 	 	 pcbParaES* pcbBloqueando = queue_pop(colasES[posicion]);
 	 	 printf("[HILO DE E/S nro %d]: saque el pcb nro %d y va a esperar %d ut\n", posicion, pcbBloqueando->pcb->id,pcbBloqueando->ut);
 	 	 usleep(miSLEEP*pcbBloqueando->ut);
@@ -445,7 +448,7 @@ void atender_Ejecuciones(){
 	 int cod=2;
 	 while(1){
 		 sem_wait(&sem_Terminado);
-	 	 PCB* pcbTerminado = malloc(sizeof(PCB));
+	 	 PCB* pcbTerminado;
 	 	 pcbTerminado = queue_pop(colaTerminados);
 	 	 finalizarProgramaUMC(pcbTerminado->id);
 	 	 finalizarProgramaConsola(pcbTerminado->id, cod);
@@ -533,7 +536,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 #define E_S 5
 
 		int tamanioNombre, posicion, unidadestiempo,valor,tamanio,sigueCPU;
-		char *identificador,*texto,*valor_char;
+		char *identificador,*texto,*valor_char, *ut;
 		PCB *pcbDesSerializado;
 		if (operacion){
 			tamanioNombre = recibirProtocolo(cpu);
@@ -602,7 +605,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		//pedido E/S, va a bloqueado
 		//recibo nombre de dispositivo, y unidades de tiempo a utilizar
 		tamanio=recibirProtocolo(cpu);
-		char* ut=recibirMensaje(cpu,tamanio);
+		ut=recibirMensaje(cpu,tamanio);
 		unidadestiempo = atoi(ut);
 		posicion = (int)dictionary_get(dispositivosES,identificador);
 		tamanio = recibirProtocolo(cpu);
@@ -689,7 +692,6 @@ void enviarTextoConsola(int consola, char* texto){
 PCB* desSerializarMensajeCPU(char* char_pcb){
 	PCB* pcbDevuelto = (PCB*) malloc(sizeof(PCB));
 	pcbDevuelto = fromStringPCB(char_pcb);
-	free(char_pcb);
 
 	return pcbDevuelto;
 }
