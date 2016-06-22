@@ -564,8 +564,8 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		valor=atoi(valor_char);
 		posicion = (int)dictionary_get(globales,identificador);
 		globalesValores[posicion] = valor;
-		/*valor=htonl(valor);
-		send(cpu,&valor,4,0);*/
+		valor=htonl(valor);
+		send(cpu,&valor,4,0);
 		free(valor_char);
 		free(identificador);
 		break;
@@ -593,7 +593,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 	case SIGNAL:
 		//signal a un semaforo, post
 		//recibo el identificador del semaforo
-	//	send(cpu,"0001",4,0);
+		send(cpu,"0001",4,0);
 		posicion = (int)dictionary_get(semaforos,identificador);
 		if(!contadorSemaforo[posicion]){
 			sem_post(&semaforosGlobales[posicion]); //si esta en 0, activo el hilo para que los desbloquee

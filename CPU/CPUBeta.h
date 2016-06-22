@@ -58,7 +58,7 @@ void imprimirTexto(char* texto);
 void finalizar() ;
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable);
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor);
-t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta);
+void irAlLabel(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar);
 void entradaSalida(t_nombre_dispositivo,int tiempo);
 void wait(t_nombre_semaforo identificador_semaforo);
@@ -72,7 +72,6 @@ void enviarMensajeNucleoConsulta(char* variable);
 void enviarMensajeNucleoAsignacion(char* variable, int valor);
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pedir linea codigo, 1 = pedir valor almacenado
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
-void saltoDeLinea(t_nombre_etiqueta t_nombre_etiqueta);
 void parsear(char* instruccion);
 void retornar(t_valor_variable retorno);
 

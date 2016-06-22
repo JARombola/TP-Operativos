@@ -334,12 +334,11 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	return ntohl(valor_nucleo);
 }
 
-t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
+void irAlLabel(t_nombre_etiqueta etiqueta){
 	printf("Ir a Label: %s \n", etiqueta);
 	pcb.pc =  metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
 	printf("Salto a: %d", pcb.pc);
 	pcb.pc--;
-	return (pcb.pc+1);
 }
 
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
@@ -558,12 +557,6 @@ void parsear(char* instruccion){
 
 int tienePermiso(char* autentificacion){
 	return 1;
-}
-
-void saltoDeLinea(t_nombre_etiqueta t_nombre_etiqueta){
-	char* nombre=string_substring_from(t_nombre_etiqueta,1);
-	pcb.pc = metadata_buscar_etiqueta(nombre,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	pcb.pc--;
 }
 
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
