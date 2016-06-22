@@ -125,10 +125,10 @@ int procesarPeticion(){
 	int quantum = 0;
 	int quantum_sleep = 0;
 
-	while(!finalizado){
+	while ((!finalizado) && (status)){
 
+		printf("\n\nPeticion del Nucleo\n\n");
 		quantum = recibirProtocolo(nucleo);
-		printf("Peticion del Nucleo\n\n");
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
 
@@ -140,7 +140,7 @@ int procesarPeticion(){
 		}
 
 		printf("Quantum recibido: %d\n",quantum);
-		quantum = 100;printf("Quantum hardcodeado: %d\n",quantum);
+		quantum = 1000;printf("Quantum hardcodeado: %d\n",quantum);
 
 		printf("Quantum Sleep recibido: %d\n",quantum_sleep);
 		quantum_sleep = 0;printf("Quantum Sleep recibido: %d\n",quantum_sleep);
@@ -154,6 +154,8 @@ int procesarPeticion(){
 		free(pcbRecibido);
 
 		procesarCodigo(quantum, quantum_sleep);
+
+		printf("Fin del Proceso %d %d\n", finalizado, status);
 	}
 	return 0;
 }
@@ -196,7 +198,7 @@ void procesarCodigo(int quantum, int quantum_sleep){
 		case -1:
 			close(nucleo);
 			close(umc);
-			break;
+		 	break;
 		case -2:
 			close(umc);
 			close(nucleo);
@@ -282,7 +284,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 }
 
 t_valor_variable dereferenciar(t_puntero pagina) {
-	Pagina* pag = (Pagina*) pagina;
+	Pagina*  pag = (Pagina*) pagina;
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
 	int valor;
 	int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
@@ -400,7 +402,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
  	if (verificador <= 0){
  		finalizado = -2;
  		printf("Error: Fallo la conexion con el Nucleo\n");
- 		return;
+ 		 return;
  	}
 	respuesta[2]= '\0';
 
@@ -482,6 +484,7 @@ void finalizar() {
 	if (tamanioStack == 1){
 		char* mensaje = string_new();
 		string_append(&mensaje,"0003");
+		pcb.stack = list_create();
 		char* pcb_char = toStringPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(pcb_char)));
 		string_append(&mensaje,pcb_char);
@@ -491,6 +494,7 @@ void finalizar() {
 		send(nucleo,mensaje,strlen(mensaje),0);
 		free(mensaje);
 		finalizado = 1;
+		printf("PCB enviado al Nucleo sin problemas \n");
 	}
 }
 
