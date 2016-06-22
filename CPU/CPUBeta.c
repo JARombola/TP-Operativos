@@ -336,7 +336,10 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
 	printf("Ir a Label: %s \n", etiqueta);
-	return metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	pcb.pc =  metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
+	printf("Salto a: %d", pcb.pc);
+	pcb.pc--;
+	return (pcb.pc+1);
 }
 
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
