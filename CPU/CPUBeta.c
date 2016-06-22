@@ -41,7 +41,7 @@ void cerrarCPU(int senial){
 		switch(senial){
 			case SIGUSR1:
 				printf("Rayos Me mataron con SIGUSR1\n");
-				status = 0;
+				status = 1;
 				break;
 			case SIGINT:
 				printf("Adios Mundo Cruel\n");
@@ -234,7 +234,7 @@ char* pedirLinea(){
 		}
 		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
 		char* respuesta=malloc(size_page+1);
-		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
+		int verificador = recv(umc, respuesta, size_page, 0);
 		if (verificador <= 0){
 			printf("Error : Fallor la conexion con la UMC\n");
 			finalizado = -1;
@@ -285,7 +285,7 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
 	int valor;
-	int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
+	int recibidos=recv(umc,&valor,sizeof(int),0);
 	if (recibidos<= 0){
 		printf("Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
@@ -304,7 +304,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 	printf("Obtener Valor Compartido de: %s", variable);
  	enviarMensajeNucleoConsulta(variable);
  	int valor;
- 	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
+ 	int verificador = recv(nucleo,&valor,sizeof(int),0);
 
  	if (verificador <= 0){
  		finalizado = -2;
@@ -321,17 +321,17 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
 	printf("Asignar valor compatido \n");
 	enviarMensajeNucleoAsignacion(variable,valor);
-/*	int valor_nucleo;
+	int valor_nucleo;
 
- 	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
+ 	int verificador = recv(nucleo,&valor,sizeof(int),0);
 
  	if (verificador <= 0){
  		finalizado = -2;
  		printf("Error: Fallo la conexion con el Nucleo\n");
  		return -1;
- 	}*/
+ 	}
 
-	return valor; //ntohl(valor_nucleo);
+	return ntohl(valor_nucleo);
 }
 
 t_puntero_instruccion irAlLabel(t_nombre_etiqueta etiqueta){
@@ -393,7 +393,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	char respuesta[3];
- 	int verificador = recv(nucleo,respuesta,2,MSG_WAITALL);
+ 	int verificador = recv(nucleo,respuesta,2,0);
 
  	if (verificador <= 0){
  		finalizado = -2;
@@ -402,9 +402,9 @@ void wait(t_nombre_semaforo identificador_semaforo){
  	}
 	respuesta[2]= '\0';
 
-	if(string_equals_ignore_case(respuesta,"ok")){
+	if(respuesta[0]=='o'){
 		printf("Wait ok sin problemas\n");
-	}else if(string_equals_ignore_case(respuesta,"no")){
+	}else if(respuesta[0]=='n'){
 		printf("Semaforo bloqueante\n");
 		finalizado = 3;
 	}else printf("Error: Respuesta de el nucleo: %s\n",respuesta);
@@ -419,13 +419,13 @@ void post(t_nombre_semaforo identificador_semaforo){
 	printf("Le mando el mensaje al nucleo: %s \n", mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
-/*	int verificador = recibirProtocolo(nucleo);
+	int verificador = recibirProtocolo(nucleo);
 	printf("Recibi del nucleo %d\n", verificador);
 	if (verificador != 1){
 		finalizado = -2;
 		printf("Error: Erro de conexion con el Nucleo \n");
 		printf("Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
-	}*/
+	}
 }
 
 
@@ -599,7 +599,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	free(offset);
 	free(tam);
 	char* resp=malloc(5);
-	int verificador = recv(umc,resp,4,MSG_WAITALL);
+	int verificador = recv(umc,resp,4,0);
 	if (verificador <= 0){
 		printf("Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
