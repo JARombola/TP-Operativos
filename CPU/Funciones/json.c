@@ -438,12 +438,15 @@ char* toStringListStack(t_list* lista_stack){
 
 char* toStringStack(Stack stack){
 	char* char_stack=string_new();
-	char* char_args = toStringListPagina(stack.args);
+	if(stack.args!=NULL){
+		char* char_args = toStringListPagina(stack.args);
+		string_append_with_format(&char_stack,"%s_",char_args);
+		free(char_args);
+	}
 	char* char_retpos = toStringInt(stack.retPos);
 	char* char_ret_var = toStringPagina(stack.retVar);
 	char* char_var_list = toStringListVariables(stack.vars);
-	string_append_with_format(&char_stack,"%s_%s_%s_%s_",char_args,char_retpos,char_ret_var,char_var_list);
-	free(char_args);
+	string_append_with_format(&char_stack,"%s_%s_%s_",char_retpos,char_ret_var,char_var_list);
 	free(char_retpos);
 	free(char_ret_var);
 	free(char_var_list);
