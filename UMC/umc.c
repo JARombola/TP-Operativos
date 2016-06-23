@@ -35,11 +35,13 @@ int inicializarPrograma(int);					// a traves del socket recibe el PID + Cant de
 void* enviarBytes(int proceso,int pagina,int offset,int size, int operacion);
 int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
 int finalizarPrograma(int);
-bool filtrarPorPid(traductor_marco*);
+void guardarTabla(traductor_marco*);
+void guardarDatos(traductor_marco*);
+int filtrarPorPid(traductor_marco*);
 
 //-----MENSAJES----
 void mostrarTablaPag(traductor_marco*);
-void mostrarUnMarco(traductor_marco *);
+void guardarDump(t_list* proceso);
 
 //COMANDOS--------------
 
@@ -49,7 +51,7 @@ int totalPaginas,conexionSwap, *vectorMarcos;
 void* memoria;
 datosConfiguracion* datosMemoria;
 t_log* archivoLog;
-
+FILE* reporteDump;
 
 
 int main(int argc, char* argv[]) {
@@ -135,6 +137,8 @@ int main(int argc, char* argv[]) {
 
 //--------------------------------------------HILOS------------------------
 void consola(){
+	reporteDump=fopen("reporteDump","w");
+	fclose(reporteDump);
 	int procesoBuscar;
 	while (1) {
 		char* comando;
@@ -144,47 +148,33 @@ void consola(){
 		if (esIgual(comando, "retardo")) {
 			printf("velocidad nueva:");
 			scanf("%d", &VELOCIDAD);
-			char* mensaje="Velocidad actualizada";
+			char* mensaje=string_new();
+			string_append(&mensaje,"Velocidad nueva:");
 			string_append(&mensaje,(char*)VELOCIDAD);
 			registrarInfo(archivoLog,mensaje);
 			//actualizar retardo en el config
 			datosMemoria->retardo= VELOCIDAD;
+			free(mensaje);
 		}
 		else {
 			if (esIgual(comando, "dump")) {
 				scanf("%d",&nroProceso);
-				int pos=buscar(6,nroProceso);
+			//	int pos=buscar(6,nroProceso);
 
-				bool filtrarPorPid(traductor_marco* marco){
-					 if (marco-> proceso == nroProceso) return 1;
-					 else return 0;
-				}
+				int filtrarPorPid(traductor_marco* marco){
+					if(nroProceso==-1){return 1;}							//Para que lo haga a todos los procesos
+					return (marco-> proceso == nroProceso);}
+
 				// guardo en una lista nueva los que tengan el mismo pid
 				t_list* nueva = list_filter(tabla_de_paginas, filtrarPorPid);
-				list_iterate(nueva, mostrarUnMarco);
-
-				// esto no se si iria o no ahora
-				void* mje=malloc(datosMemoria->marco_size+1);
-				memcpy(mje,memoria+pos,datosMemoria->marco_size);
-				memcpy(mje+datosMemoria->marco_size, "\0",1);
-				printf("%s\n",mje);//todo
-				free(mje);
-				/*printf("Estructuras de Memoria\n");
-				printf("Datos de Memoria\n");*/
+				reporteDump=fopen("reporteDump","a");
+				guardarDump(nueva);
+				fclose(reporteDump);
+				printf("Dump generado\n");
 			}
 			else {
 				if (esIgual(comando, "tlb")) {
-					int pos=almacenarBytes(0,0,0,4,10);
-					void* asd=malloc(15);
-					memcpy(asd,memoria+pos,15);
-					int p;memcpy(&p,asd,4);
-					printf("%d -\n",p);
-					char* q=malloc(12);
-					memcpy(q,asd+4,11);
-					memcpy(q+11,"\0",1);
-					printf("Q: %s\n",q);
-
-					list_clean(tabla_de_paginas);
+//					list_clean(tlb);
 					printf("TLB Borrada :)\n");
 				}
 				else {
@@ -192,7 +182,6 @@ void consola(){
 						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
 						finalizarPrograma(0);
 						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);/*
-						printf("Proceso?");
 						scanf("%d",&procesoBuscar);//todo
 						void comandoMemory(traductor_marco* pagina){
 							if(pagina->proceso==procesoBuscar)pagina->modificada=1;
@@ -207,10 +196,43 @@ void consola(){
 }
 
 
-void mostrarUnMarco(traductor_marco *proceso){
-	printf("Este es el proceso nro %d", proceso->proceso);
-	printf("La pagina es %d", proceso->pagina);
-	printf("El marco es %d", proceso->marco);
+void guardarDump(t_list* proceso){
+	int i;
+	fprintf(reporteDump,"%s\n","___TABLA DE PAGINAS___");
+	for(i=0;i<list_size(proceso);i++){
+		traductor_marco* datosProceso=list_get(proceso,i);
+		guardarTabla(datosProceso);
+	}
+	fprintf(reporteDump,"%s\n","___Datos___");
+	for(i=0;i<list_size(proceso);i++){
+		traductor_marco* datosProceso=list_get(proceso,i);
+		guardarDatos(datosProceso);
+	}
+}
+
+void guardarTabla(traductor_marco* datosProceso){
+	fprintf(reporteDump,"%s %d	|	%s %d	|	%s %d\n","Proceso:",datosProceso->proceso,"Pag:",datosProceso->pagina,"Marco:",datosProceso->marco);
+}
+
+void guardarDatos(traductor_marco* datosProceso){
+	if(datosProceso->marco!=-1){									//todo y si tiene numeros? :/
+		fprintf(reporteDump,"%s %d","Marco: ",datosProceso->marco);
+		void* datos=malloc(datosMemoria->marco_size+3);
+		memcpy(datos,"[",1);
+		memcpy(datos+1,memoria+datosProceso->marco*datosMemoria->marco_size,datosMemoria->marco_size);
+		memcpy(datos+1+datosMemoria->marco_size,"]\n",2);
+		fwrite(datos,datosMemoria->marco_size+3,1,reporteDump);
+		free(datos);
+	}
+}
+
+void mostrarTablaPag(traductor_marco* fila) {
+	printf("Marco: %d, Pag: %d, Proc:%d", fila->marco, fila->pagina,fila->proceso);
+	char* asd = malloc(datosMemoria->marco_size + 1);
+	memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
+	memcpy(asd + datosMemoria->marco_size , "\0", 1);
+	printf("-[%s]\n", asd);
+	free(asd);
 }
 
 void atenderCpu(int conexion){
@@ -235,7 +257,7 @@ void atenderCpu(int conexion){
 
 			case ENVIAR_BYTES:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
 				datos=enviarBytes(proceso,pagina,offset,size,operacion);
-				if (string_equals_ignore_case(datos,"-1")){size=1;}			//size=1 => La cpu sabe que hubo un error xq no recibe 4 bytes
+				if (string_equals_ignore_case(datos,"-1")){datos=string_repeat('@',size);}			//size=1 => La cpu sabe que hubo un error xq no recibe 4 bytes
 				send(conexion,datos,size,0);
 				free(datos);
 				break;
@@ -290,14 +312,7 @@ void atenderNucleo(int nucleo){
 }
 
 
-void mostrarTablaPag(traductor_marco* fila) {
-	printf("Marco: %d, Pag: %d, Proc:%d", fila->marco, fila->pagina,fila->proceso);
-	char* asd = malloc(datosMemoria->marco_size + 1);
-	memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
-	memcpy(asd + datosMemoria->marco_size , "\0", 1);
-	printf("-[%s]\n", asd);
-	free(asd);
-}
+
 
 
 //-----------------------------------------------OPERACIONES UMC-------------------------------------------------
@@ -311,6 +326,7 @@ int inicializarPrograma(int conexion) {
 	int i;
 	for (i = 0; i < paginasNecesarias; i++) {//Entradas en la tabla, SIN marcos
 		  actualizarTabla(i, PID, -1);
+	//	void* asd=malloc(datosMemoria->marco_size);
 	//	memcpy(asd,codigo+i*datosMemoria->marco_size,datosMemoria->marco_size);
 	//	guardarPagina(asd, PID, i);
 	}
