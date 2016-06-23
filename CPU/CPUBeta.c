@@ -140,7 +140,6 @@ int procesarPeticion(){
 		}
 
 		printf("Quantum recibido: %d\n",quantum);
-		quantum = 1000;printf("Quantum hardcodeado: %d\n",quantum);
 
 		printf("Quantum Sleep recibido: %d\n",quantum_sleep);
 		quantum_sleep = 0;printf("Quantum Sleep recibido: %d\n",quantum_sleep);

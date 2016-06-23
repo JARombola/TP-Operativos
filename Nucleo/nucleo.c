@@ -56,7 +56,6 @@ int ese_PCB_hay_que_eliminarlo(int consola);
 int revisarActividadConsolas(fd_set*);
 int revisarActividadCPUs(fd_set*);
 char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep);
-PCB* desSerializarMensajeCPU(char* char_pcb);
 void enviarPCBaCPU(int, char*);
 void finalizarProgramaUMC(int id);
 void finalizarProgramaConsola(int consola, int codigo);
@@ -485,7 +484,7 @@ void atenderOperacion(int op,int cpu){
 		//termino bien el quantum, no necesita nada
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
-		pcbDesSerializado = desSerializarMensajeCPU(texto);
+		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
 		printf("el cpu termino su quantum, no necesita nada\n");
  		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
@@ -504,7 +503,7 @@ void atenderOperacion(int op,int cpu){
 		//termino el ansisop, va a Terminado
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
-		pcbDesSerializado = desSerializarMensajeCPU(texto);
+		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
 		printf("el proceso %d paso de Execute a Terminado\n",pcbDesSerializado->id);
  		if(sigueCPU){
@@ -580,7 +579,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			send(cpu, "no", 2, 0);						//=> Pido el pcb
 			tamanio = recibirProtocolo(cpu); 			//tamaño del pcb
 			texto = recibirMensaje(cpu,tamanio);		//PCB
-			pcbDesSerializado = desSerializarMensajeCPU(texto);
+			pcbDesSerializado = fromStringPCB(texto);
 			sigueCPU = recibirProtocolo(cpu);
 			queue_push(colasSEM[posicion], pcbDesSerializado); //mando el pcb a bloqueado
 	 		if(sigueCPU){
@@ -610,7 +609,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		posicion = (int)dictionary_get(dispositivosES,identificador);
 		tamanio = recibirProtocolo(cpu);
 		texto = recibirMensaje(cpu,tamanio);
-		pcbDesSerializado = desSerializarMensajeCPU(texto);
+		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
 
 		pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES)+sizeof(PCB));		//todo revisar, pero creo que ahora guarda bien
@@ -687,13 +686,6 @@ void enviarTextoConsola(int consola, char* texto){
 	 string_append(&mensaje,"\0");
 	 send(consola, mensaje, string_length(mensaje), 0);
 	 free(mensaje);
-}
-
-PCB* desSerializarMensajeCPU(char* char_pcb){
-	PCB* pcbDevuelto = (PCB*) malloc(sizeof(PCB));
-	pcbDevuelto = fromStringPCB(char_pcb);
-
-	return pcbDevuelto;
 }
 
 void enviarPCBaCPU(int cpu, char* pcbSerializado){

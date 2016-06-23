@@ -21,6 +21,14 @@ int main(){
 	stack->args = list_create();
 	stack->vars = list_create();
 	list_add(pcb.stack,stack);
+	Stack* stack = malloc(sizeof(Stack));
+	stack->retPos = 4;
+	stack->retVar.off = 2;
+	stack->retVar.pag = 4;
+	stack->retVar.tamanio = 9;
+	stack->args = list_create();
+	stack->vars = list_create();
+	list_add(pcb.stack,stack);
 	pcb.indices = *(metadata_desde_literal(arch_char));
 	/*printf("Repetir Instrucciones\n");
 	printf("%d\n",pcb.indices.instrucciones_serializado[0].start);
