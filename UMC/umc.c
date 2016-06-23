@@ -35,8 +35,11 @@ int inicializarPrograma(int);					// a traves del socket recibe el PID + Cant de
 void* enviarBytes(int proceso,int pagina,int offset,int size, int operacion);
 int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
 int finalizarPrograma(int);
+bool filtrarPorPid(traductor_marco*);
+
 //-----MENSAJES----
 void mostrarTablaPag(traductor_marco*);
+void mostrarUnMarco(traductor_marco *);
 
 //COMANDOS--------------
 
@@ -181,7 +184,7 @@ void consola(){
 					memcpy(q+11,"\0",1);
 					printf("Q: %s\n",q);
 
-
+					list_clean(tabla_de_paginas);
 					printf("TLB Borrada :)\n");
 				}
 				else {
