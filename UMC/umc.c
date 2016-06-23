@@ -136,6 +136,7 @@ void consola(){
 	while (1) {
 		char* comando;
 		int VELOCIDAD;
+		int nroProceso;
 		comando = string_new(), scanf("%s", comando);
 		if (esIgual(comando, "retardo")) {
 			printf("velocidad nueva:");
@@ -143,11 +144,23 @@ void consola(){
 			char* mensaje="Velocidad actualizada";
 			string_append(&mensaje,(char*)VELOCIDAD);
 			registrarInfo(archivoLog,mensaje);
+			//actualizar retardo en el config
+			datosMemoria->retardo= VELOCIDAD;
 		}
 		else {
 			if (esIgual(comando, "dump")) {
-				scanf("%d",&VELOCIDAD);
-				int pos=buscar(6,VELOCIDAD);
+				scanf("%d",&nroProceso);
+				int pos=buscar(6,nroProceso);
+
+				bool filtrarPorPid(traductor_marco* marco){
+					 if (marco-> proceso == nroProceso) return 1;
+					 else return 0;
+				}
+				// guardo en una lista nueva los que tengan el mismo pid
+				t_list* nueva = list_filter(tabla_de_paginas, filtrarPorPid);
+				list_iterate(nueva, mostrarUnMarco);
+
+				// esto no se si iria o no ahora
 				void* mje=malloc(datosMemoria->marco_size+1);
 				memcpy(mje,memoria+pos,datosMemoria->marco_size);
 				memcpy(mje+datosMemoria->marco_size, "\0",1);
@@ -191,6 +204,11 @@ void consola(){
 }
 
 
+void mostrarUnMarco(traductor_marco *proceso){
+	printf("Este es el proceso nro %d", proceso->proceso);
+	printf("La pagina es %d", proceso->pagina);
+	printf("El marco es %d", proceso->marco);
+}
 
 void atenderCpu(int conexion){
 
