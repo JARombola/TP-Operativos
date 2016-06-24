@@ -179,15 +179,15 @@ void consola(){
 				}
 				else {
 					if (esIgual(comando, "memoria")) {
-						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
-						finalizarPrograma(0);
-						list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);/*
+						//list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
+						//finalizarPrograma(0);
+						//list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
 						scanf("%d",&procesoBuscar);//todo
 						void comandoMemory(traductor_marco* pagina){
 							if(pagina->proceso==procesoBuscar)pagina->modificada=1;
 						}
 						list_iterate(tabla_de_paginas,(void*)comandoMemory);
-						printf("Paginas modificadas (proceso: %d)\n",procesoBuscar);*/
+						printf("Paginas modificadas (proceso: %d)\n",procesoBuscar);
 					}
 				}
 			}
