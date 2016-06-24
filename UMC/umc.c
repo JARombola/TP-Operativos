@@ -198,12 +198,12 @@ void consola(){
 
 void guardarDump(t_list* proceso){
 	int i;
-	fprintf(reporteDump,"%s\n","___TABLA DE PAGINAS___");
+	fprintf(reporteDump,"/////////////TABLA DE PAGINAS\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 	for(i=0;i<list_size(proceso);i++){
 		traductor_marco* datosProceso=list_get(proceso,i);
 		guardarTabla(datosProceso);
 	}
-	fprintf(reporteDump,"%s\n","___Datos___");
+	fprintf(reporteDump,"/////////////DATOS\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 	for(i=0;i<list_size(proceso);i++){
 		traductor_marco* datosProceso=list_get(proceso,i);
 		guardarDatos(datosProceso);
@@ -211,12 +211,12 @@ void guardarDump(t_list* proceso){
 }
 
 void guardarTabla(traductor_marco* datosProceso){
-	fprintf(reporteDump,"%s %d	|	%s %d	|	%s %d\n","Proceso:",datosProceso->proceso,"Pag:",datosProceso->pagina,"Marco:",datosProceso->marco);
+	fprintf(reporteDump,"Proceso: %d		|	Pag: %d		|		Marco: %d\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco);
 }
 
 void guardarDatos(traductor_marco* datosProceso){
 	if(datosProceso->marco!=-1){									//todo y si tiene numeros? :/
-		fprintf(reporteDump,"%s %d","Marco: ",datosProceso->marco);
+		fprintf(reporteDump,"Marco: %d",datosProceso->marco);
 		void* datos=malloc(datosMemoria->marco_size+3);
 		memcpy(datos,"[",1);
 		memcpy(datos+1,memoria+datosProceso->marco*datosMemoria->marco_size,datosMemoria->marco_size);
