@@ -148,7 +148,7 @@ int procesarPeticion(){
 			perror("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
-
+		printf("\n Recibi del Nucleo: %s\n", pcbRecibido);
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
 
@@ -184,10 +184,11 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			char* pcb_char = toStringPCB(pcb);
 			string_append(&mensaje,toStringInt(strlen(pcb_char)));
 			string_append(&mensaje,pcb_char);
-			free(pcb_char);
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
+			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			free(pcb_char);
 			free(mensaje);
 			printf("Fin de Quantum \n");
 		}
@@ -379,10 +380,11 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	char* pcb_char = toStringPCB(pcb);
 	string_append(&mensaje,toStringInt(strlen(pcb_char)));
 	string_append(&mensaje,pcb_char);
-	free(pcb_char);
 	string_append(&mensaje,toStringInt(status));
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
+	printf("\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
+	free(pcb_char);
 	free(mensaje);
 
 	finalizado = 2;
@@ -417,6 +419,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		string_append(&mensaje,toStringInt(strlen(char_pcb)));
 		string_append(&mensaje,char_pcb);
 		send(nucleo,mensaje,strlen(mensaje),0);
+		printf("\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
 		free(mensaje);
 		free(char_pcb);
 		finalizado = 3;
@@ -556,6 +559,9 @@ Stack* obtenerStack(){
 		Stack* stack = malloc(sizeof(Stack));
 		stack->vars = list_create();
 		Pagina pagina;
+		pagina.off = 0;
+		pagina.pag = 0;
+		pagina.tamanio = 0;
 		stack->retVar = pagina;
 		stack->args = list_create();
 		list_add(pcb.stack,stack);
