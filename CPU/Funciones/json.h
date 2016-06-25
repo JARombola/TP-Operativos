@@ -45,13 +45,13 @@ void invertir(char* palabra);
 t_intructions* valorInstruccionMeta(char* char_meta, int tamanio);
 u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
 
-char* toStringInstruccion(t_intructions instruccion, char separador);
+char* toStringInstruccion(t_intructions instruccion);
 
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio);
 t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio);
 
-char* toStringMetadata(t_metadata_program meta, char separador);
-t_metadata_program fromStringMetadata(char* char_meta,char separador);
+char* toStringMetadata(t_metadata_program meta);
+t_metadata_program fromStringMetadata(char* char_meta);
 
 PCB fromStringPCB(char* char_pcb);
 char* toStringPCB(PCB pcb);
@@ -59,8 +59,8 @@ char* toStringPCB(PCB pcb);
 char* toStringList(t_list* lista, char simbol);
 t_list* fromStringList(char* char_list, char simbol);
 
-char* valorStringMetadata(char *char_meta, char separador);
-u_int32_t valorMetadata(char*char_meta,int indice, char separador);
+char* valorStringMetadata(char *char_meta);
+u_int32_t valorMetadata(char*char_meta,int indice);
 
 char* toStringInt(int numero);
 

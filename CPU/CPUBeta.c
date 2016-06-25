@@ -350,6 +350,7 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 	stack->retVar = *paginaReturn;
 	stack->retPos = pcb.pc;
 	stack->vars = list_create();
+	stack->args = list_create();
 	Pagina pag = obtenerPagDisponible();
 	Pagina* pagina = malloc(sizeof(Pagina));
 	pagina = &pag;
@@ -547,6 +548,7 @@ Stack* obtenerStack(){
 		stack->vars = list_create();
 		Pagina pagina;
 		stack->retVar = pagina;
+		stack->args = list_create();
 		list_add(pcb.stack,stack);
 		tamanioStack = 1;
 	}
