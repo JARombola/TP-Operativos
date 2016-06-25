@@ -79,7 +79,6 @@ int main(int argc, char* argv[]) {
 
 //	consola();
 
-
 	//----------------------------------------------------------------------------SOCKETS
 
 	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc,datosMemoria->ip);
