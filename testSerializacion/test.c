@@ -21,8 +21,7 @@ int main(){
 	stack->args = list_create();
 	stack->vars = list_create();
 	list_add(pcb.stack,stack);
-	Stack* stack = malloc(sizeof(Stack));
-	stack->retPos = 4;
+    stack->retPos = 4;
 	stack->retVar.off = 2;
 	stack->retVar.pag = 4;
 	stack->retVar.tamanio = 9;
