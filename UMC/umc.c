@@ -77,8 +77,7 @@ int main(int argc, char* argv[]) {
 	}
 	tablaClocks=list_create();
 
-	// prueba comandos
-	consola();
+//	consola();
 
 
 	//----------------------------------------------------------------------------SOCKETS
