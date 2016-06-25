@@ -366,6 +366,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 
 	char* mensaje=string_new();
 	string_append(&mensaje,"00020005");
+	pcb.pc++;
 	char* tamanio=toStringInt(string_length(dispositivo));
 	string_append(&mensaje,tamanio);
 	free(tamanio);
@@ -410,6 +411,14 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		printf("Wait ok sin problemas\n");
 	}else if(strcmp(respuesta,"no")==0){
 		printf("Semaforo bloqueante\n");
+		pcb.pc++;
+		char* mensaje = string_new();
+		char* char_pcb = toStringPCB(pcb);
+		string_append(&mensaje,toStringInt(strlen(char_pcb)));
+		string_append(&mensaje,char_pcb);
+		send(nucleo,mensaje,strlen(mensaje),0);
+		free(mensaje);
+		free(char_pcb);
 		finalizado = 3;
 	}else printf("Error: Respuesta de el nucleo: %s\n",respuesta);
 }
