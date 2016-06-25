@@ -15,7 +15,6 @@
 #include <string.h>
 #include <commons/collections/queue.h>
 
-
 typedef struct{
     int proceso, pagina, marco, enMemoria, modificada;
 }traductor_marco;

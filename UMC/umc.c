@@ -77,6 +77,10 @@ int main(int argc, char* argv[]) {
 	}
 	tablaClocks=list_create();
 
+	// prueba comandos
+	consola();
+
+
 	//----------------------------------------------------------------------------SOCKETS
 
 	struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc,datosMemoria->ip);
@@ -148,22 +152,29 @@ void consola(){
 		if (esIgual(comando, "retardo")) {
 			printf("velocidad nueva:");
 			scanf("%d", &VELOCIDAD);
-			char* mensaje=string_new();
-			string_append(&mensaje,"Velocidad nueva:");
-			string_append(&mensaje,(char*)VELOCIDAD);
-			registrarInfo(archivoLog,mensaje);
-			//actualizar retardo en el config
+			//char* mensaje=string_new();
+			//string_append(&mensaje,"Velocidad nueva:");
+			//string_append(&mensaje,(char*)VELOCIDAD);
+			//registrarInfo(archivoLog,mensaje);
 			datosMemoria->retardo= VELOCIDAD;
-			free(mensaje);
+			printf("Velocidad nueva: %d \n",datosMemoria->retardo);
+			//free(mensaje);
 		}
 		else {
 			if (esIgual(comando, "dump")) {
+				printf("Ingrese nro de PID:");
 				scanf("%d",&nroProceso);
 			//	int pos=buscar(6,nroProceso);
 
 				int filtrarPorPid(traductor_marco* marco){
-					if(nroProceso==-1){return 1;}							//Para que lo haga a todos los procesos
+					// para testearlo, igual asi no funciona
+					//marco->proceso=222;
+					//marco->pagina=3;
+					//marco->marco=15;
+					//list_add(tabla_de_paginas,marco);
+					if(nroProceso==-1){return 0;}							//Para que lo haga a todos los procesos
 					return (marco-> proceso == nroProceso);}
+
 
 				// guardo en una lista nueva los que tengan el mismo pid
 				t_list* nueva = list_filter(tabla_de_paginas, filtrarPorPid);
@@ -182,6 +193,7 @@ void consola(){
 						//list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
 						//finalizarPrograma(0);
 						//list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
+						printf("Ingrese el PID del proceso para modificar paginas");
 						scanf("%d",&procesoBuscar);//todo
 						void comandoMemory(traductor_marco* pagina){
 							if(pagina->proceso==procesoBuscar)pagina->modificada=1;
