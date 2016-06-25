@@ -247,18 +247,18 @@ char* toStringPCB(PCB pcb){
 	free(char_stack);
 	return char_pcb;
 }
-PCB fromStringPCB(char* char_pcb){
-	PCB pcb;
-	pcb.id = atoi(toSubString(char_pcb,0,3));
+PCB* fromStringPCB(char* char_pcb){
+	PCB* pcb = malloc(sizeof(PCB));
+	pcb->id = atoi(toSubString(char_pcb,0,3));
 	int tamanioMeta = atoi(toSubString(char_pcb,4,7));
-	pcb.indices = fromStringMetadata(toSubString(char_pcb,8,(7+tamanioMeta)));
+	pcb->indices = fromStringMetadata(toSubString(char_pcb,8,(7+tamanioMeta)));
 	int puntero = 8+tamanioMeta;
-	pcb.paginas_codigo = atoi(toSubString(char_pcb,puntero,puntero+3));
+	pcb->paginas_codigo = atoi(toSubString(char_pcb,puntero,puntero+3));
 	puntero = puntero +4;
-	pcb.pc = atoi(toSubString(char_pcb,puntero, puntero +3));
+	pcb->pc = atoi(toSubString(char_pcb,puntero, puntero +3));
 	puntero = puntero + 4;
 	char *subString = string_substring_from(char_pcb,puntero);
-	pcb.stack = fromStringListStack(subString);
+	pcb->stack = fromStringListStack(subString);
 	free(subString);
 	return pcb;
 }

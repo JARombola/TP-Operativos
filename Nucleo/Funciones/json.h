@@ -53,7 +53,7 @@ t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio)
 char* toStringMetadata(t_metadata_program meta);
 t_metadata_program fromStringMetadata(char* char_meta);
 
-PCB fromStringPCB(char* char_pcb);
+PCB* fromStringPCB(char* char_pcb);
 char* toStringPCB(PCB pcb);
 
 char* toStringList(t_list* lista, char simbol);
