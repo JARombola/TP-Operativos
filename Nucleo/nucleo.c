@@ -5,7 +5,6 @@
  *      Author: utnso
  */
 
-
 #include <sys/select.h>
 #include <commons/collections/dictionary.h>
 #include <commons/collections/queue.h>
@@ -14,9 +13,13 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/inotify.h>
 #include "Funciones/Comunicacion.h"
 #include "Funciones/json.h"
 
+#define EVENT_SIZE  ( sizeof (struct inotify_event) + 24 )
+#define BUF_LEN     ( 1024 * EVENT_SIZE )
 
 typedef struct{
 	PCB* pcb;
@@ -60,6 +63,7 @@ void enviarPCBaCPU(int, char*);
 void finalizarProgramaUMC(int id);
 void finalizarProgramaConsola(int consola, int codigo);
 void enviarTextoConsola(int consola, char* texto);
+void Modificacion_quantum();
 
 
 datosConfiguracion* datosNucleo;
@@ -100,9 +104,9 @@ int main(int argc, char* argv[]) {
 	colaListos=queue_create();
 	colaTerminados=queue_create();
 
+	pthread_create(&thread, &attr, (void*)Modificacion_quantum, NULL);
+
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
-
-
 	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
 	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);
 
@@ -695,4 +699,32 @@ void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	string_append(&mensaje,pcbSerializado);
 	string_append(&mensaje,"\0");
 	send(cpu, mensaje, string_length(mensaje), 0);
+}
+
+void Modificacion_quantum(){
+	char buffer[BUF_LEN];
+
+	int fd_config = inotify_init();
+	if (fd_config < 0) {
+		perror("inotify_init");
+	}
+	int watch_descriptor = inotify_add_watch(fd_config, "ConfigNucleo", IN_CLOSE_WRITE);//IN_CLOSE_WRITE);IN_MODIFY
+
+	while(watch_descriptor){
+		t_config* archivoConfiguracion;
+		int length = read(fd_config, buffer, BUF_LEN);
+		if (length < 0) {
+			perror("read");
+		}
+		printf("lei alguna modificacion: %d\n", length);//los prints para testear, en mi terminal no los veo.. en eclipse si
+
+		do{
+		archivoConfiguracion = config_create("ConfigNucleo");
+		}while(archivoConfiguracion == NULL);
+		(datosNucleo)->quantum = config_get_int_value(archivoConfiguracion, "QUANTUM");
+		(datosNucleo)->quantum_sleep = config_get_int_value(archivoConfiguracion,"QUANTUM_SLEEP");
+		printf("el q ahora es: %d\ny el q sleep es: %d\n",(datosNucleo)->quantum, (datosNucleo)->quantum_sleep);
+
+		config_destroy(archivoConfiguracion);
+	}
 }
