@@ -365,7 +365,7 @@ int revisarActividadCPUs(fd_set *descriptores) {
 			int protocolo = recibirProtocolo(componente);
 			if (protocolo == -1) {
 				list_remove(cpus, i);
-				list_remove(cpusDisponibles, i);//lo remueve de disponibles si no lo saco el hilo execute
+				sacar_socket_de_lista(cpusDisponibles,componente);//lo remueve de disponibles si no lo saco el hilo execute
 				return componente;
 			} else {							//el cpu me mando un mensaje, la consola nunca lo va a hacer
 				atenderOperacion(protocolo, componente);
@@ -383,6 +383,7 @@ void atender_Nuevos(){
 			 PCB* pcbNuevo;
 			 pcbNuevo = queue_pop(colaNuevos);
 		 	 queue_push(colaListos,pcbNuevo); //entonces lo mando a Listos
+			printf("[HILO NUEVOS]: el proceso %d paso de Nuevo a Listo\n",pcbNuevo->id);
 		 	 sem_post(&sem_Listos);
 		 }
 	}
@@ -407,7 +408,6 @@ void atender_Ejecuciones(){
 					int cpu = (int)list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
 					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
-
 					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					paso=0;
 				}
@@ -423,12 +423,11 @@ void atender_Ejecuciones(){
 	 int miSLEEP = dispositivosSleeps[posicion];
 	 while(1){
 	 	 sem_wait(&semaforosES[posicion]);
-	 	 printf("soy el io %d\n",posicion);
 	 	 pcbParaES* pcbBloqueando = queue_pop(colasES[posicion]);
 	 	 printf("[HILO DE E/S nro %d]: saque el pcb nro %d y va a esperar %d ut\n", posicion, pcbBloqueando->pcb->id,pcbBloqueando->ut);
 	 	 usleep(miSLEEP*pcbBloqueando->ut);
 		 queue_push(colaListos, pcbBloqueando->pcb);
-		 printf("[HILO DE E/S nro %d]: el pcb %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->id);
+		 printf("[HILO DE E/S nro %d]: el proceso %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->id);
 		 sem_post(&sem_Listos);
 		 free(pcbBloqueando);
 	 }
@@ -455,6 +454,7 @@ void atender_Ejecuciones(){
 	 	 pcbTerminado = queue_pop(colaTerminados);
 	 	 finalizarProgramaUMC(pcbTerminado->id);
 	 	 finalizarProgramaConsola(pcbTerminado->id, cod);
+	 	 printf("[HILO Terminados]: el proceso %d Termino su ejecucion\n",pcbTerminado->id);
 	 	 sem_post(&sem_Nuevos);
 	 	 free(pcbTerminado);
 	 }
@@ -490,7 +490,6 @@ void atenderOperacion(int op,int cpu){
 		texto = recibirMensaje(cpu,tamanio);
 		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
-		printf("el cpu termino su quantum, no necesita nada\n");
  		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void *)cpu);
@@ -586,6 +585,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			pcbDesSerializado = fromStringPCB(texto);
 			sigueCPU = recibirProtocolo(cpu);
 			queue_push(colasSEM[posicion], pcbDesSerializado); //mando el pcb a bloqueado
+			printf("[EXECUTE] el proceso %d paso de Execute a Bloqueado\n",pcbDesSerializado->id);
 	 		if(sigueCPU){
 				list_add(cpusDisponibles, (void *)cpu);
 	 		}
@@ -620,6 +620,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		pcbParaBloquear->pcb = pcbDesSerializado;
 		pcbParaBloquear->ut = unidadestiempo;
 		queue_push(colasES[posicion], pcbParaBloquear);
+		printf("[EXECUTE] el proceso %d paso de Execute a Bloqueado\n",pcbDesSerializado->id);
 		sem_post(&semaforosES[posicion]);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void *)cpu);
@@ -627,6 +628,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
  		free(ut);
  		free(identificador);
  		free(texto);
+ 		//todo free a pcb desserializado? pcbParaBloquear tiene una copia?
 		break;
 	}
 }
@@ -703,7 +705,7 @@ void enviarPCBaCPU(int cpu, char* pcbSerializado){
 
 void Modificacion_quantum(){
 	char buffer[BUF_LEN];
-
+	//todo verificarlo en la terminal, sino lo mando al select
 	int fd_config = inotify_init();
 	if (fd_config < 0) {
 		perror("inotify_init");
