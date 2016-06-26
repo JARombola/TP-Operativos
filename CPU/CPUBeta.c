@@ -303,7 +303,7 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	printf("Obtener Valor Compartido de: %s", variable);
+	printf("Obtener Valor Compartido de: %s\n", variable);
  	enviarMensajeNucleoConsulta(variable);
  	int valor;
  	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
@@ -325,14 +325,13 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	enviarMensajeNucleoAsignacion(variable,valor);
 	int valor_nucleo;
 
- 	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
+ 	int verificador = recv(nucleo,&valor_nucleo,sizeof(int),MSG_WAITALL);
 
  	if (verificador <= 0){
  		finalizado = -2;
  		printf("Error: Fallo la conexion con el Nucleo\n");
  		return -1;
  	}
-
 	return ntohl(valor_nucleo);
 }
 
@@ -418,6 +417,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		char* char_pcb = toStringPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(char_pcb)));
 		string_append(&mensaje,char_pcb);
+		string_append(&mensaje,toStringInt(status));
 		send(nucleo,mensaje,strlen(mensaje),0);
 		printf("\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
 		free(mensaje);
@@ -619,6 +619,11 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	if (verificador <= 0){
 		printf("Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
+	}else{
+		if (!atoi(resp)){
+			printf("Pagina inexistente\n");
+			finalizado = -1;
+		}
 	}
 	free(resp);
 }

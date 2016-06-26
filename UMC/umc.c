@@ -267,7 +267,8 @@ void atenderCpu(int conexion){
 
 			case ENVIAR_BYTES:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
 				datos=enviarBytes(proceso,pagina,offset,size,operacion);
-				if (string_equals_ignore_case(datos,"-1")){datos=string_repeat('@',size);}			//size=1 => La cpu sabe que hubo un error xq no recibe 4 bytes
+				if (string_equals_ignore_case(datos,"-1")){
+					datos=string_repeat('@',size);}							//NO DEBERIA PASAR NUNCA ESTO
 				send(conexion,datos,size,0);
 				free(datos);
 				break;

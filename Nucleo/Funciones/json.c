@@ -152,9 +152,10 @@ char* toStringMetadata(t_metadata_program meta){
 			meta.etiquetas[i]='@';
 		}
 	}
-	meta.etiquetas[meta.etiquetas_size]='\0';
-	string_append(&char_meta,meta.etiquetas);
-
+	if(meta.etiquetas_size){
+		meta.etiquetas[meta.etiquetas_size]='\0';
+		string_append(&char_meta,meta.etiquetas);
+	}
 	char* char_instrucciones=toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size);
 	string_append(&char_meta, char_instrucciones);
 	free(char_instrucciones);
