@@ -68,6 +68,7 @@ Variable* crearVariable(char variable);
 Pagina obtenerPagDisponible();
 void sumarEnLasVariables(Variable* var);
 Stack* obtenerStack();
+Stack* anteUltimoStack();
 void enviarMensajeNucleoConsulta(char* variable);
 void enviarMensajeNucleoAsignacion(char* variable, int valor);
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pedir linea codigo, 1 = pedir valor almacenado

@@ -514,6 +514,7 @@ void retornar(t_valor_variable retorno){
 	Stack* stackActual = obtenerStack();
 	int puntero = (int)&(stackActual->retVar);
 	asignar(puntero,retorno);
+	finalizar();
 }
 
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------
@@ -529,10 +530,14 @@ Pagina obtenerPagDisponible(){
 	Stack* stackActual = obtenerStack();
 	int cantidadDeVariables = list_size(stackActual->vars);
 	Pagina pagina;
-	if (cantidadDeVariables<=0){
+	if ((cantidadDeVariables<=0)&&(list_size(pcb.stack)==1)){
 		pagina.pag = pcb.paginas_codigo;
 		pagina.off = 0;
 	}else{
+		if (cantidadDeVariables <= 0){
+			free(stackActual);
+			stackActual = anteUltimoStack();
+		}
 		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
 		if ((ultimaVariable->pagina.off+ultimaVariable->pagina.tamanio+4)<=TAMANIO_PAGINA){
 			pagina.pag = ultimaVariable->pagina.pag;
@@ -568,6 +573,22 @@ Stack* obtenerStack(){
 		tamanioStack = 1;
 	}
 	return (list_get(pcb.stack,tamanioStack-1));
+}
+Stack* anteUltimoStack(){
+	int tamanioStack = list_size(pcb.stack);
+	if (tamanioStack <= 0){
+		Stack* stack = malloc(sizeof(Stack));
+		stack->vars = list_create();
+		Pagina pagina;
+		pagina.off = 0;
+		pagina.pag = 0;
+		pagina.tamanio = 0;
+		stack->retVar = pagina;
+		stack->args = list_create();
+		list_add(pcb.stack,stack);
+		tamanioStack = 1;
+	}
+	return (list_get(pcb.stack,tamanioStack-2));
 }
 
 
