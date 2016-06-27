@@ -14,6 +14,7 @@
 #include "ArchivosLogs.h"
 #include <string.h>
 #include <commons/collections/queue.h>
+#include <pthread.h>
 
 typedef struct{
     int proceso, pagina, marco, enMemoria, modificada;

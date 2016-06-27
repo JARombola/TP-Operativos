@@ -262,7 +262,7 @@ void atenderCpu(int conexion){
 				free(datos);
 				break;
 			case GUARDAR_BYTES:													//3 = Guardar Valor
-				recv(conexion,&buffer,sizeof(int),0);
+				recv(conexion,&buffer,sizeof(int),MSG_WAITALL);
 				buffer=ntohl(buffer);
 				char* resp;
 				if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
@@ -436,7 +436,7 @@ int finalizarPrograma(int procesoEliminar){
 
 int esperarRespuestaSwap(){
     char *respuesta = malloc(3);
-    recv(conexionSwap, respuesta, 2, 0);
+    recv(conexionSwap, respuesta, 2, MSG_WAITALL);
     respuesta[2] = '\0';
     int aceptado = esIgual(respuesta, "ok");
     free(respuesta);
