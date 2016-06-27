@@ -148,7 +148,7 @@ int procesarPeticion(){
 			perror("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
-
+		printf("\n Recibi del Nucleo: %s\n", pcbRecibido);
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
 
@@ -184,10 +184,11 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			char* pcb_char = toStringPCB(pcb);
 			string_append(&mensaje,toStringInt(strlen(pcb_char)));
 			string_append(&mensaje,pcb_char);
-			free(pcb_char);
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
+			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			free(pcb_char);
 			free(mensaje);
 			printf("Fin de Quantum \n");
 		}
@@ -302,7 +303,7 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	printf("Obtener Valor Compartido de: %s", variable);
+	printf("Obtener Valor Compartido de: %s\n", variable);
  	enviarMensajeNucleoConsulta(variable);
  	int valor;
  	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
@@ -324,14 +325,13 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	enviarMensajeNucleoAsignacion(variable,valor);
 	int valor_nucleo;
 
- 	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
+ 	int verificador = recv(nucleo,&valor_nucleo,sizeof(int),MSG_WAITALL);
 
  	if (verificador <= 0){
  		finalizado = -2;
  		printf("Error: Fallo la conexion con el Nucleo\n");
  		return -1;
  	}
-
 	return ntohl(valor_nucleo);
 }
 
@@ -379,10 +379,11 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	char* pcb_char = toStringPCB(pcb);
 	string_append(&mensaje,toStringInt(strlen(pcb_char)));
 	string_append(&mensaje,pcb_char);
-	free(pcb_char);
 	string_append(&mensaje,toStringInt(status));
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
+	printf("\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
+	free(pcb_char);
 	free(mensaje);
 
 	finalizado = 2;
@@ -416,7 +417,9 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		char* char_pcb = toStringPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(char_pcb)));
 		string_append(&mensaje,char_pcb);
+		string_append(&mensaje,toStringInt(status));
 		send(nucleo,mensaje,strlen(mensaje),0);
+		printf("\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
 		free(mensaje);
 		free(char_pcb);
 		finalizado = 3;
@@ -556,6 +559,9 @@ Stack* obtenerStack(){
 		Stack* stack = malloc(sizeof(Stack));
 		stack->vars = list_create();
 		Pagina pagina;
+		pagina.off = 0;
+		pagina.pag = 0;
+		pagina.tamanio = 0;
 		stack->retVar = pagina;
 		stack->args = list_create();
 		list_add(pcb.stack,stack);
@@ -613,6 +619,11 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	if (verificador <= 0){
 		printf("Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
+	}else{
+		if (!atoi(resp)){
+			printf("Pagina inexistente\n");
+			finalizado = -1;
+		}
 	}
 	free(resp);
 }

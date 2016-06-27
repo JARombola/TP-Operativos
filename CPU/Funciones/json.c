@@ -1,7 +1,7 @@
 #include "json.h"
 
 /*
- * Simbolos no validos como separador: '?', '#', '!','&',$','/','¿','-','_','*','+'
+ * Simbolos no validos como separador: '?', '#','&',$','/','¿','-','_','*','+'
  */
 
 char* toJsonArchivo(FILE* archivo){
@@ -89,19 +89,6 @@ void buscar(char* archivo, char* key, char*value){
 	strcpy(value,valor);
 }
 
-
-char* toStringInstruccion(t_intructions instruccion){
-	char* char_instruccion =  string_new();
-	char barra[2];
-	string_append(&char_instruccion, barra);
-	char num[10];
-	sprintf(num,"%d!", instruccion.start);
-	string_append(&char_instruccion,num);
-	sprintf(num,"%d!", instruccion.offset);
-	string_append(&char_instruccion,num);
-	return char_instruccion;
-}
-
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 	char* char_instrucciones=string_new();
 	string_append(&char_instrucciones, "\0");
@@ -165,9 +152,10 @@ char* toStringMetadata(t_metadata_program meta){
 			meta.etiquetas[i]='@';
 		}
 	}
-	meta.etiquetas[meta.etiquetas_size]='\0';
-	string_append(&char_meta,meta.etiquetas);
-
+	if(meta.etiquetas_size){
+		meta.etiquetas[meta.etiquetas_size]='\0';
+		string_append(&char_meta,meta.etiquetas);
+	}
 	char* char_instrucciones=toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size);
 	string_append(&char_meta, char_instrucciones);
 	free(char_instrucciones);
@@ -347,9 +335,9 @@ Stack* fromStringStack(char* char_stack){
 	char* char_retVar = toSubString(char_stack, puntero,puntero +15);
 	stack->retVar = *(fromStringPagina(char_retVar));
 	free(char_retVar);
-	puntero += 16;
+	puntero += 12;
 	char* char_vars = string_substring_from(char_stack,puntero);
-	stack->vars = fromStringListPage(char_vars);
+	stack->vars = fromStringListVariables(char_vars);
 	free(char_vars);
 	return stack;
 }
@@ -373,8 +361,12 @@ char* toStringListPagina(t_list* lista_page){
 t_list* fromStringListPage(char* char_list_page){
 	int i;
 	int page_size = strlen(char_list_page)/12;
-	Pagina* pag;
+	Pagina* pag = malloc(sizeof(Pagina));
+	pag->off = 0;
+	pag->pag = 0;
+	pag->tamanio = 0;
 	t_list* lista_page = list_create();
+	list_add(lista_page,pag);
 	for(i=0; i<= page_size;i++){
 		pag = fromStringPagina(toSubString(char_list_page,i*12,i*12+11));
 		list_add(lista_page, pag);
@@ -419,11 +411,14 @@ char* toStringListVariables(t_list* lista){
 
 t_list* fromStringListVariables(char* char_list){
 	int i;
-	int variables_size = strlen(char_list)/16;
+	int variables_size = strlen(char_list)/13;
 	t_list* lista_var = list_create();
 	Variable* variable;
-	for(i=1; i<= variables_size;i++){
-		variable = fromStringVariable(toSubString(char_list,i*13,i*13+12));
+	char* subString;
+	for(i=0; i< variables_size;i++){
+		subString = toSubString(char_list,i*13,(i*13)+12);
+		variable = fromStringVariable(subString);
+		free(subString);
 		list_add(lista_var,variable);
 	}
 	return lista_var;

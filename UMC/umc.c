@@ -241,48 +241,43 @@ void mostrarTablaPag(traductor_marco* fila) {
 }
 
 void atenderCpu(int conexion){
+	registrarTrace(archivoLog, "Nuevo CPU-");
+	int salir = 0, operacion, proceso, pagina, offset, buffer, size;
+	void* datos;
+	while (!salir) {
+		operacion = atoi(recibirMensaje(conexion, 1));
+		if (operacion) {
 
-    //                [PROTOCOLO]:
-    //                - 1) Codigo de operacion (2=consulta, 3=guardar valor)
-    //                   - 2) ID PROCESO (4 byes)
-    //                - 3) despues se reciben Pag, offset, size, buffer (valor a guardar, solo cuando es necesario).
+			proceso = recibirProtocolo(conexion);
+			pagina = recibirProtocolo(conexion);
+			offset = recibirProtocolo(conexion);
+			size=recibirProtocolo(conexion);
+			switch (operacion) {
 
-    registrarTrace(archivoLog, "Nuevo CPU-");
-    int salir = 0, operacion, proceso, pagina, offset, buffer, size;
-    void* datos;
-    while (!salir) {
-        operacion = atoi(recibirMensaje(conexion, 1));
-        if (operacion) {
-
-            proceso = recibirProtocolo(conexion);
-            pagina = recibirProtocolo(conexion);
-            offset = recibirProtocolo(conexion);
-            size=recibirProtocolo(conexion);
-            switch (operacion) {
-
-            case ENVIAR_BYTES:                                                    //2 = Enviar Bytes (busco pag, y devuelvo el valor)
-                datos=enviarBytes(proceso,pagina,offset,size,operacion);
-                if (string_equals_ignore_case(datos,"-1")){datos=string_repeat('@',size);}            //size=1 => La cpu sabe que hubo un error xq no recibe 4 bytes
-                send(conexion,datos,size,0);
-                free(datos);
-                break;
-            case GUARDAR_BYTES:                                                    //3 = Guardar Valor
-                recv(conexion,&buffer,sizeof(int),0);
-                buffer=ntohl(buffer);
-                char* resp;
-                if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){                        //La pag no existe
-                    resp=header(0);
-                }else{resp=header(1);}
-                    send(conexion,resp,string_length(resp),0);
-                free(resp);
-                break;
-            }
-        } else {
-            salir = 1;
-        //    printf("MENSAJE POST MUERTE: %d\n",operacion);
-        }
-    }
-    registrarTrace(archivoLog, "CPU Desconectada");
+			case ENVIAR_BYTES:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
+				datos=enviarBytes(proceso,pagina,offset,size,operacion);
+				if (string_equals_ignore_case(datos,"-1")){
+					datos=string_repeat('@',size);}							//NO DEBERIA PASAR NUNCA ESTO
+				send(conexion,datos,size,0);
+				free(datos);
+				break;
+			case GUARDAR_BYTES:													//3 = Guardar Valor
+				recv(conexion,&buffer,sizeof(int),0);
+				buffer=ntohl(buffer);
+				char* resp;
+				if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
+					resp=header(0);
+				}else{resp=header(1);}
+					send(conexion,resp,string_length(resp),0);
+				free(resp);
+				break;
+			}
+		} else {
+			salir = 1;
+		//	printf("MENSAJE POST MUERTE: %d\n",operacion);
+		}
+	}
+	registrarTrace(archivoLog, "CPU Desconectada");
 }
 
 
