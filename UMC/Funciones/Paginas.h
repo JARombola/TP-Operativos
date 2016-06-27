@@ -21,6 +21,7 @@ typedef struct{
 
 typedef struct{
     int proceso, posClock;
+    t_queue* colaMarcos;
 }unClock;
 
 extern pthread_mutex_t mutexMarcos,mutexReemplazo,mutexTlb, mutexModificacion;
@@ -34,10 +35,10 @@ extern int* vectorMarcos;
 int buscar(int proceso, int pag);
 traductor_marco* actualizarTabla(int pag, int proceso, int marco);
 traductor_marco* guardarPagina(void* datos,int proceso,int pag);
-int buscarMarcoLibre(int pid);
+int buscarMarco(int pid);
+int buscarMarcoLibre(int pid, int cantMarcos);
 int marcosAsignados(int pid, int operacion);
 int hayMarcosLibres();
 void enviarPaginaASwap(traductor_marco* datosMarco);
-
 
 #endif /* FUNCIONES_PAGINAS_H_ */

@@ -19,17 +19,19 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
 
         paginaBuscada=list_find(tlb,(void*)paginaEncontrada);
         if (paginaBuscada!=NULL){                                                    //Esta en la tlb, entonces saco y vuelvo a poner más abajo
-            printf("Estaba en la TLB ;)\n");
+            printf("TLB HIT;)\n");
             list_remove_by_condition(tlb,(void*)paginaEncontrada);
             pthread_mutex_unlock(&mutexTlb);
         }
         else{
+            printf("TLB MISS :(\n");
     pthread_mutex_unlock(&mutexTlb);
 
         paginaBuscada=list_find(tabla_de_paginas,(void*) paginaEncontrada);
             //slep, consulta a la tabla de paginas
         }
         if (paginaBuscada->marco <0) {    //no está en memoria => peticion a swap
+            //printf("Pedido a swap - (Proceso: %d | Pag: %d)",proceso,pag);
             void* datos = (void*) malloc(datosMemoria->marco_size);
             char* pedido = string_new();
             string_append(&pedido, "2");
@@ -41,12 +43,13 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
             recv(conexionSwap, datos, datosMemoria->marco_size, MSG_WAITALL);
             paginaBuscada=guardarPagina(datos, proceso, pag);
             free(datos);
-        }
-
+        }else{
+        //printf("Estaba en memoria - (Proceso: %d | Pag: %d)",proceso,pag);
+            }
     pthread_mutex_lock(&mutexTlb);
 
         list_add(tlb, paginaBuscada);
-        if(list_size(tlb)>=datosMemoria->entradas_tlb){                            //Actualizar tlb
+        if(list_size(tlb)>datosMemoria->entradas_tlb){                            //Actualizar tlb
             list_remove(tlb,0);
         }
 
@@ -85,7 +88,7 @@ traductor_marco* actualizarTabla(int pag, int proceso, int marco){
 
 traductor_marco* guardarPagina(void* datos,int proceso,int pag){
     int marco,tamMarco=datosMemoria->marco_size;
-    marco = buscarMarcoLibre(proceso);
+    marco = buscarMarco(proceso);
     if (marco==-1){                                //no hay marcos para darle => hay que eliminar el proceso
         traductor_marco* traductorErroneo=malloc(sizeof(traductor_marco));
         traductorErroneo->marco=-1;
@@ -100,7 +103,7 @@ traductor_marco* guardarPagina(void* datos,int proceso,int pag){
     return datosPagina;
 }
 
-
+/*
 int buscarMarcoLibre(int pid) {
         int pos = 0, cantMarcos = marcosAsignados(pid, 1);
         int menorMayor(traductor_marco* marco1, traductor_marco* marco2){
@@ -181,7 +184,7 @@ int buscarMarcoLibre(int pid) {
                         recv(conexionSwap,resp,2,MSG_WAITALL);                //"ok" o "no"                //todo
                 /*        if (string_equals_ignore_case(resp,"ok")){
                             printf("TODO PEOLA\n");
-                        }*/
+                        }
                     }
                     //pthread_mutex_unlock(&mutexModificacion);
                     printf("Marco eliminado: %d\n", pos);
@@ -204,73 +207,68 @@ int buscarMarcoLibre(int pid) {
         }
         return -1;                                                                                        //No hay marcos para darle
     }
+*/
 
 
 
-
-
-    /*    Con marcos en orden de llegada
+int buscarMarco(int pid){            //    Con marcos en orden de llegada
     int marco = 0, cantMarcos = marcosAsignados(pid, 1);
-    unClock* clockProceso=malloc(sizeof(unClock));
     int paginaDelMarco(traductor_marco* pagina) {                                                    //porque la pos que ocupa y el marco no son el mismo, necesito el marco con esa posicion
         return (pagina->marco == marco);
     }
     int clockDelProceso(unClock* marco){
-        return(marco->proceso==pid);
-    }
+          return(marco->proceso==pid);
+      }
+
     if (cantMarcos < datosMemoria->marco_x_proc) {                                                //cantidad de marcos del proceso para ver si reemplazo, o asigno vacios
-        for (marco = 0; marco < datosMemoria->marcos; marco++) {                                            //Se fija si hay marcos vacios
-            if (!vectorMarcos[marco]) {
-                if (!cantMarcos){                                        //Para el clock mejorado, registro el clock del proceso
-                    clockProceso->colaMarcos=queue_create();
-                    queue_push(clockProceso->colaMarcos,(int)marco);
-                    clockProceso->proceso=pid;
-                    list_add(tablaClocks,clockProceso);}
-                else{
-                    clockProceso=(unClock*)list_find(tablaClocks,(void*)clockDelProceso);
-                    queue_push(clockProceso->colaMarcos,(int)marco);
-                }
-                vectorMarcos[marco] = 2;
-                return marco;
-            }
-        }
+        pthread_mutex_lock(&mutexMarcos);
+        marco=buscarMarcoLibre(pid, cantMarcos);
+        pthread_mutex_unlock(&mutexMarcos);
+        if (marco!=-1){return marco;}                //encontró un marco libre
     }
     if (cantMarcos) {        //Si tiene marcos => hay que reemplazarle uno, SINO no hay espacio
         int i = 0,primeraVuelta=0,modificada=0;
-        clockProceso=(unClock*)list_find(tablaClocks,(void*)clockDelProceso);
+        unClock* clockProceso=list_find(tablaClocks,(void*)clockDelProceso);
         if (datosMemoria->algoritmo) {                            //Clock mejorado
             primeraVuelta=1;}                                    //Puede hacerse mas lindo con listas filtradas, pero KISS
         int cont=0;
-        do {traductor_marco* datosMarco;
+        traductor_marco* datosMarco;
+        do {
             marco=(int) queue_pop(clockProceso->colaMarcos);
-            datosMarco=(traductor_marco*) list_find(tabla_de_paginas,(void*)paginaDelMarco);
+            datosMarco = list_find(tabla_de_paginas,(void*)paginaDelMarco);
             if (datosMemoria->algoritmo){
-                if (primeraVuelta){modificada=datosMarco->modificada;}
+                if (primeraVuelta){
+                    //    pthread_mutex_lock(&mutexModificacion);
+                    modificada=datosMarco->modificada;
+                    //    pthread_mutex_unlock(&mutexModificacion);
+                    }
                 else{modificada=0;}
             }
             if (vectorMarcos[marco]== 1 && !modificada) {                                                        //Se va de la UMC
+                //    pthread_mutex_lock(&mutexModificacion);
                 if (datosMarco->modificada) {                                                        //Estaba modificada => se la mando a la swap
-                    char* mje = string_new();
-                    string_append(&mje, "1");
-                    string_append(&mje, header(datosMarco->proceso));
-                    string_append(&mje,header(0));
-                    string_append(&mje,    memoria+ datosMarco->marco* datosMemoria->marco_size);
-                    string_append(&mje, header(datosMarco->pagina));
-                    string_append(&mje, header(0));
-                    string_append(&mje, "\0");
-                    send(conexionSwap, mje, string_length(mje), 0);
-                    free(mje);
+                       //        pthread_mutex_unlock(&mutexModificacion);
+                    printf("(Proceso %d | Pag %d) Envío a swap (Estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
+                    enviarPaginaASwap(datosMarco);
+                    char resp[3];
+                    recv(conexionSwap,resp,2,MSG_WAITALL);                //"ok" o "no"                //todo
+                    if (string_equals_ignore_case(resp,"ok")){
+                        printf("TODO PEOLA\n");
+                    }
+                }else{
+                    printf("(Proceso %d | Pag %d) No se envia a swap (no estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                 }
+                pthread_mutex_unlock(&mutexModificacion);
                 vectorMarcos[marco] = 2;
-                printf("Marco eliminado: %d\n", marco);
                 queue_push(clockProceso->colaMarcos,(int)marco);
+                printf("Marco eliminado: %d\n", marco);
+
+                pthread_mutex_lock(&mutexReemplazo);
                 actualizarTabla(datosMarco->pagina,pid,-1);
+                pthread_mutex_unlock(&mutexReemplazo);
 
-            //    datosMarco=list_find(listaFiltrada,(void*)marcoDelProceso);
-
-        //        datosMarco->marco = -1;
-        //        list_replace(tabla_de_paginas, (int) marcoPosicion, datosMarco);
                 return marco;}                                    //La nueva posicion libre
+
             queue_push(clockProceso->colaMarcos,(int)marco);
             if(!primeraVuelta){
             vectorMarcos[marco]--;}
@@ -278,8 +276,32 @@ int buscarMarcoLibre(int pid) {
             else{cont++;}
         } while (++i);
     }
-    return -1;                                                                                        //No hay marcos para darle
-}*/
+    return -1;                                                                                        //No hay marcos para darle ni reemplazar
+}
+
+int buscarMarcoLibre(int pid, int cantMarcos){
+    int clockDelProceso(unClock* marco){
+          return(marco->proceso==pid);
+     }
+    int marco;
+    for (marco = 0; marco < datosMemoria->marcos; marco++) { //Se fija si hay marcos vacios
+        if (!vectorMarcos[marco]) {
+            if (!cantMarcos) { //Para el clock mejorado, registro el clock del proceso
+                unClock* clockProceso = malloc(sizeof(unClock));
+                clockProceso->colaMarcos = queue_create();
+                queue_push(clockProceso->colaMarcos, (int) marco);
+                clockProceso->proceso = pid;
+                list_add(tablaClocks, clockProceso);
+            } else {
+                unClock* clockProceso = list_find(tablaClocks,(void*) clockDelProceso);
+                queue_push(clockProceso->colaMarcos, (int) marco);
+            }
+            vectorMarcos[marco] = 2;
+            return marco;
+        }
+    }
+    return -1;
+}
 
 void enviarPaginaASwap(traductor_marco* datosMarco){
     char* mje1 = string_new();
