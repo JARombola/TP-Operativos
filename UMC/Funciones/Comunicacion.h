@@ -23,7 +23,7 @@ typedef struct{
 }datosConfiguracion;
 
 
-
+extern int cantSt;
 extern t_log* archivoLog;
 extern datosConfiguracion* datosMemoria;
 

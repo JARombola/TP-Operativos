@@ -50,6 +50,8 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 
 int autentificarUMC(int conexion) {
 	send(conexion, "soy_nucleo1", 11, 0);
+	int st=htonl(datosNucleo->tamStack);
+	send(conexion,&st,sizeof(int),0);
 	int tamPagina;
 	int bytesRecibidosH = recv(conexion, &tamPagina, 4, MSG_WAITALL);
 	if (bytesRecibidosH <= 0) {

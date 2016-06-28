@@ -6,6 +6,7 @@
  */
 
 #include "Comunicacion.h"
+
 #define esIgual(a,b) string_equals_ignore_case(a,b)
 #define buscarInt(archivo,palabra) config_get_int_value(archivo, palabra)
 
@@ -80,6 +81,8 @@ int comprobarCliente(int nuevoCliente) {
 		return 1;
 	} else if (string_equals_ignore_case("soy_nucleo1", bufferHandshake)) {
 		free(bufferHandshake);
+		recv(nuevoCliente,&cantSt,sizeof(int),MSG_WAITALL);
+		cantSt=ntohl(cantSt);
 		return 2;
 	}
 	free(bufferHandshake);

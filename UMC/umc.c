@@ -50,7 +50,7 @@ pthread_mutex_t mutexMarcos=PTHREAD_MUTEX_INITIALIZER,								// Para sincroniza
 				mutexTablaPaginas=PTHREAD_MUTEX_INITIALIZER;							// Sincroniza entradas a la tabla de paginas
 
 t_list *tabla_de_paginas, *tablaClocks,*tlb;
-int totalPaginas,conexionSwap, *vectorMarcos;
+int totalPaginas,conexionSwap,cantSt, *vectorMarcos;
 void* memoria;
 datosConfiguracion* datosMemoria;
 t_log* archivoLog;
@@ -108,7 +108,6 @@ int main(int argc, char* argv[]) {
     registrarTrace(archivoLog,"Esperando nucleo...");
     listen(umc_servidor, 1);
     nucleo=aceptarNucleo(umc_servidor,direccionCliente);
-
 
     //-------------------------------------------------------------------Funcionamiento de la UMC
 
@@ -169,27 +168,41 @@ void consola(){
                 // guardo en una lista nueva los que tengan el mismo pid
                 t_list* nueva = list_filter(tabla_de_paginas,(void*) filtrarPorPid);
                 reporteDump=fopen("reporteDump","a");
-                guardarDump(nueva);
+
+                pthread_mutex_lock(&mutexTablaPaginas);
+                	guardarDump(nueva);
+                pthread_mutex_lock(&mutexTablaPaginas);
+
                 fclose(reporteDump);
                 list_clean(nueva);
                 printf("Dump generado\n");
             }
             else {
                 if (esIgual(comando, "TLB")) {
+                	pthread_mutex_lock(&mutexTlb);
                     list_clean(tlb);
-                    printf("TLB Borrada\n");
+                    pthread_mutex_unlock(&mutexTablaPaginas);
+                    printf("TLB Limpia\n");
                 }
                 else {
                     if (esIgual(comando, "MODIFICADAS")) {
-                        list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
+                       /* list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
                         finalizarPrograma(0);
-                        list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);/*
+                        list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);*/
                         scanf("%d",&nroProceso);//todo
                         void comandoMemory(traductor_marco* pagina){
-                            if(pagina->proceso==nroProceso)pagina->modificada=1;
+                        	if (nroProceso==-1){ pagina->modificada=1;}
+                        	else{
+                        		if(pagina->proceso==nroProceso)pagina->modificada=1;
+                        	}
                         }
-                        list_iterate(tabla_de_paginas,(void*)comandoMemory);
-                        printf("Paginas modificadas (proceso: %d)\n",nroProceso);*/
+                        pthread_mutex_lock(&mutexTablaPaginas);							// Por las dudas que el nucleo justo las estuviera tocando
+                        	pthread_mutex_lock(&mutexModificacion);
+                        		list_iterate(tabla_de_paginas,(void*)comandoMemory);
+                        	pthread_mutex_lock(&mutexTablaPaginas);
+                        pthread_mutex_lock(&mutexModificacion);
+
+                        printf("Paginas modificadas (Proceso: %d)\n",nroProceso);
                     }
                 }
             }
@@ -200,12 +213,17 @@ void consola(){
 
 void guardarDump(t_list* proceso){
     int i;
-    fprintf(reporteDump,"%s\n","___TABLA DE PAGINAS___");
+    int menorMayorMarco(traductor_marco* marco1, traductor_marco* marco2){
+    	return (marco1->marco<marco2->marco);
+    }
+    list_sort(proceso,(void*)menorMayorMarco);
+
+    fprintf(reporteDump,"___TABLA DE PAGINAS___\n");
     for(i=0;i<list_size(proceso);i++){
         traductor_marco* datosProceso=list_get(proceso,i);
         dumpTabla(datosProceso);
     }
-    fprintf(reporteDump,"%s\n","___Datos___");
+    fprintf(reporteDump,"___Datos___\n");
     for(i=0;i<list_size(proceso);i++){
         traductor_marco* datosProceso=list_get(proceso,i);
         dumpDatos(datosProceso);
@@ -213,18 +231,29 @@ void guardarDump(t_list* proceso){
 }
 
 void dumpTabla(traductor_marco* datosProceso){
-    fprintf(reporteDump,"%s %d    |    %s %d    |    %s %d\n","Proceso:",datosProceso->proceso,"Pag:",datosProceso->pagina,"Marco:",datosProceso->marco);
+    fprintf(reporteDump,"Proceso: %d    |    Pág: %d    |    Marco: %d\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco);
 }
 
 void dumpDatos(traductor_marco* datosProceso){
-    if(datosProceso->marco!=-1){                                    //todo y si tiene numeros? :/
-        fprintf(reporteDump,"%s %d","Marco: ",datosProceso->marco);
-        void* datos=malloc(datosMemoria->marco_size+3);
-        memcpy(datos,"[",1);
-        memcpy(datos+1,memoria+datosProceso->marco*datosMemoria->marco_size,datosMemoria->marco_size);
-        memcpy(datos+1+datosMemoria->marco_size,"]\n",2);
-        fwrite(datos,datosMemoria->marco_size+3,1,reporteDump);
-        free(datos);
+    if(datosProceso->marco!=-1){
+    	int numeros(traductor_marco* traductor){
+    		return (traductor->proceso==datosProceso->proceso);
+    	}
+    	if (datosProceso->pagina>=list_count_satisfying(tabla_de_paginas,(void*)numeros)-cantSt){
+    		void* datos=malloc(sizeof(int));
+    		int i=0;
+    		fprintf(reporteDump,"Marco: %d - [",datosProceso->marco);
+
+    		for(i=0;i<datosMemoria->marco_size%4;i++){
+    			memcpy(&datos,memoria+datosProceso->marco*datosMemoria->marco_size+i*4,sizeof(int));
+    			fprintf(reporteDump,"%d ",datos);}
+
+    		fprintf(reporteDump,"]\n");
+    	}else{
+    	void* datos=malloc(datosMemoria->marco_size);
+    	memcpy(datos,memoria+datosProceso->marco*datosMemoria->marco_size,datosMemoria->marco_size);
+   	    fprintf(reporteDump,"Marco: %d",datosProceso->marco);
+   	    fprintf(reporteDump,"[%s]\n",datos);}
     }
 }
 
@@ -239,7 +268,10 @@ void mostrarTablaPag(traductor_marco* fila) {
 
 void atenderCpu(int conexion){
 	registrarTrace(archivoLog, "Nuevo CPU-");
-	int salir = 0, operacion, proceso, pagina, offset, buffer, size;
+	int salir = 0, operacion, proceso, pagina, offset, buffer, size,procesoAnterior=-1;
+	int removerEntradasProcesoAnterior(traductor_marco* entradaTlb){
+		return entradaTlb->proceso!=procesoAnterior;
+	}
 	void* datos;
 	while (!salir) {
 		operacion = atoi(recibirMensaje(conexion, 1));
@@ -268,6 +300,12 @@ void atenderCpu(int conexion){
 					send(conexion,resp,string_length(resp),0);
 				free(resp);
 				break;
+			}
+			if (procesoAnterior!=proceso){							//cambió el proceso, limpio la tlb
+				pthread_mutex_lock(&mutexTlb);
+					tlb=list_filter(tlb,(void*)removerEntradasProcesoAnterior);					//filtra las que son DIFERENTES
+				pthread_mutex_lock(&mutexTlb);
+				procesoAnterior=proceso;
 			}
 		} else {salir = 1;}
 	}
