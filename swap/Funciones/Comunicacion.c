@@ -82,7 +82,9 @@ void* recibirMensaje(int conexion, int tamanio){
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
-		return "a";}
+		char* adios=string_new();
+		string_append(&adios,"0\0");
+		return adios;}
 	/*int p;
 	memcpy(&p,mensaje,4);
 	printf("Recibí_________ %d\n",p);*/

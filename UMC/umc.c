@@ -35,8 +35,8 @@ int inicializarPrograma(int);                    // a traves del socket recibe e
 void* enviarBytes(int proceso,int pagina,int offset,int size, int operacion);
 int almacenarBytes(int proceso,int pagina, int offset, int tamanio, int buffer);
 int finalizarPrograma(int);
-void guardarTabla(traductor_marco*);
-void guardarDatos(traductor_marco*);
+void dumpTabla(traductor_marco*);
+void dumpDatos(traductor_marco*);
 
 //-----MENSAJES----
 void mostrarTablaPag(traductor_marco*);
@@ -44,11 +44,10 @@ void guardarDump(t_list* proceso);
 
 //COMANDOS--------------
 
-pthread_mutex_t mutexMarcos=PTHREAD_MUTEX_INITIALIZER,
-                mutexModificacion=PTHREAD_MUTEX_INITIALIZER,
-                mutexTlb=PTHREAD_MUTEX_INITIALIZER,
-                mutexReemplazo=PTHREAD_MUTEX_INITIALIZER,
-                mutexNucleo=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexMarcos=PTHREAD_MUTEX_INITIALIZER,								// Para sincronizar busqueda de marcos libres
+                mutexModificacion=PTHREAD_MUTEX_INITIALIZER,						// sincronizar comando memory
+                mutexTlb=PTHREAD_MUTEX_INITIALIZER,									// Sincroniza TLB
+				mutexTablaPaginas=PTHREAD_MUTEX_INITIALIZER;							// Sincroniza entradas a la tabla de paginas
 
 t_list *tabla_de_paginas, *tablaClocks,*tlb;
 int totalPaginas,conexionSwap, *vectorMarcos;
@@ -117,7 +116,6 @@ int main(int argc, char* argv[]) {
     pthread_create(&thread, &attr, (void*) consola, NULL);                                        //Hilo para atender comandos
     listen(umc_servidor, 100);                                                                    //Para recibir conexiones (CPU's)
     int cpuRespuesta=htonl(datosMemoria->marco_size);
-
     while (1) {
         nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
         if (nuevo_cliente == -1) {perror("Fallo el accept");}
@@ -133,7 +131,6 @@ int main(int argc, char* argv[]) {
             break;
         }
     }
-
     free(datosMemoria);
     free(memoria);
     return 0;
@@ -144,25 +141,24 @@ int main(int argc, char* argv[]) {
 void consola(){
     reporteDump=fopen("reporteDump","w");
     fclose(reporteDump);
-    int procesoBuscar;
     while (1) {
         char* comando;
-        int VELOCIDAD;
+
         int nroProceso;
         comando = string_new(), scanf("%s", comando);
-        if (esIgual(comando, "retardo")) {
-            printf("velocidad nueva:");
-            scanf("%d", &VELOCIDAD);
+        if (esIgual(comando, "RETARDO")) {
+            int velocidadNueva;
+            scanf("%d", &velocidadNueva);
             char* mensaje=string_new();
-            string_append(&mensaje,"Velocidad nueva:");
-            string_append(&mensaje,(char*)VELOCIDAD);
+            string_append(&mensaje,"Retardo nuevo:");
+            string_append(&mensaje,(char*)velocidadNueva);
             registrarInfo(archivoLog,mensaje);
             //actualizar retardo en el config
-            datosMemoria->retardo= VELOCIDAD;
+            datosMemoria->retardo= velocidadNueva;
             free(mensaje);
         }
         else {
-            if (esIgual(comando, "dump")) {
+            if (esIgual(comando, "DUMP")) {
                 scanf("%d",&nroProceso);
             //    int pos=buscar(6,nroProceso);
 
@@ -171,28 +167,29 @@ void consola(){
                     return (marco-> proceso == nroProceso);}
 
                 // guardo en una lista nueva los que tengan el mismo pid
-                t_list* nueva = list_filter(tabla_de_paginas, filtrarPorPid);
+                t_list* nueva = list_filter(tabla_de_paginas,(void*) filtrarPorPid);
                 reporteDump=fopen("reporteDump","a");
                 guardarDump(nueva);
                 fclose(reporteDump);
+                list_clean(nueva);
                 printf("Dump generado\n");
             }
             else {
-                if (esIgual(comando, "tlb")) {
-//                    list_clean(tlb);
-                    printf("TLB Borrada :)\n");
+                if (esIgual(comando, "TLB")) {
+                    list_clean(tlb);
+                    printf("TLB Borrada\n");
                 }
                 else {
-                    if (esIgual(comando, "memoria")) {
+                    if (esIgual(comando, "MODIFICADAS")) {
                         list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
                         finalizarPrograma(0);
                         list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);/*
-                        scanf("%d",&procesoBuscar);//todo
+                        scanf("%d",&nroProceso);//todo
                         void comandoMemory(traductor_marco* pagina){
-                            if(pagina->proceso==procesoBuscar)pagina->modificada=1;
+                            if(pagina->proceso==nroProceso)pagina->modificada=1;
                         }
                         list_iterate(tabla_de_paginas,(void*)comandoMemory);
-                        printf("Paginas modificadas (proceso: %d)\n",procesoBuscar);*/
+                        printf("Paginas modificadas (proceso: %d)\n",nroProceso);*/
                     }
                 }
             }
@@ -206,20 +203,20 @@ void guardarDump(t_list* proceso){
     fprintf(reporteDump,"%s\n","___TABLA DE PAGINAS___");
     for(i=0;i<list_size(proceso);i++){
         traductor_marco* datosProceso=list_get(proceso,i);
-        guardarTabla(datosProceso);
+        dumpTabla(datosProceso);
     }
     fprintf(reporteDump,"%s\n","___Datos___");
     for(i=0;i<list_size(proceso);i++){
         traductor_marco* datosProceso=list_get(proceso,i);
-        guardarDatos(datosProceso);
+        dumpDatos(datosProceso);
     }
 }
 
-void guardarTabla(traductor_marco* datosProceso){
+void dumpTabla(traductor_marco* datosProceso){
     fprintf(reporteDump,"%s %d    |    %s %d    |    %s %d\n","Proceso:",datosProceso->proceso,"Pag:",datosProceso->pagina,"Marco:",datosProceso->marco);
 }
 
-void guardarDatos(traductor_marco* datosProceso){
+void dumpDatos(traductor_marco* datosProceso){
     if(datosProceso->marco!=-1){                                    //todo y si tiene numeros? :/
         fprintf(reporteDump,"%s %d","Marco: ",datosProceso->marco);
         void* datos=malloc(datosMemoria->marco_size+3);
@@ -272,33 +269,26 @@ void atenderCpu(int conexion){
 				free(resp);
 				break;
 			}
-		} else {
-			salir = 1;
-		//	printf("MENSAJE POST MUERTE: %d\n",operacion);
-		}
+		} else {salir = 1;}
 	}
-	registrarTrace(archivoLog, "CPU Desconectada");
+	registrarWarning(archivoLog, "Se desconectó una CPU\n");
 }
 
 
 void atenderNucleo(int nucleo){
     registrarInfo(archivoLog,"Hilo de Nucleo creado");
-        //[PROTOCOLO]: - siempre recibo PRIMERO el codigo de operacion (1 o 4) inicializar o finalizar
         int salir=0,guardar,procesoEliminar;
         while (!salir) {
             int operacion = atoi(recibirMensaje(nucleo,1));
                 if (operacion) {
-                    pthread_mutex_lock(&mutexNucleo);
                     switch (operacion) {
+
                     case INICIALIZAR:                                                //inicializar programa
                         guardar=inicializarPrograma(nucleo);
-                        if (guardar){                            //1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
+                        if (!guardar){                            //1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
+                            registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");}
                             guardar=htonl(guardar);
-                            send(nucleo,&guardar,sizeof(int),0);
-                        }else{                                                //no lo aceptó la swap (adios ansisop)
-                            guardar=htonl(guardar);
-                            registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");
-                            send(nucleo, &guardar,sizeof(int),0);}
+                        send(nucleo, &guardar,sizeof(int),0);
                     break;
 
                     case FINALIZAR:                                                //Finalizar programa
@@ -307,10 +297,18 @@ void atenderNucleo(int nucleo){
                         printf("Proceso %d eliminado\n",procesoEliminar);}
                     break;
                     }
-                    pthread_mutex_unlock(&mutexNucleo);
                 }else{salir=1;}
         }
-        registrarWarning(archivoLog,"Se desconectó el Nucleo");
+        registrarWarning(archivoLog,"Nucleo desconectado\n");
+        registrarWarning(archivoLog, "Desconectando UMC...\n");
+        list_destroy_and_destroy_elements(tabla_de_paginas,free);
+        void eliminarClock(unClock* clock){
+        	queue_clean(clock->colaMarcos);
+        	free(clock);
+        }
+        list_destroy_and_destroy_elements(tablaClocks,(void*)eliminarClock);
+        free(datosMemoria);
+        exit(0);
 }
 
 
@@ -325,14 +323,6 @@ int inicializarPrograma(int conexion) {
     int espacio_del_codigo = recibirProtocolo(conexion);
     char* codigo = recibirMensaje(conexion, espacio_del_codigo);            //CODIGO
     //printf("Codigo: %s-\n",codigo);
-    int i;
-    for (i = 0; i < paginasNecesarias; i++) {//Entradas en la tabla, SIN marcos
-          actualizarTabla(i, PID, -1);
-    //    void* asd=malloc(datosMemoria->marco_size);
-    //    memcpy(asd,codigo+i*datosMemoria->marco_size,datosMemoria->marco_size);
-    //    guardarPagina(asd, PID, i);
-    }
-
     agregarHeader(&codigo);
     char* programa = string_new();
     string_append(&programa, "1");
@@ -348,6 +338,12 @@ int inicializarPrograma(int conexion) {
         return 0;
     }
     printf("Ansisop guardado\n");
+    int i;
+    pthread_mutex_lock(&mutexTablaPaginas);
+    for (i = 0; i < paginasNecesarias; i++) {				//Entradas en la tabla, marco -1 (=> está en Swap)
+          actualizarTabla(i, PID, -1);
+    }
+    pthread_mutex_unlock(&mutexTablaPaginas);
     if (hayMarcosLibres()){
         return 1;
     }
@@ -363,7 +359,7 @@ void* enviarBytes(int proceso,int pagina,int offset,int size,int op){
         void* a=(void*)malloc(size+1);
         memcpy(a,datos,size);
         memcpy(a+size,"\0",1);
-        printf("Pag: %d -> Envio: %s\n",pagina,a);
+        printf("Pag: %d -> Envio: %s\n",pagina,a);					//todo esto se va
         free(a);
         return datos;//}
     }
@@ -384,14 +380,14 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 
     posicion+=offset;
 
-    pthread_mutex_lock(&mutexReemplazo);
-    memcpy(memoria+posicion,&buffer,size);
-    traductor_marco* datosTabla=list_find(tabla_de_paginas,(void*)buscarMarco);
-    datosTabla->modificada=1;
-    printf("Pagina modificada\n");
-    pthread_mutex_unlock(&mutexReemplazo);
+    pthread_mutex_lock(&mutexTablaPaginas);
+		memcpy(memoria+posicion,&buffer,size);
+		traductor_marco* datosTabla=list_find(tabla_de_paginas,(void*)buscarMarco);
+		datosTabla->modificada=1;
+		printf("Pagina modificada\n");
+    pthread_mutex_unlock(&mutexTablaPaginas);
 
-    void* a=malloc(4);
+    void* a=malloc(4);							//todo esto se va
     memcpy(&a,memoria+posicion,4);
     printf("Guardé: %d\n",a);
 
@@ -401,35 +397,43 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 
 int finalizarPrograma(int procesoEliminar){
     int paginasDelProceso(traductor_marco* entradaTabla){
-        return (entradaTabla->proceso==procesoEliminar);
-    }
-    void eliminarEntrada(traductor_marco* entrada){
-        free(entrada);
-    }
+        return (entradaTabla->proceso==procesoEliminar);}
+
     void limpiar(traductor_marco* marco){
-        list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)eliminarEntrada);
-    }
-    int clockDelProceso(unClock* clockDelProceso){                        //todo revisar si funciona :/
-        return(clockDelProceso->proceso==procesoEliminar);
-    }
-    void limpiarTLB(traductor_marco* marco){
-           list_remove_by_condition(tlb,(void*)paginasDelProceso);
-    }
+    	if(marco->marco!=-1){
+       	vectorMarcos[marco->marco]=0;}
+        list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,free);}
+
+    int clockDelProceso(unClock* clockDelProceso){
+        return(clockDelProceso->proceso==procesoEliminar);}
+
     printf("[Antes] Paginas: %d | Clocks: %d | TLB:%d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
-    list_iterate(tlb,(void*)limpiarTLB);
-    list_iterate(tabla_de_paginas,(void*)limpiar);
+
+    pthread_mutex_lock(&mutexTlb);
+    	list_remove_by_condition(tlb,(void*)paginasDelProceso);
+    pthread_mutex_unlock(&mutexTlb);
+
+    pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
+    	pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
+    		list_iterate(tabla_de_paginas,(void*)limpiar);
+    	pthread_mutex_unlock(&mutexTablaPaginas);
+    pthread_mutex_unlock(&mutexMarcos);
+
     unClock* clockProceso=list_remove_by_condition(tablaClocks,(void*)clockDelProceso);
     if (clockProceso!=NULL){
         queue_clean(clockProceso->colaMarcos);
         free(clockProceso);
     }
+
     printf("[Despues] Paginas: %d | Clocks: %d | TLB: %d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
+
     char* mensajeEliminar=string_new();
     string_append(&mensajeEliminar,"3");
     string_append(&mensajeEliminar,header(procesoEliminar));
     string_append(&mensajeEliminar,"\0");
     send(conexionSwap,mensajeEliminar,string_length(mensajeEliminar),0);
     free(mensajeEliminar);
+
     return 1;
 }
 
