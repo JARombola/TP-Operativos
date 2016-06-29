@@ -351,13 +351,10 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 	stack->retPos = pcb.pc;
 	stack->vars = list_create();
 	stack->args = list_create();
-	Pagina pag = obtenerPagDisponible();
-	Pagina* pagina = malloc(sizeof(Pagina));
-	pagina = &pag;
+
 	pcb.pc = metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
 	printf("Salto a: %d\n", pcb.pc);
 
-	list_add(stack->vars,pagina);
 	list_add(pcb.stack,stack);
 }
 
@@ -514,7 +511,6 @@ void retornar(t_valor_variable retorno){
 	Stack* stackActual = obtenerStack();
 	int puntero = (int)&(stackActual->retVar);
 	asignar(puntero,retorno);
-	finalizar();
 }
 
 //-------------------------------------FUNCIONES AUXILIARES-------------------------------------------
@@ -537,6 +533,13 @@ Pagina obtenerPagDisponible(){
 		if (cantidadDeVariables <= 0){
 			free(stackActual);
 			stackActual = anteUltimoStack();
+			if (stackActual == NULL){
+				pagina.pag = pcb.paginas_codigo;
+			    pagina.off = 0;
+			    pagina.tamanio = 4;
+			    return pagina;
+			}
+			cantidadDeVariables = list_size(stackActual->vars);
 		}
 		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
 		if ((ultimaVariable->pagina.off+ultimaVariable->pagina.tamanio+4)<=TAMANIO_PAGINA){
@@ -575,20 +578,16 @@ Stack* obtenerStack(){
 	return (list_get(pcb.stack,tamanioStack-1));
 }
 Stack* anteUltimoStack(){
-	int tamanioStack = list_size(pcb.stack);
-	if (tamanioStack <= 0){
-		Stack* stack = malloc(sizeof(Stack));
-		stack->vars = list_create();
-		Pagina pagina;
-		pagina.off = 0;
-		pagina.pag = 0;
-		pagina.tamanio = 0;
-		stack->retVar = pagina;
-		stack->args = list_create();
-		list_add(pcb.stack,stack);
-		tamanioStack = 1;
+	int cantidadDeStacks = list_size(pcb.stack);
+	Stack* stackDisponible;
+	int i;
+	for (i = 1; i<= cantidadDeStacks;i++){
+		stackDisponible = list_get(pcb.stack,cantidadDeStacks-i);
+		if (list_size(stackDisponible->vars) > 0){
+			return stackDisponible;
+		}
 	}
-	return (list_get(pcb.stack,tamanioStack-2));
+	return NULL;
 }
 
 
