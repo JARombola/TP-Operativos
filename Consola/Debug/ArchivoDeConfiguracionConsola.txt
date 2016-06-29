@@ -1,2 +1,2 @@
 PN:8060
-AT:Consola
+AT:soy_una_consola

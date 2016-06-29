@@ -25,11 +25,8 @@ endif
 # All Target
 all: Consola
 
-dependents:
-	-cd /home/utnso/tp-2016-1c-CodeBreakers/CPU/Debug && $(MAKE) all
-
 # Tool invocations
-Consola: $(OBJS) $(USER_OBJS) /home/utnso/tp-2016-1c-CodeBreakers/CPU/Debug/CPU
+Consola: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
 	gcc  -o "Consola" $(OBJS) $(USER_OBJS) $(LIBS)
@@ -43,6 +40,5 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
-/home/utnso/tp-2016-1c-CodeBreakers/CPU/Debug/CPU:
 
 -include ../makefile.targets

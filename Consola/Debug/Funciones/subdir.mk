@@ -4,16 +4,13 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Funciones/Comunicacion.c \
-../Funciones/json.c 
+../Funciones/Comunicacion.c 
 
 OBJS += \
-./Funciones/Comunicacion.o \
-./Funciones/json.o 
+./Funciones/Comunicacion.o 
 
 C_DEPS += \
-./Funciones/Comunicacion.d \
-./Funciones/json.d 
+./Funciones/Comunicacion.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

@@ -1,25 +1,21 @@
-function f
-textPrint Adios Mundo Cruel
-return 1
-end
-
-function g
-textPrint Hola Mundo Cruel
-return 12
-end
-
 begin
-	variables a,b
+
+variables a,b
+
+io Disco 100
+
+!tiempo3=2
+
+:inicio
+
+a=!tiempo3+2
+
+:perro
+
 b=5
+
+:gato
+
 a=b+12
-!Global=a
-a=!Global
-print a
-signal SEM1
-wait SEM1
-textPrint Hola Mundo
-b<-f
-a<-g
-print b
-print a
+
 end
