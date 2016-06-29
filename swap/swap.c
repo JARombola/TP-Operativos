@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
 //-----------------------------------FUNCIONES-----------------------------------
 
 int crearArchivoSwap(){				//todo modificar tamaños
-	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=100 bs=100",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
+	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
 	system(instruccion);
 	int fd_archivo=open(datosSwap->nombre_swap,O_RDWR);
 	archivoSwap=(void*) mmap(NULL ,datosSwap->cantidadPaginas*datosSwap->tamPagina,PROT_READ|PROT_WRITE,MAP_PRIVATE,(int)fd_archivo,0);
