@@ -15,6 +15,7 @@
 #include <string.h>
 #include <commons/collections/queue.h>
 #include <pthread.h>
+#include <unistd.h>
 
 typedef struct{
     int proceso, pagina, marco, enMemoria, modificada;
@@ -25,7 +26,7 @@ typedef struct{
     t_queue* colaMarcos;
 }unClock;
 
-extern pthread_mutex_t mutexMarcos,mutexTablaPaginas,mutexTlb, mutexModificacion;
+extern pthread_mutex_t mutexMarcos,mutexTablaPaginas;
 extern t_list* tablaClocks, *tabla_de_paginas, *tlb;
 
 extern int conexionSwap;
@@ -34,6 +35,7 @@ extern t_log* archivoLog;
 extern int* vectorMarcos;
 
 int buscar(int proceso, int pag);
+traductor_marco* solicitarPaginaASwap(int proceso, int pag);
 traductor_marco* actualizarTabla(int pag, int proceso, int marco);
 traductor_marco* guardarPagina(void* datos,int proceso,int pag);
 int buscarMarco(int pid);
