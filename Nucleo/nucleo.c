@@ -192,7 +192,6 @@ int main(int argc, char* argv[]) {
 							break;
 
 						case 2:						//CONSOLA, RECIBO EL CODIGO
-							send(nuevo_cliente, "1", 1, 0);
 							list_add(consolas, (void *) nuevo_cliente);
 							printf("Acepté una nueva consola\n");
 							int tamanio = recibirProtocolo(nuevo_cliente);
