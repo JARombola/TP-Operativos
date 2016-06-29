@@ -141,6 +141,7 @@ void consola(){
     while (1) {
         char* comando;
         int nroProceso;
+        comando=string_new();
         scanf("%s", comando);
         if (esIgual(comando, "RETARDO")) {
             int velocidadNueva;
@@ -168,7 +169,7 @@ void consola(){
 
                 pthread_mutex_lock(&mutexTablaPaginas);
                 	guardarDump(nueva);
-                pthread_mutex_lock(&mutexTablaPaginas);
+                pthread_mutex_unlock(&mutexTablaPaginas);
 
                 fclose(reporteDump);
                 list_clean(nueva);
@@ -206,7 +207,7 @@ void consola(){
 void guardarDump(t_list* proceso){
     int i;
     int menorMayorMarco(traductor_marco* marco1, traductor_marco* marco2){
-    	return (marco1->marco<marco2->marco);
+    	return (marco1->marco<=marco2->marco);
     }
     list_sort(proceso,(void*)menorMayorMarco);
 
@@ -367,7 +368,7 @@ int inicializarPrograma(int conexion) {
     if (!aceptadoSwap){
         return 0;
     }
-    printf("Ansisop guardado\n");
+    printf("Ansisop %d guardado\n",PID);
     int i;
     pthread_mutex_lock(&mutexTablaPaginas);
     	usleep(datosMemoria->retardo*1000);							//todo 1 por cada acceso, o por cada escritura? :/

@@ -4,10 +4,10 @@
  *  Created on: 29/4/2016
  *      Author: utnso
  */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <commons/string.h>
+#include <commons/config.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -15,16 +15,22 @@
 #include <unistd.h>
 #include "Funciones/Comunicacion.h"
 
-#define PUERTO_NUCLEO 6662
-#define IP_NUCLEO "127.0.0.1"
+int puerto_nucleo;
+char* ip_nucleo;
 
 //int protocolo(int nucleo);
+int leerConfiguracion(char* ruta);
 int autentificar(int);
 int enviarAnsisop(FILE*, int);
 
 int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecutar (#!, ver "Nuevo")
+	if(!(leerConfiguracion("../ConfigConsola") || leerConfiguracion("ConfigConsola"))){
+		printf("Error al leer archivo de configuracion\n");
+		return 1;
+	}
+
 	printf("Consola creada. Conectando al Nucleo...\n");
-	int nucleo=conectar(PUERTO_NUCLEO,IP_NUCLEO);
+	int nucleo=conectar(puerto_nucleo,ip_nucleo);
 	if (!autentificar(nucleo)) {
 		printf("Conexion al nucleo fail, error handshake\n");
 		return -1;
@@ -108,3 +114,22 @@ int enviarAnsisop(FILE* archivo, int sockNucleo){
 	if(enviados==string_length(codigo)){return 0;}										//Envio ok
 	return 1;																			//Error
 }
+
+int leerConfiguracion(char *ruta){
+	t_config* archivoConfiguracion = config_create(ruta);//Crea struct de configuracion
+	if (archivoConfiguracion == NULL) {
+		return 0;
+	} else {
+		int cantidadKeys = config_keys_amount(archivoConfiguracion);
+		if (cantidadKeys < 2) {
+			return 0;
+		} else {
+			puerto_nucleo=config_get_int_value(archivoConfiguracion, "PUERTO_NUCLEO");
+			ip_nucleo=string_new();
+			string_append(&ip_nucleo,config_get_string_value(archivoConfiguracion,"IP_NUCLEO"));
+			config_destroy(archivoConfiguracion);
+		}
+	}
+	return 1;
+}
+

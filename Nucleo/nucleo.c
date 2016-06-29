@@ -323,9 +323,6 @@ int calcularPaginas(char* codigo){
 	return totalPaginas;
 }
 
- void mostrar(int* sentencia){
- 	printf("Inicio:%d | Offset:%d\n",sentencia[0],sentencia[1]);
- }
 //----------------------------DESCRIPTORES (SELECT)------------------------------------------------------------------
 
 void maximoDescriptor(int* maximo, t_list* lista, fd_set *descriptores){
@@ -710,7 +707,7 @@ void Modificacion_quantum(){
 	if (fd_config < 0) {
 		perror("inotify_init");
 	}
-	int watch_descriptor = inotify_add_watch(fd_config, "ConfigNucleo", IN_CLOSE_WRITE);//IN_CLOSE_WRITE);IN_MODIFY
+	int watch_descriptor = inotify_add_watch(fd_config, "../ConfigNucleo", IN_MODIFY);//IN_CLOSE_WRITE);IN_MODIFY
 
 	while(watch_descriptor){
 		t_config* archivoConfiguracion;
@@ -721,7 +718,7 @@ void Modificacion_quantum(){
 		printf("lei alguna modificacion: %d\n", length);//los prints para testear, en mi terminal no los veo.. en eclipse si
 
 		do{
-		archivoConfiguracion = config_create("ConfigNucleo");
+		archivoConfiguracion = config_create("../ConfigNucleo");
 		}while(archivoConfiguracion == NULL);
 		(datosNucleo)->quantum = config_get_int_value(archivoConfiguracion, "QUANTUM");
 		(datosNucleo)->quantum_sleep = config_get_int_value(archivoConfiguracion,"QUANTUM_SLEEP");
