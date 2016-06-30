@@ -83,7 +83,6 @@ int main(int argc, char* argv[]) {
     tablaClocks=list_create();
     tlb=list_create();
 
-    consola();
 
     //----------------------------------------------------------------------------SOCKETS
 
@@ -145,12 +144,10 @@ void consola(){
         char* comando;
         int nroProceso;
         comando=string_new();
-        printf("ingreso comando de prueba\n");
         scanf("%s", comando);
         log_info(archivoLog,">>> Comando introducido: %s <<<",comando);
         if (esIgual(comando, "RETARDO")) {
             int velocidadNueva;
-            printf("ingrese la velocidad nueva\n");
             scanf("%d", &velocidadNueva);
             log_info(archivoLog,"Retardo nuevo: %d",velocidadNueva);
             //actualizar retardo en el config
@@ -274,8 +271,11 @@ void atenderCpu(int conexion){
 			case ENVIAR_BYTES:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
 				datos=enviarBytes(proceso,pagina,offset,size);
 				if (string_equals_ignore_case(datos,"-1")){
-					datos=string_repeat('@',size);}							//NO hay marcos/No existe la pág :/
-				send(conexion,datos,size,0);
+					send(conexion,"no",2,0);}											//NO hay marcos/No existe la pág :/
+				else{
+					send(conexion,"ok",2,0);
+					send(conexion,datos,size,0);
+				}
 				free(datos);
 				break;
 

@@ -240,6 +240,7 @@ char* pedirLinea(){
 		}
 		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
 		char* respuesta=malloc(size_page+1);
+		recv(umc,respuesta,2,MSG_WAITALL);
 		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
 		if (verificador <= 0){
 			log_error(archivoLog,"Error : Fallor la conexion con la UMC\n");
@@ -290,14 +291,20 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina*  pag = (Pagina*) pagina;
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
-	int valor;
-	int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
-	if (recibidos<= 0){
-		log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
-		finalizado = -1;
+	char resp[2];
+	recv(umc,resp,2,MSG_WAITALL);
+	if(resp[0]=='o'){
+		int valor;
+		int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
+		if (recibidos<= 0){
+			log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
+			finalizado = -1;}
+		log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
+	return valor;}
+	else{
+		printf("No existe la pagina\n");					//todoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+	return -666;
 	}
-	log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
-	return valor;
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
