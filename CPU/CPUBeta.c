@@ -266,7 +266,13 @@ t_puntero definirVariable(t_nombre_variable variable) {
 	log_info(archivoLog,"definir la variable %c\n", variable);
 	Variable* var = crearVariable(variable);
 	log_info(archivoLog,"Variable %c creada\n", var->id);
-	sumarEnLasVariables(var);
+	if ((variable>='0') && (variable <='9')){
+		int tamanioStack = list_size(pcb.stack);
+		Stack* stackActual = list_get(pcb.stack,tamanioStack-1);
+		list_add(stackActual->args,var);
+	}else{
+		sumarEnLasVariables(var);
+	}
 	log_info(archivoLog,"Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
 	return  (int)var;
 }
@@ -275,13 +281,25 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	int variableBuscada(Variable* var){
 		return (var->id==variable);
 	}
-	log_info(archivoLog,"Obtener posicion de %c\n", variable);
-	Stack* stack = obtenerStack();
-	t_list* variables = stack->vars;
 	Variable* var;
-	var = (Variable*) list_find(variables,(void*)variableBuscada);
-	if ( var!=NULL){
-		return (int)&(var->pagina);
+	log_info(archivoLog,"Obtener posicion de %c\n", variable);
+	if ((variable>='0') && (variable <='9')){
+		int tamanioStack = list_size(pcb.stack);
+		Stack* stackActual = list_get(pcb.stack,tamanioStack-1);
+		int i;
+		for(i=0; i<list_size(stackActual->args);i++){
+			var = list_get(stackActual->args,i);
+			if (variable == var->id){
+				return var->pagina;
+			}
+		}
+	}else{
+		Stack* stack = obtenerStack();
+		t_list* variables = stack->vars;
+		var = (Variable*) list_find(variables,(void*)variableBuscada);
+		if ( var!=NULL){
+			return (int)&(var->pagina);
+		}
 	}
 	log_error(archivoLog,"Error: No se encontro la variable\n");
 	finalizado = -9; // Error turbio
