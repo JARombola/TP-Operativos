@@ -61,7 +61,7 @@ int levantarArchivoDeConfiguracion(){
 	if (archivoDeConfiguracion==NULL){
 		archivoDeConfiguracion = fopen(ARCHIVO_DE_CONFIGURACION,"r");
 		if (archivoDeConfiguracion==NULL){
-		log_info(archivoLog,"Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
+		log_error(archivoLog,"Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;}
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
@@ -69,23 +69,23 @@ int levantarArchivoDeConfiguracion(){
 	buscar(archivoJson,"PUERTO_NUCLEO", puertoDelNucleo);
 	PUERTO_NUCLEO = atoi(puertoDelNucleo);
 	if (PUERTO_NUCLEO == 0){
-		log_info(archivoLog,"Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
+		log_error(archivoLog,"Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
 
 	buscar(archivoJson,"AUTENTIFICACION", AUTENTIFICACION);
 	if (AUTENTIFICACION[0] =='\0'){
-		log_info(archivoLog,"Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
+		log_error(archivoLog,"Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"IP_NUCLEO", IP_NUCLEO);
 	if (IP_NUCLEO[0] == '\0'){
-		log_info(archivoLog,"Error: No se ha encontrado la IP del Nucleo en el archivo de Configuracion \n");
+		log_error(archivoLog,"Error: No se ha encontrado la IP del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"IP_UMC", IP_UMC);
 	if (IP_UMC[0] =='\0'){
-		log_info(archivoLog,"Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
+		log_error(archivoLog,"Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
 		return -1;
 	}
 
@@ -93,7 +93,7 @@ int levantarArchivoDeConfiguracion(){
 	buscar(archivoJson,"PUERTO_UMC", puertoDeLaUMC);
 	PUERTO_UMC = atoi(puertoDeLaUMC);
 	if (PUERTO_UMC == 0){
-		log_info(archivoLog,"Error: No se ha encontrado el Puerto de la UMC en el archivo de Configuracion \n");
+		log_error(archivoLog,"Error: No se ha encontrado el Puerto de la UMC en el archivo de Configuracion \n");
 		return -1;
 	}
 
@@ -104,7 +104,7 @@ int levantarArchivoDeConfiguracion(){
 void conectarseAlNucleo(){
 	nucleo = conectar(PUERTO_NUCLEO,IP_NUCLEO);
 	if (nucleo<0){
-		log_info(archivoLog,"Error al conectarse con el nucelo \n");
+		log_error(archivoLog,"Error al conectarse con el nucelo \n");
 		return;
 	}
 	autentificar(nucleo,AUTENTIFICACION);
@@ -114,11 +114,11 @@ void conectarseAlNucleo(){
 void conectarseALaUMC(){
 	umc = conectar(PUERTO_UMC,IP_UMC);
 	if (umc<0){
-		log_info(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
+		log_error(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
 	}
 	TAMANIO_PAGINA = autentificar(umc,AUTENTIFICACION);
 	if (!TAMANIO_PAGINA){
-		log_info(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
+		log_error(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
 		}
 	log_info(archivoLog,"Conexion con la UMC OK...\n");
 }
@@ -138,7 +138,7 @@ int procesarPeticion(){
 		if (quantum<=0){
 			close(nucleo);
 			close(umc);
-				perror("Error: Error de conexion con el nucleo\n");
+				log_error("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
 
@@ -147,7 +147,7 @@ int procesarPeticion(){
 		log_info(archivoLog,"Quantum Sleep recibido: %d\n",quantum_sleep);
 
 		if (pcbRecibido[0] == '\0'){
-			perror("Error: Error de conexion con el nucleo\n");
+			log_error("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
 		log_info(archivoLog,"\n Recibi del Nucleo: %s\n", pcbRecibido);
@@ -240,7 +240,7 @@ char* pedirLinea(){
 		char* respuesta=malloc(size_page+1);
 		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
 		if (verificador <= 0){
-			log_info(archivoLog,"Error : Fallor la conexion con la UMC\n");
+			log_error(archivoLog,"Error : Fallor la conexion con la UMC\n");
 			finalizado = -1;
 			break;
 		}
@@ -280,7 +280,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	if ( var!=NULL){
 		return (int)&(var->pagina);
 	}
-	log_info(archivoLog,"Error: No se encontro la variable\n");
+	log_error(archivoLog,"Error: No se encontro la variable\n");
 	finalizado = -9; // Error turbio
 	return -1;
 }
@@ -291,7 +291,7 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	int valor;
 	int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
 	if (recibidos<= 0){
-		log_info(archivoLog,"Error: Fallo la conexion con la UMC\n");
+		log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
 	}
 	log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
@@ -312,7 +312,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
 
  	if (verificador <= 0){
  		finalizado = -2;
- 		log_info(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
+ 		log_error(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
  		return -1;
  	}
 
@@ -331,7 +331,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 
  	if (verificador <= 0){
  		finalizado = -2;
- 		log_info(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
+ 		log_error(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
  		return -1;
  	}
 	return ntohl(valor_nucleo);
@@ -403,7 +403,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
  	if (verificador <= 0){
  		finalizado = -2;
- 		log_info(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
+ 		log_error(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
  		 return;
  	}
 	respuesta[2]= '\0';
@@ -423,7 +423,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		free(mensaje);
 		free(char_pcb);
 		finalizado = 3;
-	}else log_info(archivoLog,"Error: Respuesta de el nucleo: %s\n",respuesta);
+	}else log_error(archivoLog,"Error: Respuesta de el nucleo: %s\n",respuesta);
 }
 
 void post(t_nombre_semaforo identificador_semaforo){
@@ -439,8 +439,8 @@ void post(t_nombre_semaforo identificador_semaforo){
 	log_info(archivoLog,"Recibi del nucleo %d\n", verificador);
 	if (verificador != 1){
 		finalizado = -2;
-		log_info(archivoLog,"Error: Erro de conexion con el Nucleo \n");
-		log_info(archivoLog,"Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
+		log_error(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_error(archivoLog,"Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
 	}
 }
 
@@ -460,8 +460,8 @@ void imprimir(t_valor_variable valor){
 	int verificador = recibirProtocolo(nucleo);
 	if (verificador != 1){
 		finalizado = -2;
-		log_info(archivoLog,"Error: Erro de conexion con el Nucleo \n");
-		log_info(archivoLog,"Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+		log_error(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_error(archivoLog,"Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
 	}
 	free(tamanioValor);
 }
@@ -478,8 +478,8 @@ void imprimirTexto(char* texto) {
 	int verificador = recibirProtocolo(nucleo);
 	if (verificador != 1){
 		finalizado = -2;
-		log_info(archivoLog,"Error: Erro de conexion con el Nucleo \n");
-		log_info(archivoLog,"Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+		log_error(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_error(archivoLog,"Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
 	}
 }
 
@@ -640,11 +640,11 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	char* resp=malloc(5);
 	int verificador = recv(umc,resp,4,MSG_WAITALL);
 	if (verificador <= 0){
-		log_info(archivoLog,"Error: Fallo la conexion con la UMC\n");
+		log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
 	}else{
 		if (!atoi(resp)){
-			log_info(archivoLog,"Pagina inexistente\n");
+			log_error(archivoLog,"Pagina inexistente\n");
 			finalizado = -1;
 		}
 	}
