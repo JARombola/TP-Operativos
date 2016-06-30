@@ -19,9 +19,10 @@
 #include <signal.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <commons/log.h>
 
-static const int CONTENIDO_VARIABLE = 20;
-static const int POSICION_MEMORIA = 0x10;
+
+t_log* archivoLog;
 
 int nucleo;
 int umc;
