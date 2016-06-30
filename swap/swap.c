@@ -99,7 +99,7 @@ int main(int argc, char* argv[]){
 					else {
 						int tamanio = recibirProtocolo(conexionUmc);			//Recibo el programa, pero lo ignoro xq no tengo espacio
 						void* datos = recibirMensaje(conexionUmc, tamanio);
-						free(datos)
+						free(datos);
 						send(conexionUmc,"no",2,0);
 					}
 					break;
