@@ -23,7 +23,6 @@ char* toJsonArchivo(FILE* archivo){
     	caracter[0] = ' ';
 	}
 	string_append(&ansisop,"\n\0");
-	free(ansisop);
 	fclose(archivo);
 	return ansisop;
 }

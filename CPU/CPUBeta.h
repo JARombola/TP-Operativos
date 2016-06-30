@@ -21,7 +21,6 @@
 #include <semaphore.h>
 #include <commons/log.h>
 
-
 t_log* archivoLog;
 
 int nucleo;
