@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
+
     datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
     if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
         registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}                                                                //El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
@@ -78,6 +79,8 @@ int main(int argc, char* argv[]) {
     }
     tablaClocks=list_create();
     tlb=list_create();
+
+    consola();
 
     //----------------------------------------------------------------------------SOCKETS
 
@@ -142,13 +145,15 @@ void consola(){
         char* comando;
         int nroProceso;
         comando=string_new();
+        printf("ingreso comando de prueba\n");
         scanf("%s", comando);
         if (esIgual(comando, "RETARDO")) {
             int velocidadNueva;
+            printf("ingrese la velocidad nueva\n");
             scanf("%d", &velocidadNueva);
             char* mensaje=string_new();
             string_append(&mensaje,"Retardo nuevo:");
-            string_append(&mensaje,(char*)velocidadNueva);
+            string_append(&mensaje,(char*)string_itoa(velocidadNueva));
             registrarInfo(archivoLog,mensaje);
             //actualizar retardo en el config
             datosMemoria->retardo= velocidadNueva;
