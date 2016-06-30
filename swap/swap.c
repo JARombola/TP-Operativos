@@ -14,12 +14,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "Funciones/Comunicacion.h"
+#include <commons/log.h>
 
 typedef struct{
 	int proceso,inicio,paginas;
 }traductor_marco;
 
-
+t_log* crearArchivoLog();
 int crearArchivoSwap();
 int guardarDatos(int,int,int);
 int buscarEspacioLibre(int);
@@ -29,6 +30,7 @@ int eliminarProceso(int);
 void verMarcos();
 
 
+t_log* logs;
 datosConfiguracion *datosSwap;
 t_bitarray* bitArray;
 int pagsLibres;
@@ -41,16 +43,19 @@ int main(int argc, char* argv[]){
 
 	datosSwap=malloc(sizeof(datosConfiguracion));
 
+	t_log* logs = crearArchivoLog();
+	log_info(logs,"Administrador de Swap activo, listo para ejecutar.\n");
+
 	if (!(leerConfiguracion("ConfigSwap", &datosSwap)|| leerConfiguracion("../ConfigSwap", &datosSwap))) {
-		printf("Error archivo de configuracion\n FIN.");
+		log_error(logs,"Error archivo de configuracion\n FIN.");
 		return 1;}
 
 
 	if(!crearArchivoSwap()){
-		printf("Error al crear archivo Swap\n");
+		log_error(logs,"Error al crear archivo Swap\n");
 	}
 
-	if (string_equals_ignore_case(archivoSwap,"Fuiste")){printf("Error al crear el archivo Swap\n");return 0;}
+	if (string_equals_ignore_case(archivoSwap,"Fuiste")){log_error(logs,"Error al crear el archivo Swap\n");return 0;}
 
 	struct sockaddr_in direccionSWAP=crearDireccion(datosSwap->puerto, datosSwap->ip);
 
@@ -59,13 +64,13 @@ int main(int argc, char* argv[]){
 
 	tablaPaginas=list_create();
 
-	if (!bindear(swap_servidor, direccionSWAP)) {printf("Error en el bind, Adios!\n");
+	if (!bindear(swap_servidor, direccionSWAP)) {log_error(logs,"Error en el bind, Adios!\n");
 		return 1;
 	}
 
-	printf("Swap Funcionando - ");
+	log_info(logs,"Swap Funcionando - ");
 
-	printf("Esperando UMC...\n");
+	log_info(logs,"Esperando UMC...\n");
 	listen(swap_servidor, 5);
 
 	//----------------------------creo cliente para umc
@@ -76,7 +81,7 @@ int main(int argc, char* argv[]){
 	conexionUmc= accept(swap_servidor, (void *)&direccionCliente, (void *)&sin_size);
 	comprobarCliente(conexionUmc);
 
-	printf("UMC Conectada!\n");
+	log_info(logs,"UMC Conectada!\n");
 
 
 	//----------------Recibo datos de la UMC
@@ -121,12 +126,25 @@ int main(int argc, char* argv[]){
 	bitarray_destroy(bitArray);
 	list_destroy_and_destroy_elements(tablaPaginas,free);
 	munmap(archivoSwap,sizeof(archivoSwap));
-	printf("Cayó la Umc, swap autodestruida!\n");
+	log_error(logs,"Cayó la Umc, swap autodestruida!\n");
 	return 0;
 }
 
 
 //-----------------------------------FUNCIONES-----------------------------------
+t_log* crearArchivoLog() {
+
+	remove("logsSwap");
+	puts("Creando archivo de logueo...\n");
+	t_log* logs = log_create("logsSwap", "SwapLog", 1, LOG_LEVEL_TRACE);
+	if (logs == NULL) {
+		puts("No se pudo generar el archivo de logueo\n");
+		return NULL;
+	}
+	log_info(logs, "INICIALIZACION DEL ARCHIVO DE LOGUEO");
+	return logs;
+}
+
 
 int crearArchivoSwap(){				//todo modificar tamaños
 	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
@@ -160,14 +178,14 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		size=tamanio;
 		list_add(tablaPaginas, nuevaFila);
 		pagsLibres-=cantPaginas;
-		printf("Nuevo ansisop\n");
+		log_info(logs,"Nuevo ansisop\n");
 	}
 
 	else{												//actualizar pagina
 		datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
 		posicion=recibirProtocolo(conexionUmc);
 		posicion+=proceso->inicio;					//donde arranca el proceso + pag
-		printf("Pagina modificada\n");
+		log_info(logs,"Pagina modificada\n");
 		size=datosSwap->tamPagina;
 	}
 
@@ -219,6 +237,7 @@ int compactar(){
 				libre = i;
 				// busque el proximo proceso ocupado a mover
 				procesoAMover=list_find(tablaPaginas,(void*)proximoProceso);
+				log_info(logs, ">>>El proceso a mover es...<<<", procesoAMover);
 				if (procesoAMover!=NULL){
 					inicioAnterior=procesoAMover->inicio;
 					for (cont=0;cont<procesoAMover->paginas;cont++){
@@ -232,6 +251,7 @@ int compactar(){
 			else{i=datosSwap->cantidadPaginas;}							//No hay mas procesos para mover => salgo del ciclo, no necesito buscar mas
 		}
 	}
+	log_info(logs,"Compactacion realizada con exito");
 	return 1;
 }
 
@@ -258,20 +278,21 @@ int eliminarProceso(int pid){
 
 	for(i=0;i<datosProceso->paginas;i++){					//Marco los marcos del proceso como vacíos
 		bitarray_clean_bit(bitArray,posicion);
+		log_info(logs,"Cambie el bit a 0 de la posicion nro", posicion);
 		posicion++;
 	}
 
 	pagsLibres+=datosProceso->paginas;
-	printf("Lista antes: %d\n",list_size(tablaPaginas));
+	log_info(logs,"Lista antes: %d\n",list_size(tablaPaginas));
 	list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)free);			//Elimino las entradas de la tabla
-	printf("Lista despues: %d\n",list_size(tablaPaginas));
+	log_info(logs, "Lista despues: %d\n",list_size(tablaPaginas));
 	return 1;
 }
 
 void verMarcos(){
 	int i;
-	printf("Estado de los marcos: \n");
+	log_info(logs,"Estado de los marcos: \n");
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
-		printf("Pos %d | Ocupado:%d\n",i,bitarray_test_bit(bitArray,i));
+		log_info(logs,"Pos %d | Ocupado:%d\n",i,bitarray_test_bit(bitArray,i));
 	}
 }
