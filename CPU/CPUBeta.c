@@ -4,7 +4,10 @@
 #include <signal.h>
 
 int main(){
-	printf("CPU estable...[%d] \n",process_getpid());
+
+    archivoLog = log_create("CPU.log", "CPU", true, log_level_from_string("INFO"));
+
+    log_info(archivoLog,"CPU estable...[%d] \n",process_getpid());
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
@@ -18,7 +21,7 @@ int main(){
 
 	procesarPeticion();
 
-	printf("Cerrando CPU.. \n");
+	log_info(archivoLog,"Cerrando CPU.. \n");
 
 	return 0;
 }
@@ -40,11 +43,11 @@ void hiloSignal(){
 void cerrarCPU(int senial){
 		switch(senial){
 			case SIGUSR1:
-				printf("Rayos Me mataron con SIGUSR1\n");
+				log_info(archivoLog,"Rayos Me mataron con SIGUSR1\n");
 				status = 0;
 				break;
 			case SIGINT:
-				printf("Adios Mundo Cruel\n");
+				log_info(archivoLog,"Adios Mundo Cruel\n");
 				close(nucleo);
 				close(umc);
 				exit(0);
@@ -58,7 +61,7 @@ int levantarArchivoDeConfiguracion(){
 	if (archivoDeConfiguracion==NULL){
 		archivoDeConfiguracion = fopen(ARCHIVO_DE_CONFIGURACION,"r");
 		if (archivoDeConfiguracion==NULL){
-		printf("Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
+		log_info(archivoLog,"Error: No se pudo abrir el archivo de configuracion, verifique su existencia en la ruta: %s \n", ARCHIVO_DE_CONFIGURACION);
 		return -1;}
 	}
 	char* archivoJson =toJsonArchivo(archivoDeConfiguracion);
@@ -66,23 +69,23 @@ int levantarArchivoDeConfiguracion(){
 	buscar(archivoJson,"PUERTO_NUCLEO", puertoDelNucleo);
 	PUERTO_NUCLEO = atoi(puertoDelNucleo);
 	if (PUERTO_NUCLEO == 0){
-		printf("Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
+		log_info(archivoLog,"Error: No se ha encontrado el Puerto del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
 
 	buscar(archivoJson,"AUTENTIFICACION", AUTENTIFICACION);
 	if (AUTENTIFICACION[0] =='\0'){
-		printf("Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
+		log_info(archivoLog,"Error: No se ha encontrado la Autentificacion en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"IP_NUCLEO", IP_NUCLEO);
 	if (IP_NUCLEO[0] == '\0'){
-		printf("Error: No se ha encontrado la IP del Nucleo en el archivo de Configuracion \n");
+		log_info(archivoLog,"Error: No se ha encontrado la IP del Nucleo en el archivo de Configuracion \n");
 		return -1;
 	}
 	buscar(archivoJson,"IP_UMC", IP_UMC);
 	if (IP_UMC[0] =='\0'){
-		printf("Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
+		log_info(archivoLog,"Error: No se ha encontrado la IP de la UMC en el archivo de Configuracion \n");
 		return -1;
 	}
 
@@ -90,7 +93,7 @@ int levantarArchivoDeConfiguracion(){
 	buscar(archivoJson,"PUERTO_UMC", puertoDeLaUMC);
 	PUERTO_UMC = atoi(puertoDeLaUMC);
 	if (PUERTO_UMC == 0){
-		printf("Error: No se ha encontrado el Puerto de la UMC en el archivo de Configuracion \n");
+		log_info(archivoLog,"Error: No se ha encontrado el Puerto de la UMC en el archivo de Configuracion \n");
 		return -1;
 	}
 
@@ -101,36 +104,33 @@ int levantarArchivoDeConfiguracion(){
 void conectarseAlNucleo(){
 	nucleo = conectar(PUERTO_NUCLEO,IP_NUCLEO);
 	if (nucleo<0){
-		printf("Error al conectarse con el nucelo \n");
+		log_info(archivoLog,"Error al conectarse con el nucelo \n");
 		return;
 	}
 	autentificar(nucleo,AUTENTIFICACION);
-	printf("Conexion con el nucleo OK... \n");
+	log_info(archivoLog,"Conexion con el nucleo OK... \n");
 }
 
 void conectarseALaUMC(){
 	umc = conectar(PUERTO_UMC,IP_UMC);
 	if (umc<0){
-		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+		log_info(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
 	}
 	TAMANIO_PAGINA = autentificar(umc,AUTENTIFICACION);
 	if (!TAMANIO_PAGINA){
-		printf("Error: No se ha logrado establecer la conexion con la UMC\n");
+		log_info(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
 		}
-	printf("Conexion con la UMC OK...\n");
+	log_info(archivoLog,"Conexion con la UMC OK...\n");
 }
 
 int procesarPeticion(){
 	char *pcbRecibido;
 	int quantum = 0;
 	int quantum_sleep = 0;
-	int t = 0;
-	char x;
 	while ((!finalizado) && (status)){
 
-		printf("\n\nPeticion del Nucleo\n\n");
-		if (t) recv(nucleo,&x,1,0);
-		t = 1;
+		log_info(archivoLog,"\n\nPeticion del Nucleo\n\n");
+
 		quantum = recibirProtocolo(nucleo);
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
@@ -142,37 +142,37 @@ int procesarPeticion(){
 			return 0;
 		}
 
-		printf("Quantum recibido: %d\n",quantum);
+		log_info(archivoLog,"Quantum recibido: %d\n",quantum);
 
-		printf("Quantum Sleep recibido: %d\n",quantum_sleep);
+		log_info(archivoLog,"Quantum Sleep recibido: %d\n",quantum_sleep);
 
 		if (pcbRecibido[0] == '\0'){
 			perror("Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
-		printf("\n Recibi del Nucleo: %s\n", pcbRecibido);
+		log_info(archivoLog,"\n Recibi del Nucleo: %s\n", pcbRecibido);
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
 
 		procesarCodigo(quantum, quantum_sleep);
 
-		printf("Fin del Proceso %d %d\n", finalizado, status);
+		log_info(archivoLog,"Fin del Proceso %d %d\n", finalizado, status);
 	}
 	return 0;
 }
 
 void procesarCodigo(int quantum, int quantum_sleep){
 
-	printf("Iniciando Proceso de Codigo...\n");
+	log_info(archivoLog,"Iniciando Proceso de Codigo...\n");
 	char* linea;
 	while (!finalizado){
-		printf("Ronda: %d\n\n\n", pcb.pc);
+		log_info(archivoLog,"Ronda: %d\n\n\n", pcb.pc);
 		linea = pedirLinea();
-		printf("Recibi: %s \n", linea);
+		log_info(archivoLog,"Recibi: %s \n", linea);
 
 		if (!finalizado){
 			parsear(linea);
-			printf("\nFin del parser\n");
+			log_info(archivoLog,"\nFin del parser\n");
 			free(linea);
 			quantum--;
 			pcb.pc++;
@@ -189,10 +189,10 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
-			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
-			printf("Fin de Quantum \n");
+			log_info(archivoLog,"Fin de Quantum \n");
 		}
 	}
 	if (finalizado<0){
@@ -240,7 +240,7 @@ char* pedirLinea(){
 		char* respuesta=malloc(size_page+1);
 		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
 		if (verificador <= 0){
-			printf("Error : Fallor la conexion con la UMC\n");
+			log_info(archivoLog,"Error : Fallor la conexion con la UMC\n");
 			finalizado = -1;
 			break;
 		}
@@ -260,11 +260,11 @@ char* pedirLinea(){
 ////////////////////////////////////----PARSER-------///////////////////////////////////////////////////
 
 t_puntero definirVariable(t_nombre_variable variable) {
-	printf("definir la variable %c\n", variable);
+	log_info(archivoLog,"definir la variable %c\n", variable);
 	Variable* var = crearVariable(variable);
-	printf("Variable %c creada\n", var->id);
+	log_info(archivoLog,"Variable %c creada\n", var->id);
 	sumarEnLasVariables(var);
-	printf("Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
+	log_info(archivoLog,"Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
 	return  (int)var;
 }
 
@@ -272,7 +272,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	int variableBuscada(Variable* var){
 		return (var->id==variable);
 	}
-	printf("Obtener posicion de %c\n", variable);
+	log_info(archivoLog,"Obtener posicion de %c\n", variable);
 	Stack* stack = obtenerStack();
 	t_list* variables = stack->vars;
 	Variable* var;
@@ -280,7 +280,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	if ( var!=NULL){
 		return (int)&(var->pagina);
 	}
-	printf("Error: No se encontro la variable\n");
+	log_info(archivoLog,"Error: No se encontro la variable\n");
 	finalizado = -9; // Error turbio
 	return -1;
 }
@@ -291,39 +291,39 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	int valor;
 	int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
 	if (recibidos<= 0){
-		printf("Error: Fallo la conexion con la UMC\n");
+		log_info(archivoLog,"Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
 	}
-	printf("VALOR VARIABLE: %d \n",valor);
+	log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
 	return valor;
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
-	printf("Asignar\n");
+	log_info(archivoLog,"Asignar\n");
 	Pagina* pag = (Pagina*) pagina;
 	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	printf("Obtener Valor Compartido de: %s\n", variable);
+	log_info(archivoLog,"Obtener Valor Compartido de: %s\n", variable);
  	enviarMensajeNucleoConsulta(variable);
  	int valor;
  	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
 
  	if (verificador <= 0){
  		finalizado = -2;
- 		printf("Error: Fallo la conexion con el Nucleo\n");
+ 		log_info(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
  		return -1;
  	}
 
  	valor=ntohl(valor);
- 	printf("--> Valor recibido:%d\n",valor);
+ 	log_info(archivoLog,"--> Valor recibido:%d\n",valor);
 
  	return (valor);
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
-	printf("Asignar valor compatido \n");
+	log_info(archivoLog,"Asignar valor compatido \n");
 	enviarMensajeNucleoAsignacion(variable,valor);
 	int valor_nucleo;
 
@@ -331,21 +331,21 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 
  	if (verificador <= 0){
  		finalizado = -2;
- 		printf("Error: Fallo la conexion con el Nucleo\n");
+ 		log_info(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
  		return -1;
  	}
 	return ntohl(valor_nucleo);
 }
 
 void irAlLabel(t_nombre_etiqueta etiqueta){
-	printf("Ir a Label: %s \n", etiqueta);
+	log_info(archivoLog,"Ir a Label: %s \n", etiqueta);
 	pcb.pc =  metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	printf("Salto a: %d", pcb.pc);
+	log_info(archivoLog,"Salto a: %d", pcb.pc);
 	pcb.pc--;
 }
 
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
-	printf("Llamada con retorno a : %s \n", etiqueta);
+	log_info(archivoLog,"Llamada con retorno a : %s \n", etiqueta);
 
 	Stack* stack = malloc(sizeof(Stack));
 	Pagina* paginaReturn = (Pagina*) donde_retornar;
@@ -356,13 +356,13 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 
 
 	pcb.pc = metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	printf("Salto a: %d\n", pcb.pc);
+	log_info(archivoLog,"Salto a: %d\n", pcb.pc);
 
 	list_add(pcb.stack,stack);
 }
 
 void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
-	printf("Entrada/Salida: %s tiempo: %d\n", dispositivo, tiempo);
+	log_info(archivoLog,"Entrada/Salida: %s tiempo: %d\n", dispositivo, tiempo);
 
 	char* mensaje=string_new();
 	string_append(&mensaje,"00020005");
@@ -382,7 +382,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	string_append(&mensaje,toStringInt(status));
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
-	printf("\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
+	log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
 	free(pcb_char);
 	free(mensaje);
 
@@ -390,12 +390,12 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 }
 
 void wait(t_nombre_semaforo identificador_semaforo){
-	printf("Wait: %s", identificador_semaforo);
+	log_info(archivoLog,"Wait: %s", identificador_semaforo);
 	char* mensaje = string_new();
 	string_append(&mensaje,"00020003");
 	string_append(&mensaje,toStringInt(strlen(identificador_semaforo)));
 	string_append(&mensaje,identificador_semaforo);
-	printf("Le mando el mensaje al nucleo: %s \n", mensaje);
+	log_info(archivoLog,"Le mando el mensaje al nucleo: %s \n", mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	char respuesta[3];
@@ -403,15 +403,15 @@ void wait(t_nombre_semaforo identificador_semaforo){
 
  	if (verificador <= 0){
  		finalizado = -2;
- 		printf("Error: Fallo la conexion con el Nucleo\n");
+ 		log_info(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
  		 return;
  	}
 	respuesta[2]= '\0';
 
 	if(strcmp(respuesta,"ok")==0){
-		printf("Wait ok sin problemas\n");
+		log_info(archivoLog,"Wait ok sin problemas\n");
 	}else if(strcmp(respuesta,"no")==0){
-		printf("Semaforo bloqueante\n");
+		log_info(archivoLog,"Semaforo bloqueante\n");
 		pcb.pc++;
 		char* mensaje = string_new();
 		char* char_pcb = toStringPCB(pcb);
@@ -419,34 +419,34 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		string_append(&mensaje,char_pcb);
 		string_append(&mensaje,toStringInt(status));
 		send(nucleo,mensaje,strlen(mensaje),0);
-		printf("\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
+		log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
 		free(mensaje);
 		free(char_pcb);
 		finalizado = 3;
-	}else printf("Error: Respuesta de el nucleo: %s\n",respuesta);
+	}else log_info(archivoLog,"Error: Respuesta de el nucleo: %s\n",respuesta);
 }
 
 void post(t_nombre_semaforo identificador_semaforo){
-	printf("Signal: %s\n", identificador_semaforo);
+	log_info(archivoLog,"Signal: %s\n", identificador_semaforo);
 	char* mensaje = string_new();
 	string_append(&mensaje,"00020004");
 	string_append(&mensaje,toStringInt(strlen(identificador_semaforo)));
 	string_append(&mensaje,identificador_semaforo);
-	printf("Le mando el mensaje al nucleo: %s \n", mensaje);
+	log_info(archivoLog,"Le mando el mensaje al nucleo: %s \n", mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	int verificador = recibirProtocolo(nucleo);
-	printf("Recibi del nucleo %d\n", verificador);
+	log_info(archivoLog,"Recibi del nucleo %d\n", verificador);
 	if (verificador != 1){
 		finalizado = -2;
-		printf("Error: Erro de conexion con el Nucleo \n");
-		printf("Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
+		log_info(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_info(archivoLog,"Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
 	}
 }
 
 
 void imprimir(t_valor_variable valor){
-	printf("Imprimir %d \n", valor);
+	log_info(archivoLog,"Imprimir %d \n", valor);
 	char* mensaje = string_new();
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
@@ -460,14 +460,14 @@ void imprimir(t_valor_variable valor){
 	int verificador = recibirProtocolo(nucleo);
 	if (verificador != 1){
 		finalizado = -2;
-		printf("Error: Erro de conexion con el Nucleo \n");
-		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+		log_info(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_info(archivoLog,"Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
 	}
 	free(tamanioValor);
 }
 
 void imprimirTexto(char* texto) {
-	printf("ImprimirTexto: %s \n", texto);
+	log_info(archivoLog,"ImprimirTexto: %s \n", texto);
 	char* mensaje = string_new();
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
@@ -478,15 +478,15 @@ void imprimirTexto(char* texto) {
 	int verificador = recibirProtocolo(nucleo);
 	if (verificador != 1){
 		finalizado = -2;
-		printf("Error: Erro de conexion con el Nucleo \n");
-		printf("Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
+		log_info(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_info(archivoLog,"Error: Algo fallo al enviar el mensaje para imprimir texto al nucleo, recibi: %d \n", verificador);
 	}
 }
 
 void finalizar() {
-	printf("Finalizado \n");
+	log_info(archivoLog,"Finalizado \n");
 	int tamanioStack = list_size(pcb.stack);
-	printf("remueve: %d \n", tamanioStack-1);
+	log_info(archivoLog,"remueve: %d \n", tamanioStack-1);
 
 	if (tamanioStack >1){
 		Stack* stackActual = obtenerStack();
@@ -506,7 +506,7 @@ void finalizar() {
 		send(nucleo,mensaje,strlen(mensaje),0);
 		free(mensaje);
 		finalizado = 1;
-		printf("PCB enviado al Nucleo sin problemas \n");
+		log_info(archivoLog,"PCB enviado al Nucleo sin problemas \n");
 	}
 }
 
@@ -560,7 +560,7 @@ Pagina obtenerPagDisponible(){
 void sumarEnLasVariables(Variable* var){
 	Stack* stackActual = obtenerStack();
 	t_list* variables = stackActual->vars;
-	printf("Agregando a la lista de variables: %c \n", var->id);
+	log_info(archivoLog,"Agregando a la lista de variables: %c \n", var->id);
 	list_add(variables,var);
 }
 
@@ -640,11 +640,11 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	char* resp=malloc(5);
 	int verificador = recv(umc,resp,4,MSG_WAITALL);
 	if (verificador <= 0){
-		printf("Error: Fallo la conexion con la UMC\n");
+		log_info(archivoLog,"Error: Fallo la conexion con la UMC\n");
 		finalizado = -1;
 	}else{
 		if (!atoi(resp)){
-			printf("Pagina inexistente\n");
+			log_info(archivoLog,"Pagina inexistente\n");
 			finalizado = -1;
 		}
 	}
