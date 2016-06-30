@@ -43,7 +43,6 @@ t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO);
 
 PCB* crearPCB(char*);
 int calcularPaginas(char*);
-void mostrar(int*);
 void enviarAnsisopAUMC(int, char*,int);
 void maximoDescriptor(int* maximo, t_list* lista, fd_set *descriptores);
 void atender_Nuevos();
@@ -223,7 +222,7 @@ t_dictionary* crearDiccionarioGlobales(char** keys){
 		dictionary_put(diccionario,keys[i],(int*) i);
 		i++;
 	}
-	globalesValores=malloc(i * sizeof(uint32_t)); //deberia estar arriba del i-- ?
+	globalesValores=malloc(i * sizeof(uint32_t));
 	i--;
 	for(;i>=0;i--){
 		globalesValores[i]=0;
@@ -271,8 +270,12 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	int paginasNecesarias=calcularPaginas(codigo);
 	char* mensaje = string_new();
 	string_append(&mensaje, "1");
-	string_append(&mensaje, header(consola));
-	string_append(&mensaje, header(paginasNecesarias+datosNucleo->tamStack));
+	char* consol=header(consola);
+	string_append(&mensaje, consol);
+	free(consol);
+	char* pags=header(paginasNecesarias+datosNucleo->tamStack);
+	string_append(&mensaje, pags);
+	free(pags);
 	agregarHeader(&codigo);
 	string_append(&mensaje,codigo);
 	//printf("%s\n",codigo);
@@ -402,7 +405,6 @@ void atender_Ejecuciones(){
 		 		 if(!list_is_empty(cpusDisponibles)){
 					int cpu = (int)list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
 					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);
-					printf(">>>>>>>>>>>>>>>>>>>>>>>>CPU:%d\n",cpu);
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					paso=0;
@@ -492,6 +494,7 @@ void atenderOperacion(int op,int cpu){
  		}
 		queue_push(colaListos, pcbDesSerializado);
 		sem_post(&sem_Listos);
+		free(texto);
 		break;
 	case PRIVILEGIADA:
 		//me pide una operacion privilegiada
@@ -510,6 +513,7 @@ void atenderOperacion(int op,int cpu){
  		}
 		queue_push(colaTerminados, pcbDesSerializado);
 		sem_post(&sem_Terminado);
+		free(texto);
 		break;
 	case IMPRIMIR:
 		//imprimir o imprimirTexto
@@ -612,7 +616,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
 
-		pcbParaES*pcbParaBloquear=malloc(sizeof(pcbParaES)+sizeof(PCB));		//todo revisar, pero creo que ahora guarda bien
+		pcbParaES *pcbParaBloquear=malloc(sizeof(pcbParaES)+sizeof(PCB));		//todo revisar, pero creo que ahora guarda bien
 		pcbParaBloquear->pcb = pcbDesSerializado;
 		pcbParaBloquear->ut = unidadestiempo;
 		queue_push(colasES[posicion], pcbParaBloquear);
@@ -624,7 +628,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
  		free(ut);
  		free(identificador);
  		free(texto);
- 		//todo free a pcb desserializado? pcbParaBloquear tiene una copia?
+ 	//	free(pcbDesSerializado);			//ACA
 		break;
 	}
 }
@@ -671,7 +675,9 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 void finalizarProgramaUMC(int id){
 	 char* mensaje = string_new();
 	 string_append(&mensaje, "4");
-	 string_append(&mensaje, header(id));
+	 char* idchar=header(id);
+	 string_append(&mensaje, idchar);
+	 free(idchar);
 	 send(conexionUMC, mensaje, string_length(mensaje), 0);
 	 free(mensaje);
 }
@@ -681,11 +687,12 @@ void finalizarProgramaConsola(int consola, int codigo){
 	if(esa_consola_existe(consola)){
 		send(consola, cod, 4, 0);
 	}
+	free(cod);
 }
 
 void enviarTextoConsola(int consola, char* texto){
 	 char* mensaje = string_new();
-	 string_append(&mensaje, header(1));
+	 string_append(&mensaje, "0001");
 	 agregarHeader(&texto);
 	 string_append(&mensaje, texto);
 	 string_append(&mensaje,"\0");
@@ -699,6 +706,7 @@ void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	string_append(&mensaje,pcbSerializado);
 	string_append(&mensaje,"\0");
 	send(cpu, mensaje, string_length(mensaje), 0);
+	free(mensaje);
 }
 
 void Modificacion_quantum(){
