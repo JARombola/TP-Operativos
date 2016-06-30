@@ -693,7 +693,6 @@ void enviarTextoConsola(int consola, char* texto){
 
 void enviarPCBaCPU(int cpu, char* pcbSerializado){
 	char* mensaje = string_new();
-	string_append(&mensaje, "1");
 	agregarHeader(&pcbSerializado);
 	string_append(&mensaje,pcbSerializado);
 	string_append(&mensaje,"\0");

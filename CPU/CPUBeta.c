@@ -124,10 +124,13 @@ int procesarPeticion(){
 	char *pcbRecibido;
 	int quantum = 0;
 	int quantum_sleep = 0;
-
+	int t = 0;
+	char x;
 	while ((!finalizado) && (status)){
 
 		printf("\n\nPeticion del Nucleo\n\n");
+		if (t) recv(nucleo,&x,1,0);
+		t = 1;
 		quantum = recibirProtocolo(nucleo);
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
@@ -186,8 +189,6 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
-			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
-			pcb_char = toStringPCB(fromStringPCB(pcb_char));
 			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
