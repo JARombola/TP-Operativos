@@ -138,7 +138,7 @@ int procesarPeticion(){
 		if (quantum<=0){
 			close(nucleo);
 			close(umc);
-				log_error("Error: Error de conexion con el nucleo\n");
+			log_error(archivoLog,"Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
 
@@ -147,7 +147,7 @@ int procesarPeticion(){
 		log_info(archivoLog,"Quantum Sleep recibido: %d\n",quantum_sleep);
 
 		if (pcbRecibido[0] == '\0'){
-			log_error("Error: Error de conexion con el nucleo\n");
+			log_error(archivoLog,"Error: Error de conexion con el nucleo\n");
 			return 0;
 		}
 		log_info(archivoLog,"\n Recibi del Nucleo: %s\n", pcbRecibido);
@@ -189,6 +189,8 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
+			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			pcb_char = toStringPCB(fromStringPCB(pcb_char));
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
