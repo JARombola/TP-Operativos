@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
 			//exit(EXIT_FAILURE);
 		}
 		printf("Entré al select\n");
-		send(nuevo_cliente, "1", 1, 0);	socketARevisar = revisarActividadConsolas(&descriptores);
+		socketARevisar = revisarActividadConsolas(&descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
 			close(socketARevisar);
@@ -200,6 +200,7 @@ int main(int argc, char* argv[]) {
 								char* codigo = (char*) recibirMensaje(nuevo_cliente, tamanio);
 								printf("--Codigo:%s--\n",codigo);
 								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
+								free(codigo);
 							}
 							break;
 						}
@@ -299,10 +300,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 			sem_post(&sem_Nuevos);
 		}
 	}
-	//char* pcbSerializado=serializarMensajeCPU(pcbNuevo,2,5);
-	//send(cpu,pcbSerializado,string_length(pcbSerializado),0);
 	free(codigo);
-	//list_iterate(pcbNuevo->indiceCodigo, (void*) mostrar);		//Ver inicio y offset de cada sentencia
 }
 
 
