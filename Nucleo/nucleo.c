@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
 							break;
 
 						case 2:						//CONSOLA, RECIBO EL CODIGO
-							send(nuevo_cliente, "1", 1, 0);
+							send(nuevo_cliente, "0001", 4, 0);
 							list_add(consolas, (void *) nuevo_cliente);
 							printf("Acepté una nueva consola\n");
 							int tamanio = recibirProtocolo(nuevo_cliente);
@@ -284,9 +284,9 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	PCB* pcbNuevo;
 	if(!aceptado){													//consola rechazada
 		printf("Ansisop rechazado\n");
-		send(consola,"0",1,0);}
+		send(consola,"0000",4,0);}
 	else{
-			send(consola,"1",1,0);
+			send(consola,"0001",4,0);
 			pcbNuevo = crearPCB(string_substring_from(codigo,4));
 			pcbNuevo->id=consola;							//Se le asigna al proceso como ID el numero de consola que lo envía.
 	if(aceptado==1){
