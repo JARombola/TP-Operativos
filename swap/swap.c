@@ -36,6 +36,7 @@ t_bitarray* bitArray;
 int pagsLibres;
 void* archivoSwap;
 t_list* tablaPaginas;
+t_log* logs;
 
 int main(int argc, char* argv[]){
 
@@ -43,7 +44,7 @@ int main(int argc, char* argv[]){
 
 	datosSwap=malloc(sizeof(datosConfiguracion));
 
-	t_log* logs = crearArchivoLog();
+	logs = log_create("Swap.log","Swap",true,log_level_from_string("INFO"));
 	log_info(logs,"Administrador de Swap activo, listo para ejecutar.\n");
 
 	if (!(leerConfiguracion("ConfigSwap", &datosSwap)|| leerConfiguracion("../ConfigSwap", &datosSwap))) {
@@ -68,9 +69,7 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
-	log_info(logs,"Swap Funcionando - ");
-
-	log_info(logs,"Esperando UMC...\n");
+	log_info(logs,"Swap Funcionando - Esperando UMC...");
 	listen(swap_servidor, 5);
 
 	//----------------------------creo cliente para umc
@@ -100,7 +99,7 @@ int main(int argc, char* argv[]){
 					if (pagsLibres>=cantPaginas){
 						guardarDatos(conexionUmc,cantPaginas, PID);
 						send(conexionUmc, "ok", 2, 0);
-						verMarcos();}
+					verMarcos();}
 					else {
 						int tamanio = recibirProtocolo(conexionUmc);			//Recibo el programa, pero lo ignoro xq no tengo espacio
 						void* datos = recibirMensaje(conexionUmc, tamanio);
@@ -132,19 +131,6 @@ int main(int argc, char* argv[]){
 
 
 //-----------------------------------FUNCIONES-----------------------------------
-t_log* crearArchivoLog() {
-
-	remove("logsSwap");
-	puts("Creando archivo de logueo...\n");
-	t_log* logs = log_create("logsSwap", "SwapLog", 1, LOG_LEVEL_TRACE);
-	if (logs == NULL) {
-		puts("No se pudo generar el archivo de logueo\n");
-		return NULL;
-	}
-	log_info(logs, "INICIALIZACION DEL ARCHIVO DE LOGUEO");
-	return logs;
-}
-
 
 int crearArchivoSwap(){				//todo modificar tamaños
 	char* instruccion=string_from_format("dd if=/dev/zero of=%s count=%d bs=%d",datosSwap->nombre_swap,datosSwap->cantidadPaginas,datosSwap->tamPagina);
@@ -237,8 +223,8 @@ int compactar(){
 				libre = i;
 				// busque el proximo proceso ocupado a mover
 				procesoAMover=list_find(tablaPaginas,(void*)proximoProceso);
-				log_info(logs, ">>>El proceso a mover es...<<<", procesoAMover);
 				if (procesoAMover!=NULL){
+				log_info(logs, ">>>El proceso a mover es: %d<<<", procesoAMover);
 					inicioAnterior=procesoAMover->inicio;
 					for (cont=0;cont<procesoAMover->paginas;cont++){
 								bitarray_clean_bit(bitArray,inicioAnterior+cont);				//porque ahora va a estar vacia
@@ -293,6 +279,6 @@ void verMarcos(){
 	int i;
 	log_info(logs,"Estado de los marcos: \n");
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
-		log_info(logs,"Pos %d | Ocupado:%d\n",i,bitarray_test_bit(bitArray,i));
+		log_info(logs,"Pos %d | Ocupado:%d",i,bitarray_test_bit(bitArray,i));
 	}
 }
