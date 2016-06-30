@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
 			//exit(EXIT_FAILURE);
 		}
 		printf("Entré al select\n");
-		socketARevisar = revisarActividadConsolas(&descriptores);
+		send(nuevo_cliente, "1", 1, 0);	socketARevisar = revisarActividadConsolas(&descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			printf("Se desconecto la consola en %d, eliminada\n",socketARevisar);
 			close(socketARevisar);
@@ -192,6 +192,7 @@ int main(int argc, char* argv[]) {
 							break;
 
 						case 2:						//CONSOLA, RECIBO EL CODIGO
+							send(nuevo_cliente, "1", 1, 0);
 							list_add(consolas, (void *) nuevo_cliente);
 							printf("Acepté una nueva consola\n");
 							int tamanio = recibirProtocolo(nuevo_cliente);

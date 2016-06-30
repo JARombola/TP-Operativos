@@ -142,7 +142,6 @@ int procesarPeticion(){
 		printf("Quantum recibido: %d\n",quantum);
 
 		printf("Quantum Sleep recibido: %d\n",quantum_sleep);
-		quantum_sleep = 0;printf("Quantum Sleep recibido: %d\n",quantum_sleep);
 
 		if (pcbRecibido[0] == '\0'){
 			perror("Error: Error de conexion con el nucleo\n");
@@ -174,7 +173,7 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			free(linea);
 			quantum--;
 			pcb.pc++;
-			sleep(quantum_sleep);
+		//	sleep(quantum_sleep);
 		}
 
 		if ((!finalizado) && (!quantum)){;
@@ -187,6 +186,8 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
+			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			pcb_char = toStringPCB(fromStringPCB(pcb_char));
 			printf("\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
@@ -351,6 +352,7 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 	stack->retPos = pcb.pc;
 	stack->vars = list_create();
 	stack->args = list_create();
+
 
 	pcb.pc = metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
 	printf("Salto a: %d\n", pcb.pc);
