@@ -15,7 +15,7 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 	return direccion;
 }
 
-int conectar(int puerto,char* ip){   							//Con la swap
+int conectar(int puerto,char* ip){
 	struct sockaddr_in direccion=crearDireccion(puerto, ip);
 	int conexion = socket(AF_INET, SOCK_STREAM, 0);
 	while (connect(conexion, (void*) &direccion, sizeof(direccion)));
@@ -25,9 +25,7 @@ int conectar(int puerto,char* ip){   							//Con la swap
 int recibirProtocolo(int conexion){
 	char* protocolo = malloc(5);
 	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), MSG_WAITALL);
-	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
-		free(protocolo);
-		return 0;}
+	protocolo[4]='\0';
 	int numero = atoi(protocolo);
 	free(protocolo);
 	return numero;

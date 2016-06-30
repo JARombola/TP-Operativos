@@ -39,9 +39,8 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 	FILE* ansisop=fopen(argv[1],"r");
 	if (!ansisop){perror("Archivo");}
 	if(enviarAnsisop(ansisop, nucleo)){printf("Error en el envio del codigo\n");}
-	char respuesta;
-	recv(nucleo,&respuesta,1,0);
-	if (!string_itoa(respuesta)){
+	int respuesta=recibirProtocolo(nucleo);
+	if (!respuesta){
 		printf("Ansisop rechazado\n Consola finalizada\n");
 		return -1;
 	}
@@ -83,12 +82,8 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 
 int autentificar(int conexion){
 	send(conexion, "soy_consola", 11, 0);
-	char respuesta;
-	int bytesRecibidosH = recv(conexion, &respuesta, 1, 0);
-	if (bytesRecibidosH <= 0) {
-		return 0;
-	}
-	return htonl(respuesta);
+	int respuesta=recibirProtocolo(conexion);
+	return respuesta;
 }
 
 int enviarAnsisop(FILE* archivo, int sockNucleo){
