@@ -406,11 +406,11 @@ void atender_Ejecuciones(){
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					paso=0;
+					free(mensajeCPU);
 				}
 		 	 }
 		 }
 		 free(pcbListo);
-		 free(mensajeCPU);
 	 }
  }
 
@@ -676,10 +676,13 @@ void finalizarProgramaUMC(int id){
 	 free(mensaje);
 }
 void finalizarProgramaConsola(int consola, int codigo){
-	 //codigo: el ansisop termino 2=ok / 3=mal
-	 char* cod = header(codigo);
-	 send(consola, cod, 4, 0);
+	//codigo: el ansisop termino 2=ok / 3=mal
+	char* cod = header(codigo);
+	if(esa_consola_existe(consola)){
+		send(consola, cod, 4, 0);
+	}
 }
+
 void enviarTextoConsola(int consola, char* texto){
 	 char* mensaje = string_new();
 	 string_append(&mensaje, header(1));
@@ -700,7 +703,6 @@ void enviarPCBaCPU(int cpu, char* pcbSerializado){
 
 void Modificacion_quantum(){
 	char buffer[BUF_LEN];
-	//todo verificarlo en la terminal, sino lo mando al select
 	int fd_config = inotify_init();
 	if (fd_config < 0) {
 		perror("inotify_init");
