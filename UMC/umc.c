@@ -437,9 +437,14 @@ int finalizarPrograma(int procesoEliminar){
     int clockDelProceso(unClock* clockDelProceso){
         return(clockDelProceso->proceso==procesoEliminar);}
 
+    void limpiarTLB(traductor_marco* marco){
+           list_remove_by_condition(tlb,(void*)paginasDelProceso);
+    }
+
+
     printf("[Antes] Paginas: %d | Clocks: %d | TLB:%d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
 
-   	list_remove_by_condition(tlb,(void*)paginasDelProceso);
+   	list_iterate(tlb,(void*)limpiarTLB);
 
     pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
     	pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla

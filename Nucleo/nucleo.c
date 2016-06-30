@@ -402,6 +402,7 @@ void atender_Ejecuciones(){
 		 		 if(!list_is_empty(cpusDisponibles)){
 					int cpu = (int)list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
 					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);
+					printf(">>>>>>>>>>>>>>>>>>>>>>>>CPU:%d\n",cpu);
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					paso=0;
@@ -487,7 +488,7 @@ void atenderOperacion(int op,int cpu){
 		sigueCPU = recibirProtocolo(cpu);
  		printf("el proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
  		if(sigueCPU){
-			list_add(cpusDisponibles, (void *)cpu);
+			list_add(cpusDisponibles, (void*)cpu);
  		}
 		queue_push(colaListos, pcbDesSerializado);
 		sem_post(&sem_Listos);
