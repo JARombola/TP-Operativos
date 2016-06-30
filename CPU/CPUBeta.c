@@ -290,7 +290,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		for(i=0; i<list_size(stackActual->args);i++){
 			var = list_get(stackActual->args,i);
 			if (variable == var->id){
-				return var->pagina;
+				return (int)&var->pagina;
 			}
 		}
 	}else{
@@ -355,7 +355,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	int valor_nucleo;
 
  	int verificador = recv(nucleo,&valor_nucleo,sizeof(int),MSG_WAITALL);
-
+ 	log_info(archivoLog,"Valor de %s : %d",variable, verificador);
  	if (verificador <= 0){
  		finalizado = -2;
  		log_error(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
@@ -681,10 +681,9 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 void enviarMensajeNucleoConsulta(char* variable){
 	char* mensaje = string_new();
 	string_append(&mensaje, "00020001");
-	char* tamVariable=toStringInt(strlen(variable)+1);
+	char* tamVariable=toStringInt(strlen(variable));
 	string_append(&mensaje, tamVariable);
 	free(tamVariable);
-	string_append(&mensaje, "!");
 	string_append(&mensaje, variable);
 	string_append(&mensaje, "\0");
 	send(nucleo, mensaje,strlen(mensaje),0);

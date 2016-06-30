@@ -362,7 +362,7 @@ t_list* fromStringListPage(char* char_list_page){
 	int page_size = strlen(char_list_page)/12;
 	Pagina* pag = malloc(sizeof(Pagina));
 	t_list* lista_page = list_create();
-	for(i=0; i<= page_size;i++){
+	for(i=0; i< page_size;i++){
 		pag = fromStringPagina(toSubString(char_list_page,i*12,i*12+11));
 		list_add(lista_page, pag);
 	}
