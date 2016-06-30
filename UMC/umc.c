@@ -10,11 +10,13 @@
 #include <commons/string.h>
 #include <commons/config.h>
 #include <commons/bitarray.h>
+#include <commons/log.h>
 #include <commons/collections/list.h>
 #include <pthread.h>
 #include <unistd.h>
 #include "Funciones/Comunicacion.h"
 #include "Funciones/Paginas.h"
+
 
 #define esIgual(a,b) string_equals_ignore_case(a,b)
 #define marcosTotal datosMemoria->marco_size*datosMemoria->marcos
@@ -68,7 +70,8 @@ int main(int argc, char* argv[]) {
 
     datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
     if (!(leerConfiguracion("ConfigUMC", &datosMemoria) || leerConfiguracion("../ConfigUMC", &datosMemoria))){
-        registrarError(archivoLog,"No se pudo leer archivo de Configuracion");return 1;}                                                                //El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
+        log_error(archivoLog,"No se pudo leer archivo de Configuracion");
+        return 1;}                                                                //El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 
     vectorMarcos=(int*) malloc(datosMemoria->marcos*sizeof(int*));
     memoria = (void*) malloc(marcosTotal);
@@ -85,25 +88,24 @@ int main(int argc, char* argv[]) {
     struct sockaddr_in direccionCliente;
     int umc_servidor = socket(AF_INET, SOCK_STREAM, 0);
 
-    registrarInfo(archivoLog,"UMC Creada. Conectando con la Swap...");
+    log_info(archivoLog,"UMC Creada. Conectando con la Swap...");
     conexionSwap = conectar(datosMemoria->puerto_swap, datosMemoria->ip_swap);
 
     //----------------------------------------------------------------SWAP
 
     if (!autentificar(conexionSwap)) {
-        registrarError(archivoLog,"Falló el handShake");
+        log_error(archivoLog,"Falló el handShake");
         return -1;}
 
-    registrarInfo(archivoLog,"Conexion con la Swap OK!");
+    log_info(archivoLog,"Conexion con la Swap OK!");
 
     if (!bindear(umc_servidor, direccionUMC)) {
-        registrarError(archivoLog,"Error en el bind, desaprobamos");
+        log_error(archivoLog,"Error en el bind\n");
             return 1;
         }
 
     //-------------------------------------------------------------------------NUCLEO
 
-    registrarTrace(archivoLog,"Esperando nucleo...");
     listen(umc_servidor, 1);
     nucleo=aceptarNucleo(umc_servidor,direccionCliente);
 
@@ -115,8 +117,6 @@ int main(int argc, char* argv[]) {
     int cpuRespuesta=htonl(datosMemoria->marco_size);
     while (1) {
         nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
-        if (nuevo_cliente == -1) {perror("Fallo el accept");}
-        registrarTrace(archivoLog,"Conexion entrante");
         switch (comprobarCliente(nuevo_cliente)) {
         case 0:                                                            //Error
             perror("No lo tengo que aceptar, fallo el handshake");
@@ -143,16 +143,13 @@ void consola(){
         int nroProceso;
         comando=string_new();
         scanf("%s", comando);
+        log_info(archivoLog,">>> Comando introducido: %s <<<",comando);
         if (esIgual(comando, "RETARDO")) {
             int velocidadNueva;
             scanf("%d", &velocidadNueva);
-            char* mensaje=string_new();
-            string_append(&mensaje,"Retardo nuevo:");
-            string_append(&mensaje,(char*)velocidadNueva);
-            registrarInfo(archivoLog,mensaje);
+            log_info(archivoLog,"Retardo nuevo: %d",velocidadNueva);
             //actualizar retardo en el config
             datosMemoria->retardo= velocidadNueva;
-            free(mensaje);
         }
         else {
             if (esIgual(comando, "DUMP")) {
@@ -173,19 +170,20 @@ void consola(){
 
                 fclose(reporteDump);
                 list_clean(nueva);
-                printf("Dump generado\n");
+                log_info(archivoLog,"Reporte dump generado\n");
             }
             else {
                 if (esIgual(comando, "TLB")) {
+                	log_info(archivoLog,"TLB Antes: %d",list_size(tlb));
                     list_clean(tlb);
-                    printf("TLB Limpia\n");
+                    log_info(archivoLog,"TLB Después: %d\n",list_size(tlb));
                 }
                 else {
                     if (esIgual(comando, "MODIFICADAS")) {
                        /* list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
                         finalizarPrograma(0);
                         list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);*/
-                        scanf("%d",&nroProceso);//todo
+                        scanf("%d",&nroProceso);
 
                         void marcarModificadas(traductor_marco* pagina){
                         	if (nroProceso==-1){ pagina->modificada=1;}
@@ -193,13 +191,14 @@ void consola(){
                         		if(pagina->proceso==nroProceso)pagina->modificada=1;
                         	}
                         }
-
                         list_iterate(tabla_de_paginas,(void*)marcarModificadas);
-                        printf("Paginas modificadas (Proceso: %d)\n",nroProceso);
+
+                        log_info(archivoLog,"(Proceso: %d) Páginas Modificadas\n",nroProceso);
                     }
                 }
             }
         }
+
     }
 }
 
@@ -250,17 +249,8 @@ void dumpDatos(traductor_marco* datosProceso){
     }
 }
 
-void mostrarTablaPag(traductor_marco* fila) {
-    printf("Marco: %d, Pag: %d, Proc:%d", fila->marco, fila->pagina,fila->proceso);
-    char* asd = malloc(datosMemoria->marco_size + 1);
-    memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
-    memcpy(asd + datosMemoria->marco_size , "\0", 1);
-    printf("-[%s]\n", asd);
-    free(asd);
-}
-
 void atenderCpu(int conexion){
-	registrarTrace(archivoLog, "Nuevo CPU-");
+	log_info(archivoLog, "Nuevo CPU Conectado\n");
 	int salir = 0, operacion, proceso, pagina, offset, buffer, size,procesoAnterior=-1;
 	int removerEntradasProcesoAnterior(traductor_marco* entradaTlb){
 		return entradaTlb->proceso!=procesoAnterior;
@@ -302,12 +292,11 @@ void atenderCpu(int conexion){
 			}
 		} else {salir = 1;}
 	}
-	registrarWarning(archivoLog, "Se desconectó una CPU\n");
+	log_warning(archivoLog, "Se desconectó una CPU\n");
 }
 
 
 void atenderNucleo(int nucleo){
-    registrarInfo(archivoLog,"Hilo de Nucleo creado");
         int salir=0,guardar,procesoEliminar;
         while (!salir) {
             int operacion = atoi(recibirMensaje(nucleo,1));
@@ -317,7 +306,7 @@ void atenderNucleo(int nucleo){
                     case INICIALIZAR:                                                //inicializar programa
                         guardar=inicializarPrograma(nucleo);
                         if (!guardar){                            //1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
-                            registrarWarning(archivoLog,"Ansisop rechazado, memoria insuficiente");}
+                            log_warning(archivoLog,"Ansisop rechazado, memoria insuficiente");}
                             guardar=htonl(guardar);
                         send(nucleo, &guardar,sizeof(int),0);
                     break;
@@ -325,13 +314,13 @@ void atenderNucleo(int nucleo){
                     case FINALIZAR:                                                //Finalizar programa
                         procesoEliminar=recibirProtocolo(nucleo);
                         if(finalizarPrograma(procesoEliminar)){
-                        printf("Proceso %d eliminado\n",procesoEliminar);}
+                        log_info("--Proceso %d eliminado",procesoEliminar);}
                     break;
                     }
                 }else{salir=1;}
         }
-        registrarWarning(archivoLog,"Nucleo desconectado\n");
-        registrarWarning(archivoLog, "Desconectando UMC...\n");
+        log_warning(archivoLog,"Nucleo desconectado\n");
+        log_info(archivoLog, "Desconectando UMC...\n");
         list_destroy_and_destroy_elements(tabla_de_paginas,free);
         void eliminarClock(unClock* clock){
         	queue_clean(clock->colaMarcos);
@@ -368,7 +357,7 @@ int inicializarPrograma(int conexion) {
     if (!aceptadoSwap){
         return 0;
     }
-    printf("Ansisop %d guardado\n",PID);
+    log_info(archivoLog,"ANSISOP %d GUARDADO\n",PID);
     int i;
     pthread_mutex_lock(&mutexTablaPaginas);
     	usleep(datosMemoria->retardo*1000);							//todo 1 por cada acceso, o por cada escritura? :/
@@ -414,7 +403,7 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 		memcpy(memoria+posicion,&buffer,size);
 		traductor_marco* datosTabla=list_find(tabla_de_paginas,(void*)buscarMarco);
 		datosTabla->modificada=1;
-		printf("Pagina modificada\n");
+		log_info("(Pagina modificada)-Proceso %d Pag %d\n",proceso,pagina);
 //    pthread_mutex_unlock(&mutexTablaPaginas);
 
     void* a=malloc(4);							//todo esto se va
@@ -441,8 +430,8 @@ int finalizarPrograma(int procesoEliminar){
            list_remove_by_condition(tlb,(void*)paginasDelProceso);
     }
 
-
-    printf("[Antes] Paginas: %d | Clocks: %d | TLB:%d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
+    log_info(archivoLog,"-----FINALIZA PROCESO: %d",procesoEliminar);
+    log_info(archivoLog,"[Antes] Paginas: %d | Clocks: %d | TLB:%d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
 
    	list_iterate(tlb,(void*)limpiarTLB);
 
@@ -459,7 +448,7 @@ int finalizarPrograma(int procesoEliminar){
         free(clockProceso);
     }
 
-    printf("[Despues] Paginas: %d | Clocks: %d | TLB: %d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
+    log_info(archivoLog,"[Despues] Paginas: %d | Clocks: %d | TLB: %d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
 
     char* mensajeEliminar=string_new();
     string_append(&mensajeEliminar,"3");

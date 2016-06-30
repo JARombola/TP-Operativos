@@ -19,20 +19,20 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
         usleep(datosMemoria->retardo*1000);											//Acceso a tlb
 
         if (paginaBuscada!=NULL){                                                    //Esta en la tlb, entonces saco y vuelvo a poner más abajo
-            printf("TLB HIT\n");
+            log_info(archivoLog,">> TLB HIT! (Proceso %d | Pag %d)\n",proceso,pag);
             list_remove_by_condition(tlb,(void*)paginaEncontrada);
         }
         else{
-            printf("TLB MISS\n");
+            log_info(archivoLog,">> TLB MISS (Proceso %d | Pag %d\n",proceso,pag);
 
         paginaBuscada=list_find(tabla_de_paginas,(void*) paginaEncontrada);
         usleep(datosMemoria->retardo*1000);}										//Acceso a la tabla de paginas
 
         if (paginaBuscada->marco <0) {    //no está en memoria => peticion a swap
-            //printf("Pedido a swap - (Proceso: %d | Pag: %d)",proceso,pag);
+            log_info(archivoLog,"__Pedido a SWAP__ - (Proceso: %d | Pag: %d)",proceso,pag);
         	paginaBuscada=solicitarPaginaASwap(proceso,pag);
         }else{
-        //printf("Estaba en memoria - (Proceso: %d | Pag: %d)",proceso,pag);
+        	printf(archivoLog,"__Estaba en memoria__ - (Proceso: %d | Pag: %d)",proceso,pag);
             }
         if(paginaBuscada->marco!=-666){
 			list_add(tlb, paginaBuscada);
@@ -43,11 +43,11 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
 			return posicion;                                //devuelve la posicion dentro de la "memoria"
 			}
         else{
-        	printf("No hay marcos disponibles\n");
+        //	printf("No hay marcos disponibles\n");
         	return -1;
        }
     }
-    printf("No existe la pagina solicitada\n");
+   // printf("No existe la pagina solicitada\n");
     return -1;
 }
 
@@ -129,15 +129,15 @@ int buscarMarco(int pid){            //    Con marcos en orden de llegada
             }
             if (vectorMarcos[marco]== 1 && !modificada) {                                                        //Se va de la UMC
                 if (datosMarco->modificada) {                                                        //Estaba modificada => se la mando a la swap
-                    printf("(Proceso %d | Pag %d) Envío a swap (Estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
+                    log_info(archivoLog,"(Proceso %d | Pag %d) Envío a swap (Estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                     enviarPaginaASwap(datosMarco);
                     esperarRespuestaSwap();
                 }else{
-                    printf("(Proceso %d | Pag %d) No se envia a swap (no estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
+                    log_info(archivoLog,"(Proceso %d | Pag %d) No se envia a swap (no estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                 }
                 vectorMarcos[marco] = 2;
                 queue_push(clockProceso->colaMarcos,(int)marco);
-                printf("Marco eliminado: %d\n", marco);
+                log_info(archivoLog,"Proceso %d |	Marco Reemplazado: %d",pid, marco);
 
                 pthread_mutex_lock(&mutexTablaPaginas);
                 	actualizarTabla(datosMarco->pagina,pid,-1);

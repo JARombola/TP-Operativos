@@ -64,7 +64,7 @@ int autentificar(int conexion) {
 	char* bufferHandshakeSwap = malloc(8);
 	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 8, MSG_WAITALL);
 	if (bytesRecibidosH <= 0) {
-		registrarError(archivoLog,"Error al conectarse con la Swap");
+		log_error(archivoLog,"Error al conectarse con la Swap");
 		free (bufferHandshakeSwap);
 		return 0;
 	}
@@ -98,7 +98,7 @@ int aceptarNucleo(int umc,struct sockaddr_in direccionCliente){
 	} while (comprobarCliente(nuevo_cliente) != 2);												//Espero la conexion del nucleo
 	int tamPagEnvio = ntohl(datosMemoria->marco_size);
 	send(nuevo_cliente, &tamPagEnvio, 4, 0);													//Le envio el tamaño de pagina
-	registrarInfo(archivoLog,"Nucleo aceptado!");
+	log_info(archivoLog,"Nucleo aceptado!");
 	return nuevo_cliente;
 }
 

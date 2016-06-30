@@ -15,7 +15,6 @@
 #include <arpa/inet.h>
 #include <commons/config.h>
 #include "Paginas.h"
-#include "ArchivosLogs.h"
 
 typedef struct{
 	char *ip, *ip_swap;				//PASAR A IP CON: inet_addr() / o inet_ntoa()

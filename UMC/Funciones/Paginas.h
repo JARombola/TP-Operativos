@@ -10,12 +10,13 @@
 
 #include <commons/collections/list.h>
 #include <commons/string.h>
+#include <commons/log.h>
 #include "Comunicacion.h"
-#include "ArchivosLogs.h"
 #include <string.h>
 #include <commons/collections/queue.h>
 #include <pthread.h>
 #include <unistd.h>
+
 
 typedef struct{
     int proceso, pagina, marco, enMemoria, modificada;

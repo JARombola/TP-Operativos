@@ -406,11 +406,12 @@ void atender_Ejecuciones(){
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 					printf("[HILO EJECUCIONES]: el proceso %d paso de Listo a Execute\n",pcbListo->id);
 					paso=0;
+					free(mensajeCPU);
 				}
 		 	 }
 		 }
 		 free(pcbListo);
-		 free(mensajeCPU);
+
 	 }
  }
 
