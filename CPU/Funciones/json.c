@@ -23,7 +23,6 @@ char* toJsonArchivo(FILE* archivo){
     	caracter[0] = ' ';
 	}
 	string_append(&ansisop,"\n\0");
-	free(ansisop);
 	fclose(archivo);
 	return ansisop;
 }
@@ -362,11 +361,7 @@ t_list* fromStringListPage(char* char_list_page){
 	int i;
 	int page_size = strlen(char_list_page)/12;
 	Pagina* pag = malloc(sizeof(Pagina));
-	pag->off = 0;
-	pag->pag = 0;
-	pag->tamanio = 0;
 	t_list* lista_page = list_create();
-	list_add(lista_page,pag);
 	for(i=0; i<= page_size;i++){
 		pag = fromStringPagina(toSubString(char_list_page,i*12,i*12+11));
 		list_add(lista_page, pag);
