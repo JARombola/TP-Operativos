@@ -45,9 +45,13 @@ void cerrarCPU(int senial){
 			case SIGUSR1:
 				log_info(archivoLog,"Rayos Me mataron con SIGUSR1\n");
 				status = 0;
-				break;
+				return;
 			case SIGINT:
-				log_info(archivoLog,"Adios Mundo Cruel\n");
+				char* mensaje = string_new();
+				string_append(&mensaje,"0000");
+				string_append(&mensaje,toStringInt(pcb.id));
+				string_append(&mensaje,"0000");
+				send(nucleo,mensaje,strlen(mensaje),0);
 				close(nucleo);
 				close(umc);
 				exit(0);
@@ -155,6 +159,7 @@ int procesarPeticion(){
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
 
+		log_info(archivoLog,"\n Ejecutar Proceso: %d\n", pcb.id);
 		procesarCodigo(quantum, quantum_sleep);
 
 		log_info(archivoLog,"Fin del Proceso %d %d\n", finalizado, status);
@@ -177,7 +182,7 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			free(linea);
 			quantum--;
 			pcb.pc++;
-		//	sleep(quantum_sleep);
+			usleep(quantum_sleep*1000);
 		}
 
 		if ((!finalizado) && (!quantum)){;
@@ -190,8 +195,6 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
-			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
-			pcb_char = toStringPCB(fromStringPCB(pcb_char));
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
@@ -278,6 +281,7 @@ t_puntero definirVariable(t_nombre_variable variable) {
 		sumarEnLasVariables(var);
 	}
 	log_info(archivoLog,"Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
+	log_info(archivoLog,"retorno : %d", (int)&var->pagina);
 	return  (int)&var->pagina;
 }
 
@@ -294,6 +298,8 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		for(i=0; i<list_size(stackActual->args);i++){
 			var = list_get(stackActual->args,i);
 			if (variable == var->id){
+				log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
+				log_info(archivoLog,"retorno : %d", (int)&var->pagina);
 				return (int)&var->pagina;
 			}
 		}
@@ -302,6 +308,8 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		t_list* variables = stack->vars;
 		var = (Variable*) list_find(variables,(void*)variableBuscada);
 		if ( var!=NULL){
+			log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
+			log_info(archivoLog,"retorno : %d", (int)&var->pagina);
 			return (int)&(var->pagina);
 		}
 	}
@@ -311,6 +319,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 }
 
 t_valor_variable dereferenciar(t_puntero pagina) {
+	log_info(archivoLog,"Me llega : %d", (int) pagina);
 	Pagina*  pag = (Pagina*) pagina;
 	log_info(archivoLog,"Dereferenciar %d %d %d",pag->pag,pag->off,pag->tamanio);
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);

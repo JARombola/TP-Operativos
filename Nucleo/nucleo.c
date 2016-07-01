@@ -423,7 +423,7 @@ void atender_Ejecuciones(){
 	 	 sem_wait(&semaforosES[posicion]);
 	 	 pcbParaES* pcbBloqueando = queue_pop(colasES[posicion]);
 	 	 printf("[HILO DE E/S nro %d]: saque el pcb nro %d y va a esperar %d ut\n", posicion, pcbBloqueando->pcb->id,pcbBloqueando->ut);
-	 	 usleep(miSLEEP*pcbBloqueando->ut);
+	 	 usleep(miSLEEP*pcbBloqueando->ut*1000);
 		 queue_push(colaListos, pcbBloqueando->pcb);
 		 printf("[HILO DE E/S nro %d]: el proceso %d paso de Bloqueado a Listo\n",posicion,pcbBloqueando->pcb->id);
 		 sem_post(&sem_Listos);
@@ -434,8 +434,8 @@ void atender_Ejecuciones(){
  void atender_Bloq_SEM(int posicion){
 	 printf("[HILO DE SEMAFORO nro %d]: se creo el hilo %d de Semaforos de variables globales\n",posicion,posicion);
 	 while(1){
-		 sem_wait(&semaforosGlobales[posicion]);//si se activa, desbloquea a todos
-		 	 while(!queue_is_empty(colasSEM[posicion])){
+		 sem_wait(&semaforosGlobales[posicion]);
+		 	 if(!queue_is_empty(colasSEM[posicion])){
 		 		 PCB* pcbBloqueando = queue_pop(colasSEM[posicion]);
 		 		 queue_push(colaListos, pcbBloqueando);
 		 		 printf("[HILO DE SEMAFORO nro %d]: el proceso %d paso de Bloqueado a Listo\n",posicion, pcbBloqueando->id);
@@ -575,10 +575,8 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		//wait a un semaforo, si no puiede acceder, se bloquea
 		//recibo el identificador del semaforo
 		posicion = (int)dictionary_get(semaforos,identificador);
-		if(contadorSemaforo[posicion]){					//si es mas de 0, semaforo libre, solo resta
-			send(cpu, "ok", 2, 0);
-			contadorSemaforo[posicion]--;
-		}else{											//si es 0, semaforo bloqueado, se tiene que bloquear el pcb
+		contadorSemaforo[posicion]--;
+		if(contadorSemaforo[posicion]<0){					//si es < a 0, se tiene que bloquear el pcb
 			send(cpu, "no", 2, 0);						//=> Pido el pcb
 			tamanio = recibirProtocolo(cpu); 			//tamaño del pcb
 			texto = recibirMensaje(cpu,tamanio);		//PCB
@@ -590,6 +588,8 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 				list_add(cpusDisponibles, (void *)cpu);
 	 		}
 	 		free(texto);
+		}else{											//si no, ok
+			send(cpu, "ok", 2, 0);
 		}
 		free(identificador);
 		break;
@@ -598,10 +598,10 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 		//recibo el identificador del semaforo
 		send(cpu,"0001",4,0);
 		posicion = (int)dictionary_get(semaforos,identificador);
-		if(!contadorSemaforo[posicion]){
-			sem_post(&semaforosGlobales[posicion]); //si esta en 0, activo el hilo para que los desbloquee
-		}
 		contadorSemaforo[posicion]++;
+		if(contadorSemaforo[posicion]<=0){
+			sem_post(&semaforosGlobales[posicion]); //si era < 0, tengo alguien que desbloquear
+		}
 		free(identificador);
 		break;
 	case E_S:
