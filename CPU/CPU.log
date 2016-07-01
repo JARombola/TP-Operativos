@@ -1,0 +1,695 @@
+[INFO] 20:16:11:425 CPU/(5554:5554): CPU estable...[5554] 
+
+[INFO] 20:16:19:554 CPU/(5554:5554): Conexion con el nucleo OK... 
+
+[INFO] 20:16:27:644 CPU/(5554:5554): Conexion con la UMC OK...
+
+[INFO] 20:16:35:936 CPU/(5554:5554): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:16:52:903 CPU/(5554:5554): Quantum recibido: 3
+
+[INFO] 20:16:54:63 CPU/(5554:5554): Quantum Sleep recibido: 500
+
+[INFO] 20:18:04:40 CPU/(5554:5554): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:18:17:766 CPU/(5554:5554): Iniciando Proceso de Codigo...
+
+[INFO] 20:18:17:767 CPU/(5554:5554): Ronda: 4
+
+
+
+[INFO] 20:18:17:972 CPU/(5554:5554): Recibi: variables a,b 
+
+[INFO] 20:18:23:132 CPU/(5554:5554): definir la variable a
+
+[INFO] 20:18:34:674 CPU/(5554:5554): Variable a creada
+
+[INFO] 20:18:35:581 CPU/(5554:5554): Agregando a la lista de variables: a 
+
+[INFO] 20:18:36:331 CPU/(5554:5554): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:18:44:152 CPU/(5554:5554): definir la variable b
+
+[INFO] 20:18:48:587 CPU/(5554:5554): Variable b creada
+
+[INFO] 20:18:49:212 CPU/(5554:5554): Agregando a la lista de variables: b 
+
+[INFO] 20:18:49:546 CPU/(5554:5554): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:18:57:214 CPU/(5554:5554): 
+Fin del parser
+
+[INFO] 20:19:01:860 CPU/(5554:5554): Ronda: 5
+
+
+
+[INFO] 20:19:08:461 CPU/(5554:5554): Recibi: print a 
+
+[INFO] 20:19:10:315 CPU/(5554:5554): Obtener posicion de a
+
+[INFO] 20:20:14:668 CPU/(5554:5554): VALOR VARIABLE: 0 
+
+[INFO] 20:20:35:330 CPU/(5554:5554): Imprimir 0 
+
+[INFO] 20:20:40:334 CPU/(5554:5554): 
+Fin del parser
+
+[INFO] 20:20:44:792 CPU/(5554:5554): Ronda: 6
+
+
+
+[INFO] 20:20:46:680 CPU/(5554:5554): Recibi: a<-x a 
+
+[INFO] 20:21:02:760 CPU/(5554:5554): Obtener posicion de a
+
+[INFO] 20:21:45:845 CPU/(5554:5554): VALOR VARIABLE: 0 
+
+[INFO] 20:21:53:905 CPU/(5554:5554): Obtener posicion de a
+
+[INFO] 20:22:04:647 CPU/(5554:5554): Llamada con retorno a : x 
+
+[INFO] 20:22:04:647 CPU/(5554:5554): Salto a: 0
+
+[INFO] 20:22:10:623 CPU/(5554:5554): definir la variable 0
+
+[INFO] 20:22:13:962 CPU/(5554:5554): Variable 0 creada
+
+[INFO] 20:30:02:467 CPU/(5933:5933): CPU estable...[5933] 
+
+[INFO] 20:30:04:842 CPU/(5933:5933): Conexion con el nucleo OK... 
+
+[INFO] 20:30:06:651 CPU/(5933:5933): Conexion con la UMC OK...
+
+[INFO] 20:30:08:788 CPU/(5933:5933): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:30:08:789 CPU/(5933:5933): Quantum recibido: 3
+
+[INFO] 20:30:08:789 CPU/(5933:5933): Quantum Sleep recibido: 500
+
+[INFO] 20:30:08:789 CPU/(5933:5933): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:30:08:789 CPU/(5933:5933): Iniciando Proceso de Codigo...
+
+[INFO] 20:30:08:789 CPU/(5933:5933): Ronda: 4
+
+
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Recibi: variables a,b 
+
+[INFO] 20:30:08:995 CPU/(5933:5933): definir la variable a
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Variable a creada
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Agregando a la lista de variables: a 
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:30:08:995 CPU/(5933:5933): definir la variable b
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Variable b creada
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Agregando a la lista de variables: b 
+
+[INFO] 20:30:08:995 CPU/(5933:5933): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:30:08:996 CPU/(5933:5933): 
+Fin del parser
+
+[INFO] 20:30:08:996 CPU/(5933:5933): Ronda: 5
+
+
+
+[INFO] 20:30:09:235 CPU/(5933:5933): Recibi: print a 
+
+[INFO] 20:30:09:235 CPU/(5933:5933): Obtener posicion de a
+
+[INFO] 20:30:09:479 CPU/(5933:5933): VALOR VARIABLE: 0 
+
+[INFO] 20:30:09:479 CPU/(5933:5933): Imprimir 0 
+
+[INFO] 20:30:09:479 CPU/(5933:5933): 
+Fin del parser
+
+[INFO] 20:30:09:479 CPU/(5933:5933): Ronda: 6
+
+
+
+[INFO] 20:30:09:619 CPU/(5933:5933): Recibi: a<-x a 
+
+[INFO] 20:30:09:619 CPU/(5933:5933): Obtener posicion de a
+
+[INFO] 20:30:09:759 CPU/(5933:5933): VALOR VARIABLE: 0 
+
+[INFO] 20:30:09:759 CPU/(5933:5933): Obtener posicion de a
+
+[INFO] 20:30:09:759 CPU/(5933:5933): Llamada con retorno a : x 
+
+[INFO] 20:30:09:759 CPU/(5933:5933): Salto a: 0
+
+[INFO] 20:30:09:759 CPU/(5933:5933): definir la variable 0
+
+[INFO] 20:30:09:759 CPU/(5933:5933): Variable 0 creada
+
+[INFO] 20:30:28:248 CPU/(5933:5933): Pag: 3 Off: 8 size: 4
+
+[INFO] 20:32:10:383 CPU/(6004:6004): CPU estable...[6004] 
+
+[INFO] 20:32:12:244 CPU/(6004:6004): Conexion con el nucleo OK... 
+
+[INFO] 20:32:13:671 CPU/(6004:6004): Conexion con la UMC OK...
+
+[INFO] 20:32:14:778 CPU/(6004:6004): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:32:14:778 CPU/(6004:6004): Quantum recibido: 3
+
+[INFO] 20:32:14:778 CPU/(6004:6004): Quantum Sleep recibido: 500
+
+[INFO] 20:32:14:778 CPU/(6004:6004): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:32:14:778 CPU/(6004:6004): Iniciando Proceso de Codigo...
+
+[INFO] 20:32:14:778 CPU/(6004:6004): Ronda: 4
+
+
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Recibi: variables a,b 
+
+[INFO] 20:32:14:980 CPU/(6004:6004): definir la variable a
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Variable a creada
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Agregando a la lista de variables: a 
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:32:14:980 CPU/(6004:6004): definir la variable b
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Variable b creada
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Agregando a la lista de variables: b 
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:32:14:980 CPU/(6004:6004): 
+Fin del parser
+
+[INFO] 20:32:14:980 CPU/(6004:6004): Ronda: 5
+
+
+
+[INFO] 20:32:15:219 CPU/(6004:6004): Recibi: print a 
+
+[INFO] 20:32:15:219 CPU/(6004:6004): Obtener posicion de a
+
+[INFO] 20:32:15:459 CPU/(6004:6004): VALOR VARIABLE: 0 
+
+[INFO] 20:32:15:459 CPU/(6004:6004): Imprimir 0 
+
+[INFO] 20:32:15:459 CPU/(6004:6004): 
+Fin del parser
+
+[INFO] 20:32:15:459 CPU/(6004:6004): Ronda: 6
+
+
+
+[INFO] 20:32:15:599 CPU/(6004:6004): Recibi: a<-x a 
+
+[INFO] 20:32:15:599 CPU/(6004:6004): Obtener posicion de a
+
+[INFO] 20:32:15:740 CPU/(6004:6004): VALOR VARIABLE: 0 
+
+[INFO] 20:32:15:740 CPU/(6004:6004): Obtener posicion de a
+
+[INFO] 20:32:15:741 CPU/(6004:6004): Llamada con retorno a : x 
+
+[INFO] 20:32:15:741 CPU/(6004:6004): Salto a: 0
+
+[INFO] 20:32:15:741 CPU/(6004:6004): definir la variable 0
+
+[INFO] 20:32:15:741 CPU/(6004:6004): Variable 0 creada
+
+[INFO] 20:33:05:66 CPU/(6004:6004): Pag: 3 Off: 8 size: 4
+
+[INFO] 20:33:08:45 CPU/(6004:6004): Asignar
+
+[ERROR] 20:33:08:45 CPU/(6004:6004): Pagina inexistente
+
+[INFO] 20:33:11:963 CPU/(6004:6004): 
+Fin del parser
+
+[INFO] 20:33:23:789 CPU/(6004:6004): Fin del Proceso -1 1
+
+[INFO] 20:33:29:691 CPU/(6004:6004): Cerrando CPU.. 
+
+[INFO] 20:41:12:417 CPU/(6257:6257): CPU estable...[6257] 
+
+[INFO] 20:41:25:893 CPU/(6257:6257): Conexion con el nucleo OK... 
+
+[INFO] 20:41:27:95 CPU/(6257:6257): Conexion con la UMC OK...
+
+[INFO] 20:41:27:96 CPU/(6257:6257): Tamanio de la Pagina : 64
+[INFO] 20:41:28:414 CPU/(6257:6257): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:41:28:415 CPU/(6257:6257): Quantum recibido: 3
+
+[INFO] 20:41:28:415 CPU/(6257:6257): Quantum Sleep recibido: 500
+
+[INFO] 20:41:28:415 CPU/(6257:6257): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:41:28:415 CPU/(6257:6257): Iniciando Proceso de Codigo...
+
+[INFO] 20:41:28:415 CPU/(6257:6257): Ronda: 4
+
+
+
+[INFO] 20:41:28:622 CPU/(6257:6257): Recibi: variables a,b 
+
+[INFO] 20:41:28:622 CPU/(6257:6257): definir la variable a
+
+[INFO] 20:41:28:622 CPU/(6257:6257): Variable a creada
+
+[INFO] 20:41:30:955 CPU/(6257:6257): Agregando a la lista de variables: a 
+
+[INFO] 20:41:31:637 CPU/(6257:6257): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:41:34:284 CPU/(6257:6257): definir la variable b
+
+[INFO] 20:41:34:284 CPU/(6257:6257): Variable b creada
+
+[INFO] 20:41:36:280 CPU/(6257:6257): Agregando a la lista de variables: b 
+
+[INFO] 20:41:36:978 CPU/(6257:6257): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:41:47:535 CPU/(6257:6257): 
+Fin del parser
+
+[INFO] 20:41:50:816 CPU/(6257:6257): Ronda: 5
+
+
+
+[INFO] 20:41:51:936 CPU/(6257:6257): Recibi: print a 
+
+[INFO] 20:41:52:936 CPU/(6257:6257): Obtener posicion de a
+
+[INFO] 20:41:53:425 CPU/(6257:6257): Dereferenciar 3 0 4
+[INFO] 20:42:05:962 CPU/(6257:6257): VALOR VARIABLE: 0 
+
+[INFO] 20:42:08:376 CPU/(6257:6257): Imprimir 0 
+
+[INFO] 20:42:09:923 CPU/(6257:6257): 
+Fin del parser
+
+[INFO] 20:42:13:746 CPU/(6257:6257): Ronda: 6
+
+
+
+[INFO] 20:42:15:55 CPU/(6257:6257): Recibi: a<-x a 
+
+[INFO] 20:42:16:166 CPU/(6257:6257): Obtener posicion de a
+
+[INFO] 20:42:16:790 CPU/(6257:6257): Dereferenciar 3 0 4
+[INFO] 20:42:30:44 CPU/(6257:6257): VALOR VARIABLE: 0 
+
+[INFO] 20:42:33:370 CPU/(6257:6257): Obtener posicion de a
+
+[INFO] 20:42:33:370 CPU/(6257:6257): Llamada con retorno a : x 
+
+[INFO] 20:42:33:370 CPU/(6257:6257): Salto a: 0
+
+[INFO] 20:42:33:390 CPU/(6257:6257): definir la variable 0
+
+[INFO] 20:42:33:390 CPU/(6257:6257): Variable 0 creada
+
+[INFO] 20:42:39:19 CPU/(6257:6257): Pag: 3 Off: 8 size: 4
+
+[INFO] 20:42:41:372 CPU/(6257:6257): Asignar
+
+[ERROR] 20:42:41:373 CPU/(6257:6257): Pagina inexistente
+
+[INFO] 20:42:44:193 CPU/(6257:6257): 
+Fin del parser
+
+[INFO] 20:45:15:911 CPU/(6549:6549): CPU estable...[6549] 
+
+[INFO] 20:45:17:327 CPU/(6549:6549): Conexion con el nucleo OK... 
+
+[INFO] 20:45:18:470 CPU/(6549:6549): Conexion con la UMC OK...
+
+[INFO] 20:45:18:470 CPU/(6549:6549): Tamanio de la Pagina : 64
+[INFO] 20:45:19:573 CPU/(6549:6549): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:45:19:573 CPU/(6549:6549): Quantum recibido: 3
+
+[INFO] 20:45:19:573 CPU/(6549:6549): Quantum Sleep recibido: 500
+
+[INFO] 20:45:19:573 CPU/(6549:6549): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:45:19:573 CPU/(6549:6549): Iniciando Proceso de Codigo...
+
+[INFO] 20:45:19:573 CPU/(6549:6549): Ronda: 4
+
+
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Recibi: variables a,b 
+
+[INFO] 20:45:19:780 CPU/(6549:6549): definir la variable a
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Variable a creada
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Agregando a la lista de variables: a 
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:45:19:780 CPU/(6549:6549): definir la variable b
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Variable b creada
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Agregando a la lista de variables: b 
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:45:19:780 CPU/(6549:6549): 
+Fin del parser
+
+[INFO] 20:45:19:780 CPU/(6549:6549): Ronda: 5
+
+
+
+[INFO] 20:45:20:19 CPU/(6549:6549): Recibi: print a 
+
+[INFO] 20:45:20:19 CPU/(6549:6549): Obtener posicion de a
+
+[INFO] 20:45:20:19 CPU/(6549:6549): Dereferenciar 3 0 4
+[INFO] 20:45:20:267 CPU/(6549:6549): VALOR VARIABLE: 0 
+
+[INFO] 20:45:20:267 CPU/(6549:6549): Imprimir 0 
+
+[INFO] 20:45:20:267 CPU/(6549:6549): 
+Fin del parser
+
+[INFO] 20:45:20:267 CPU/(6549:6549): Ronda: 6
+
+
+
+[INFO] 20:45:20:407 CPU/(6549:6549): Recibi: a<-x a 
+
+[INFO] 20:45:20:407 CPU/(6549:6549): Obtener posicion de a
+
+[INFO] 20:45:20:407 CPU/(6549:6549): Dereferenciar 3 0 4
+[INFO] 20:45:20:547 CPU/(6549:6549): VALOR VARIABLE: 0 
+
+[INFO] 20:45:20:547 CPU/(6549:6549): Obtener posicion de a
+
+[INFO] 20:45:20:547 CPU/(6549:6549): Llamada con retorno a : x 
+
+[INFO] 20:45:20:547 CPU/(6549:6549): Salto a: 0
+
+[INFO] 20:45:20:547 CPU/(6549:6549): definir la variable 0
+
+[INFO] 20:45:20:547 CPU/(6549:6549): Variable 0 creada
+
+[INFO] 20:45:20:547 CPU/(6549:6549): Pag: 3 Off: 8 size: 4
+
+[INFO] 20:46:10:261 CPU/(6617:6617): CPU estable...[6617] 
+
+[INFO] 20:46:12:646 CPU/(6617:6617): Conexion con el nucleo OK... 
+
+[INFO] 20:46:14:113 CPU/(6617:6617): Conexion con la UMC OK...
+
+[INFO] 20:46:14:113 CPU/(6617:6617): Tamanio de la Pagina : 64
+[INFO] 20:46:15:697 CPU/(6617:6617): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:46:15:697 CPU/(6617:6617): Quantum recibido: 3
+
+[INFO] 20:46:15:697 CPU/(6617:6617): Quantum Sleep recibido: 500
+
+[INFO] 20:46:15:697 CPU/(6617:6617): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:46:15:698 CPU/(6617:6617): Iniciando Proceso de Codigo...
+
+[INFO] 20:46:15:698 CPU/(6617:6617): Ronda: 4
+
+
+
+[INFO] 20:46:15:907 CPU/(6617:6617): Recibi: variables a,b 
+
+[INFO] 20:46:15:907 CPU/(6617:6617): definir la variable a
+
+[INFO] 20:46:15:907 CPU/(6617:6617): Variable a creada
+
+[INFO] 20:46:15:907 CPU/(6617:6617): Agregando a la lista de variables: a 
+
+[INFO] 20:46:15:907 CPU/(6617:6617): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:46:15:908 CPU/(6617:6617): definir la variable b
+
+[INFO] 20:46:15:908 CPU/(6617:6617): Variable b creada
+
+[INFO] 20:46:15:908 CPU/(6617:6617): Agregando a la lista de variables: b 
+
+[INFO] 20:46:15:908 CPU/(6617:6617): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:46:15:908 CPU/(6617:6617): 
+Fin del parser
+
+[INFO] 20:46:15:908 CPU/(6617:6617): Ronda: 5
+
+
+
+[INFO] 20:46:16:147 CPU/(6617:6617): Recibi: print a 
+
+[INFO] 20:46:16:147 CPU/(6617:6617): Obtener posicion de a
+
+[INFO] 20:46:16:147 CPU/(6617:6617): Dereferenciar 3 0 4
+[INFO] 20:46:16:395 CPU/(6617:6617): VALOR VARIABLE: 0 
+
+[INFO] 20:46:16:395 CPU/(6617:6617): Imprimir 0 
+
+[INFO] 20:46:16:395 CPU/(6617:6617): 
+Fin del parser
+
+[INFO] 20:46:16:396 CPU/(6617:6617): Ronda: 6
+
+
+
+[INFO] 20:46:16:535 CPU/(6617:6617): Recibi: a<-x a 
+
+[INFO] 20:46:16:535 CPU/(6617:6617): Obtener posicion de a
+
+[INFO] 20:46:16:535 CPU/(6617:6617): Dereferenciar 3 0 4
+[INFO] 20:46:16:675 CPU/(6617:6617): VALOR VARIABLE: 0 
+
+[INFO] 20:46:16:675 CPU/(6617:6617): Obtener posicion de a
+
+[INFO] 20:46:16:675 CPU/(6617:6617): Llamada con retorno a : x 
+
+[INFO] 20:46:16:675 CPU/(6617:6617): Salto a: 0
+
+[INFO] 20:46:16:675 CPU/(6617:6617): definir la variable 0
+
+[INFO] 20:46:16:675 CPU/(6617:6617): Variable 0 creada
+
+[INFO] 20:46:16:675 CPU/(6617:6617): Pag: 3 Off: 8 size: 4
+
+[INFO] 20:55:09:178 CPU/(6940:6940): CPU estable...[6940] 
+
+[INFO] 20:55:11:254 CPU/(6940:6940): Conexion con el nucleo OK... 
+
+[INFO] 20:55:12:726 CPU/(6940:6940): Conexion con la UMC OK...
+
+[INFO] 20:55:12:726 CPU/(6940:6940): Tamanio de la Pagina : 64
+[INFO] 20:55:17:211 CPU/(6940:6940): 
+
+Peticion del Nucleo
+
+
+[INFO] 20:55:17:211 CPU/(6940:6940): Quantum recibido: 3
+
+[INFO] 20:55:17:211 CPU/(6940:6940): Quantum Sleep recibido: 500
+
+[INFO] 20:55:17:212 CPU/(6940:6940): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 20:55:17:212 CPU/(6940:6940): Iniciando Proceso de Codigo...
+
+[INFO] 20:55:17:212 CPU/(6940:6940): Ronda: 4
+
+
+
+[INFO] 20:55:17:420 CPU/(6940:6940): Recibi: variables a,b 
+
+[INFO] 20:55:20:25 CPU/(6940:6940): definir la variable a
+
+[INFO] 20:55:26:514 CPU/(6940:6940): Variable a creada
+
+[INFO] 20:55:27:97 CPU/(6940:6940): Agregando a la lista de variables: a 
+
+[INFO] 20:55:27:388 CPU/(6940:6940): Pag: 3 Off: 0 size: 4
+
+[INFO] 20:55:28:735 CPU/(6940:6940): definir la variable b
+
+[INFO] 20:55:29:458 CPU/(6940:6940): Variable b creada
+
+[INFO] 20:55:31:844 CPU/(6940:6940): Agregando a la lista de variables: b 
+
+[INFO] 20:55:32:668 CPU/(6940:6940): Pag: 3 Off: 4 size: 4
+
+[INFO] 20:55:38:631 CPU/(6940:6940): 
+Fin del parser
+
+[INFO] 20:55:42:497 CPU/(6940:6940): Ronda: 5
+
+
+
+[INFO] 20:55:43:251 CPU/(6940:6940): Recibi: print a 
+
+[INFO] 20:55:45:108 CPU/(6940:6940): Obtener posicion de a
+
+[INFO] 20:55:45:108 CPU/(6940:6940): Dereferenciar 3 0 4
+[INFO] 20:55:45:310 CPU/(6940:6940): VALOR VARIABLE: 0 
+
+[INFO] 20:55:45:310 CPU/(6940:6940): Imprimir 0 
+
+[INFO] 20:55:45:694 CPU/(6940:6940): 
+Fin del parser
+
+[INFO] 20:55:48:974 CPU/(6940:6940): Ronda: 6
+
+
+
+[INFO] 20:55:50:33 CPU/(6940:6940): Recibi: a<-x a 
+
+[INFO] 20:55:50:949 CPU/(6940:6940): Obtener posicion de a
+
+[INFO] 20:55:50:949 CPU/(6940:6940): Dereferenciar 3 0 4
+[INFO] 20:55:51:50 CPU/(6940:6940): VALOR VARIABLE: 0 
+
+[INFO] 20:55:51:50 CPU/(6940:6940): Obtener posicion de a
+
+[INFO] 20:55:51:50 CPU/(6940:6940): Llamada con retorno a : x 
+
+[INFO] 20:55:51:50 CPU/(6940:6940): Salto a: 0
+
+[INFO] 20:55:55:475 CPU/(6940:6940): definir la variable 0
+
+[INFO] 20:56:47:702 CPU/(6940:6940): Variable 0 creada
+
+[INFO] 20:57:05:546 CPU/(6940:6940): Pag: 3 Off: 8 size: 4
+
+[INFO] 21:02:15:757 CPU/(7208:7208): CPU estable...[7208] 
+
+[INFO] 21:02:17:971 CPU/(7208:7208): Conexion con el nucleo OK... 
+
+[INFO] 21:02:19:330 CPU/(7208:7208): Conexion con la UMC OK...
+
+[INFO] 21:02:19:330 CPU/(7208:7208): Tamanio de la Pagina : 64
+[INFO] 21:02:20:682 CPU/(7208:7208): 
+
+Peticion del Nucleo
+
+
+[INFO] 21:02:20:682 CPU/(7208:7208): Quantum recibido: 3
+
+[INFO] 21:02:20:682 CPU/(7208:7208): Quantum Sleep recibido: 500
+
+[INFO] 21:02:20:682 CPU/(7208:7208): 
+ Recibi del Nucleo: 0006016800040014003600010003x@@@@@inicio@
+@@@perro@@@@gato@@@@001100070018000900270010003700050050001400650008007400070082000800910013010500110126001301480004016000070168000400030004
+
+[INFO] 21:02:20:682 CPU/(7208:7208): Iniciando Proceso de Codigo...
+
+[INFO] 21:02:20:683 CPU/(7208:7208): Ronda: 4
+
+
+
+[INFO] 21:02:20:886 CPU/(7208:7208): Recibi: variables a,b 
+
+[INFO] 21:02:22:864 CPU/(7208:7208): definir la variable a
+
+[INFO] 21:02:23:769 CPU/(7208:7208): Variable a creada
+
+[INFO] 21:02:26:864 CPU/(7208:7208): Agregando a la lista de variables: a 
+
+[INFO] 21:02:27:520 CPU/(7208:7208): Pag: 3 Off: 0 size: 4
+
+[INFO] 21:02:29:864 CPU/(7208:7208): definir la variable b
+
+[INFO] 21:02:29:864 CPU/(7208:7208): Variable b creada
+
+[INFO] 21:02:29:864 CPU/(7208:7208): Agregando a la lista de variables: b 
+
+[INFO] 21:02:29:864 CPU/(7208:7208): Pag: 3 Off: 4 size: 4
+
+[INFO] 21:02:32:512 CPU/(7208:7208): 
+Fin del parser
+
+[INFO] 21:02:37:428 CPU/(7208:7208): Ronda: 5
+
+
+
+[INFO] 21:02:38:220 CPU/(7208:7208): Recibi: print a 
+
+[INFO] 21:02:39:397 CPU/(7208:7208): Obtener posicion de a
+
+[INFO] 21:02:39:397 CPU/(7208:7208): Dereferenciar 3 0 4
+[INFO] 21:02:39:601 CPU/(7208:7208): VALOR VARIABLE: 0 
+
+[INFO] 21:02:39:602 CPU/(7208:7208): Imprimir 0 
+
+[INFO] 21:02:39:869 CPU/(7208:7208): 
+Fin del parser
+
+[INFO] 21:02:42:747 CPU/(7208:7208): Ronda: 6
+
+
+
+[INFO] 21:02:43:455 CPU/(7208:7208): Recibi: a<-x a 
+
+[INFO] 21:02:44:299 CPU/(7208:7208): Obtener posicion de a
+
+[INFO] 21:02:44:299 CPU/(7208:7208): Dereferenciar 3 0 4
+[INFO] 21:02:44:400 CPU/(7208:7208): VALOR VARIABLE: 0 
+
+[INFO] 21:02:44:400 CPU/(7208:7208): Obtener posicion de a
+
+[INFO] 21:02:44:400 CPU/(7208:7208): Llamada con retorno a : x 
+
+[INFO] 21:02:44:400 CPU/(7208:7208): Salto a: 0
+
+[INFO] 21:02:44:400 CPU/(7208:7208): definir la variable 0
+
+[INFO] 21:02:44:400 CPU/(7208:7208): Variable 0 creada
+
+[INFO] 21:02:44:400 CPU/(7208:7208): Pag: 3 Off: 8 size: 4
+

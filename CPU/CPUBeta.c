@@ -119,8 +119,9 @@ void conectarseALaUMC(){
 	TAMANIO_PAGINA = autentificar(umc,AUTENTIFICACION);
 	if (!TAMANIO_PAGINA){
 		log_error(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
-		}
+	}
 	log_info(archivoLog,"Conexion con la UMC OK...\n");
+	log_info(archivoLog,"Tamanio de la Pagina : %d", TAMANIO_PAGINA);
 }
 
 int procesarPeticion(){
@@ -135,7 +136,7 @@ int procesarPeticion(){
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
 
-		if (quantum<=0){
+		if ((quantum<=0)||(quantum_sleep<=0)||pcbRecibido[0]=='\0'){
 			close(nucleo);
 			close(umc);
 			log_error(archivoLog,"Error: Error de conexion con el nucleo\n");
@@ -269,12 +270,15 @@ t_puntero definirVariable(t_nombre_variable variable) {
 	if ((variable>='0') && (variable <='9')){
 		int tamanioStack = list_size(pcb.stack);
 		Stack* stackActual = list_get(pcb.stack,tamanioStack-1);
+		if (stackActual->args == NULL){
+			stackActual->args = list_create();
+		}
 		list_add(stackActual->args,var);
 	}else{
 		sumarEnLasVariables(var);
 	}
 	log_info(archivoLog,"Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
-	return  (int)var;
+	return  (int)&var->pagina;
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
@@ -308,6 +312,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 
 t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina*  pag = (Pagina*) pagina;
+	log_info(archivoLog,"Dereferenciar %d %d %d",pag->pag,pag->off,pag->tamanio);
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
 	char resp[2];
 	recv(umc,resp,2,MSG_WAITALL);
@@ -326,8 +331,9 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
-	log_info(archivoLog,"Asignar\n");
 	Pagina* pag = (Pagina*) pagina;
+	Variable* var  = (Variable*) pagina;
+	log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,pag->tamanio);
 	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
 }
 
@@ -561,7 +567,6 @@ Pagina obtenerPagDisponible(){
 		pagina.off = 0;
 	}else{
 		if (cantidadDeVariables <= 0){
-			free(stackActual);
 			stackActual = anteUltimoStack();
 			if (stackActual == NULL){
 				pagina.pag = pcb.paginas_codigo;
