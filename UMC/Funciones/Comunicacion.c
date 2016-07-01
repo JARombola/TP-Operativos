@@ -62,12 +62,7 @@ int conectar(int puerto,char* ip){   							//Con la swap
 int autentificar(int conexion) {
 	send(conexion, "soy_la_umc", 10, 0);
 	char* bufferHandshakeSwap = malloc(8);
-	int bytesRecibidosH = recv(conexion, bufferHandshakeSwap, 8, MSG_WAITALL);
-	if (bytesRecibidosH <= 0) {
-		log_error(archivoLog,"Error al conectarse con la Swap");
-		free (bufferHandshakeSwap);
-		return 0;
-	}
+	recv(conexion, bufferHandshakeSwap, 8, MSG_WAITALL);
 	free (bufferHandshakeSwap);
 	return 1;
 }

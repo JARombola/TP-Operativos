@@ -22,7 +22,7 @@ int leerConfiguracion(char *ruta, datosConfiguracion **datos) {
 			string_append(&nombreSwap,config_get_string_value(archivoConfiguracion, "NOMBRE_SWAP"));
 			(*datos)->nombre_swap =nombreSwap;
 			(*datos)->cantidadPaginas = buscarInt(archivoConfiguracion, "CANTIDAD_PAGINAS");
-			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAM_PAGINA");
+			(*datos)->tamPagina = buscarInt(archivoConfiguracion, "TAMANIO_PAGINA");
 			(*datos)->retardoAcceso = buscarInt(archivoConfiguracion, "RETARDO_ACCESO");
 			(*datos)->retardoCompactacion = buscarInt(archivoConfiguracion, "RETARDO_COMPACTACION");
 			char* ip=string_new();
@@ -43,9 +43,9 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 }
 
 int comprobarCliente(int cliente){
-	char* bufferHandshake = malloc(10);
-	int bytesRecibidosH = recv(cliente, bufferHandshake, 10, MSG_WAITALL);				//lo paso a string para comparar
-	bufferHandshake[bytesRecibidosH] = '\0';
+	char* bufferHandshake = malloc(11);
+	recv(cliente, bufferHandshake, 10, MSG_WAITALL);				//lo paso a string para comparar
+	bufferHandshake[10] = '\0';
 	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
 		free(bufferHandshake);
 		send(cliente, "Hola_umc", 8, 0);
