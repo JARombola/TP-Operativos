@@ -312,14 +312,13 @@ void atenderNucleo(int nucleo){
                         guardar=inicializarPrograma(nucleo);
                         if (!guardar){                            //1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
                             log_warning(archivoLog,"Ansisop rechazado, memoria insuficiente");}
-                            guardar=htonl(guardar);
+                        guardar=htonl(guardar);
                         send(nucleo, &guardar,sizeof(int),0);
                     break;
 
                     case FINALIZAR:                                                //Finalizar programa
                         procesoEliminar=recibirProtocolo(nucleo);
-                        if(finalizarPrograma(procesoEliminar)){
-                        log_info("--Proceso %d eliminado",procesoEliminar);}
+                        finalizarPrograma(procesoEliminar);
                     break;
                     }
                 }else{salir=1;}
@@ -440,14 +439,15 @@ int finalizarPrograma(int procesoEliminar){
 
    	list_iterate(tlb,(void*)limpiarTLB);
 
-    pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
-    	pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
+    pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
+    	pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
     		usleep(datosMemoria->retardo*1000);
     		list_iterate(tabla_de_paginas,(void*)limpiar);
     	pthread_mutex_unlock(&mutexTablaPaginas);
     pthread_mutex_unlock(&mutexMarcos);
 
-    unClock* clockProceso=list_remove_by_condition(tablaClocks,(void*)clockDelProceso);
+    unClock* clockProceso=list_find(tablaClocks,(void*)clockDelProceso);
+ 	list_remove_by_condition(tablaClocks,(void*)clockDelProceso);
     if (clockProceso!=NULL){
         queue_clean(clockProceso->colaMarcos);
         free(clockProceso);
@@ -457,10 +457,12 @@ int finalizarPrograma(int procesoEliminar){
 
     char* mensajeEliminar=string_new();
     string_append(&mensajeEliminar,"3");
-    string_append(&mensajeEliminar,header(procesoEliminar));
+    char* proceso=header(procesoEliminar);
+    string_append(&mensajeEliminar,proceso);
     string_append(&mensajeEliminar,"\0");
     send(conexionSwap,mensajeEliminar,string_length(mensajeEliminar),0);
     free(mensajeEliminar);
+    free(proceso);
 
     return 1;
 }

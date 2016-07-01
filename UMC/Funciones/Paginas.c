@@ -93,7 +93,7 @@ traductor_marco* guardarPagina(void* datos,int proceso,int pag){
 }
 
 
-int buscarMarco(int pid){            //    Con marcos en orden de llegada
+int buscarMarco(int pid){
     int marco = 0, cantMarcos = marcosAsignados(pid);
     int paginaDelMarco(traductor_marco* pagina) {                                                    //porque la pos que ocupa y el marco no son el mismo, necesito el marco con esa posicion
         return (pagina->marco == marco);
@@ -120,34 +120,39 @@ int buscarMarco(int pid){            //    Con marcos en orden de llegada
         traductor_marco* datosMarco;
         do {
             marco=(int) queue_pop(clockProceso->colaMarcos);
+          //  printf("%d--MARCO: %d | %d\n",pid,marco,vectorMarcos[marco]);
             datosMarco = list_find(tabla_de_paginas,(void*)paginaDelMarco);
+
             if (datosMemoria->algoritmo){
                 if (primeraVuelta){
                     	modificada=datosMarco->modificada;
                     }
                 else{modificada=0;}
             }
+
             if (vectorMarcos[marco]== 1 && !modificada) {                                                        //Se va de la UMC
-                if (datosMarco->modificada) {                                                        //Estaba modificada => se la mando a la swap
+            	if (datosMarco->modificada) {                                                        //Estaba modificada => se la mando a la swap
                     log_info(archivoLog,"(Proceso %d | Pag %d) Envío a swap (Estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                     enviarPaginaASwap(datosMarco);
-                    esperarRespuestaSwap();
+                    char *respuesta = malloc(2);
+                    recv(conexionSwap, respuesta, 2, MSG_WAITALL);
+                    free(respuesta);
                 }else{
                     log_info(archivoLog,"(Proceso %d | Pag %d) No se envia a swap (no estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                 }
                 vectorMarcos[marco] = 2;
-                queue_push(clockProceso->colaMarcos,(int)marco);
+                queue_push(clockProceso->colaMarcos,marco);
                 log_info(archivoLog,"Proceso %d |	Marco Reemplazado: %d",pid, marco);
-
+                printf("10\n");
                 pthread_mutex_lock(&mutexTablaPaginas);
                 	actualizarTabla(datosMarco->pagina,pid,-1);
                 pthread_mutex_unlock(&mutexTablaPaginas);
-
+                printf("6\n");
                 return marco;}                                    //La nueva posicion libre
 
-            queue_push(clockProceso->colaMarcos,(int)marco);
+            queue_push(clockProceso->colaMarcos,marco);
             if(!primeraVuelta){
-            vectorMarcos[marco]--;}
+            vectorMarcos[marco]=1;}
             if (cont==queue_size(clockProceso->colaMarcos)-1){primeraVuelta=0;}
             else{cont++;}
         } while (++i);
@@ -165,12 +170,12 @@ int buscarMarcoLibre(int pid, int cantMarcos){
             if (!cantMarcos) { 							//Para el clock mejorado, registro el clock del proceso
                 unClock* clockProceso = malloc(sizeof(unClock));
                 clockProceso->colaMarcos = queue_create();
-                queue_push(clockProceso->colaMarcos, (int) marco);
+                queue_push(clockProceso->colaMarcos, marco);
                 clockProceso->proceso = pid;
                 list_add(tablaClocks, clockProceso);
             } else {
                 unClock* clockProceso = list_find(tablaClocks,(void*) clockDelProceso);
-                queue_push(clockProceso->colaMarcos, (int) marco);
+                queue_push(clockProceso->colaMarcos, marco);
             }
             vectorMarcos[marco] = 2;
             return marco;
@@ -202,12 +207,17 @@ void enviarPaginaASwap(traductor_marco* datosMarco){
 traductor_marco* solicitarPaginaASwap(int proceso, int pagina){
 	 void* datos = (void*) malloc(datosMemoria->marco_size);
 	 char* pedido = string_new();
+	 char* proceso_char=header(proceso);
+	 char* pag= header(pagina);
 	 string_append(&pedido, "2");
-	 string_append(&pedido, (char*)header(proceso));
-	 string_append(&pedido, (char*)header(pagina));
+	 string_append(&pedido, proceso_char);
+	 string_append(&pedido, pag);
 	 string_append(&pedido, "\0");
 	 send(conexionSwap, pedido, string_length(pedido), 0);
 	 free(pedido);
+	 free(proceso_char);
+	 free(pag);
+	 printf("ENVIÉ EL PEDIDO\n");
 	 recv(conexionSwap, datos, datosMemoria->marco_size, MSG_WAITALL);
 	 traductor_marco* paginaBuscada=guardarPagina(datos, proceso, pagina);
 	 free(datos);
@@ -230,3 +240,4 @@ int hayMarcosLibres(){						//La usá en UMC para ver si manda a NEW o READY al 
     }
     return 0;
 }
+
