@@ -1,2 +1,0 @@
-PN:8060
-AT:Consola
