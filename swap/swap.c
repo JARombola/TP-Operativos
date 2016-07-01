@@ -20,7 +20,10 @@ typedef struct{
 	int proceso,inicio,paginas;
 }traductor_marco;
 
-t_log* crearArchivoLog();
+#define GUARDAR 1
+#define ENVIAR 2
+#define ELIMINAR 3
+
 int crearArchivoSwap();
 int guardarDatos(int,int,int);
 int buscarEspacioLibre(int);
@@ -45,7 +48,6 @@ int main(int argc, char* argv[]){
 	datosSwap=malloc(sizeof(datosConfiguracion));
 
 	logs = log_create("Swap.log","Swap",true,log_level_from_string("INFO"));
-	log_info(logs,"Administrador de Swap activo, listo para ejecutar.\n");
 
 	if (!(leerConfiguracion("ConfigSwap", &datosSwap)|| leerConfiguracion("../ConfigSwap", &datosSwap))) {
 		log_error(logs,"Error archivo de configuracion\n FIN.");
@@ -94,8 +96,9 @@ int main(int argc, char* argv[]){
 			PID = recibirProtocolo(conexionUmc);
 			switch (operacion){
 
-			case 1:															//Almacenar codigo, PROTOCOLO: [1° PID, 2° Cant paginas (4 bytes c/u))]
+			case GUARDAR:															//Almacenar codigo, PROTOCOLO: [1° PID, 2° Cant paginas (4 bytes c/u))]
 					cantPaginas = recibirProtocolo(conexionUmc);
+					usleep(datosSwap->retardoAcceso*1000);
 					if (pagsLibres>=cantPaginas){
 						guardarDatos(conexionUmc,cantPaginas, PID);
 						send(conexionUmc, "ok", 2, 0);
@@ -108,16 +111,18 @@ int main(int argc, char* argv[]){
 					}
 					break;
 
-			case 2:																//enviar pagina a la UMC
+			case ENVIAR:																//enviar pagina a la UMC
+					usleep(datosSwap->retardoAcceso*1000);
 					pagina=recibirProtocolo(conexionUmc);
 					void* datos=buscar(PID,pagina);
 					send(conexionUmc,datos,datosSwap->tamPagina,0);
 					free(datos);
 					break;
 
-			case 3:																//eliminar ansisop
+			case ELIMINAR:																//eliminar ansisop
 					eliminarProceso(PID);
 					verMarcos();
+					break;
 			}
 		}
 	}
@@ -171,7 +176,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
 		posicion=recibirProtocolo(conexionUmc);
 		posicion+=proceso->inicio;					//donde arranca el proceso + pag
-		log_info(logs,"Pagina modificada\n");
+		log_info(logs,"Proceso %d | Pagina %d modificada\n",PID,posicion);
 		size=datosSwap->tamPagina;
 	}
 
@@ -216,7 +221,7 @@ int compactar(){
 	}
 
 	list_sort(tablaPaginas,(void*)inicioMenorMayor);
-
+	log_info(logs,"INICIANDO COMPACTACION...");
 	usleep(datosSwap->retardoCompactacion*1000);
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		if (!bitarray_test_bit(bitArray,i)){
@@ -237,7 +242,7 @@ int compactar(){
 			else{i=datosSwap->cantidadPaginas;}							//No hay mas procesos para mover => salgo del ciclo, no necesito buscar mas
 		}
 	}
-	log_info(logs,"Compactacion realizada con exito");
+	log_info(logs,"Compactacion realizada con exito!!\n");
 	return 1;
 }
 
@@ -263,9 +268,8 @@ int eliminarProceso(int pid){
 	int i;
 
 	for(i=0;i<datosProceso->paginas;i++){					//Marco los marcos del proceso como vacíos
-		bitarray_clean_bit(bitArray,posicion);
-		log_info(logs,"Cambie el bit a 0 de la posicion nro", posicion);
-		posicion++;
+		bitarray_clean_bit(bitArray,posicion+i);
+	//	log_info(logs,"Cambie el bit a 0 de la posicion nro %d", posicion);
 	}
 
 	pagsLibres+=datosProceso->paginas;
@@ -277,7 +281,7 @@ int eliminarProceso(int pid){
 
 void verMarcos(){
 	int i;
-	log_info(logs,"Estado de los marcos: \n");
+	log_info(logs,"Estado de los marcos:");
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		log_info(logs,"Pos %d | Ocupado:%d",i,bitarray_test_bit(bitArray,i));
 	}

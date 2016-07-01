@@ -22,9 +22,9 @@ int leerConfiguracion(char *ruta, datosConfiguracion** datos) {
 			(*datos)->quantum = buscarInt(archivoConfiguracion, "QUANTUM");
 			(*datos)->quantum_sleep = buscarInt(archivoConfiguracion,
 					"QUANTUM_SLEEP");
-			(*datos)->sem_ids = config_get_array_value(archivoConfiguracion,"SEM_ID");
+			(*datos)->sem_ids = config_get_array_value(archivoConfiguracion,"SEM_IDS");
 			(*datos)->sem_init = config_get_array_value(archivoConfiguracion,"SEM_INIT");
-			(*datos)->io_ids = config_get_array_value(archivoConfiguracion,"IO_ID");
+			(*datos)->io_ids = config_get_array_value(archivoConfiguracion,"IO_IDS");
 			(*datos)->io_sleep = config_get_array_value(archivoConfiguracion,"IO_SLEEP");
 			(*datos)->shared_vars = config_get_array_value(archivoConfiguracion,"SHARED_VARS");
 			(*datos)->tamStack=buscarInt(archivoConfiguracion,"STACK_SIZE");

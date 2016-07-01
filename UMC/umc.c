@@ -148,15 +148,13 @@ void consola(){
         if (esIgual(comando, "RETARDO")) {
             int velocidadNueva;
             scanf("%d", &velocidadNueva);
-            log_info(archivoLog,"Retardo nuevo: %d",velocidadNueva);
+            log_info(archivoLog,"Retardo nuevo: %d\n",velocidadNueva);
             //actualizar retardo en el config
             datosMemoria->retardo= velocidadNueva;
         }
         else {
             if (esIgual(comando, "DUMP")) {
                 scanf("%d",&nroProceso);
-            //    int pos=buscar(6,nroProceso);
-
                 int filtrarPorPid(traductor_marco* marco){
                     if(nroProceso==-1){return 1;}                            //Para que lo haga a todos los procesos
                     return (marco-> proceso == nroProceso);}
@@ -203,16 +201,6 @@ void consola(){
     }
 }
 
-void mostrarTablaPag(traductor_marco* fila) {
-    printf("Marco: %d, Pag: %d, Proc:%d | ", fila->marco, fila->pagina,fila->proceso);
-    if ((fila->marco)!=-1){
-    printf("VECTOR: %d\n",vectorMarcos[fila->marco]);}
-   // char* asd = malloc(datosMemoria->marco_size + 1);
-    //memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
-    //memcpy(asd + datosMemoria->marco_size , "\0", 1);
-   // printf("-[%s]\n", asd);
-}
-
 
 void guardarDump(t_list* proceso){
     int i;
@@ -234,7 +222,7 @@ void guardarDump(t_list* proceso){
 }
 
 void dumpTabla(traductor_marco* datosProceso){
-    fprintf(reporteDump,"Proceso: %d    |    Pág: %d    |    Marco: %d\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco);
+    fprintf(reporteDump,"Proceso: %d	|	Pág: %d	|	Marco: %d\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco);
 }
 
 void dumpDatos(traductor_marco* datosProceso){
@@ -261,7 +249,7 @@ void dumpDatos(traductor_marco* datosProceso){
 }
 
 void atenderCpu(int conexion){
-	log_info(archivoLog, "Nuevo CPU Conectado\n");
+	log_info(archivoLog, "Nuevo CPU Conectado!");
 	int salir = 0, operacion, proceso, pagina, offset, buffer, size,procesoAnterior=-1;
 	int removerEntradasProcesoAnterior(traductor_marco* entradaTlb){
 		return entradaTlb->proceso!=procesoAnterior;
@@ -306,7 +294,7 @@ void atenderCpu(int conexion){
 			}
 		} else {salir = 1;}
 	}
-	log_warning(archivoLog, "Se desconectó una CPU\n");
+	log_warning(archivoLog, "Se desconectó una CPU");
 }
 
 
@@ -416,7 +404,7 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 		memcpy(memoria+posicion,&buffer,size);
 		traductor_marco* datosTabla=list_find(tabla_de_paginas,(void*)buscarMarco);
 		datosTabla->modificada=1;
-		log_info(archivoLog,"(Pagina modificada)-Proceso %d Pag %d\n",proceso,pagina);
+		log_info(archivoLog,"(Proceso %d - Pag %d) Modificada\n",proceso,pagina);
 //    pthread_mutex_unlock(&mutexTablaPaginas);
 
     void* a=malloc(4);							//todo esto se va
@@ -455,7 +443,6 @@ int finalizarPrograma(int procesoEliminar){
     pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
     	pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
     		usleep(datosMemoria->retardo*1000);
-    		printf("TAMAÑO LISTA: %d\n",list_size(tabla_de_paginas));
     		list_iterate(tabla_de_paginas,(void*)limpiarMarcos);
     		list_iterate(tabla_de_paginas,(void*)limpiar);
     	pthread_mutex_unlock(&mutexTablaPaginas);
