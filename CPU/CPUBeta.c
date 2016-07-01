@@ -390,6 +390,7 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 
 	pcb.pc = metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
 	log_info(archivoLog,"Salto a: %d\n", pcb.pc);
+	pcb.pc--;
 
 	list_add(pcb.stack,stack);
 }
