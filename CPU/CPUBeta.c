@@ -323,16 +323,21 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 			log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
 			finalizado = -1;}
 		log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
-	return valor;}
+	return valor;
+	}
 	else{
-		printf("No existe la pagina\n");					//todoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
-	return -666;
+		log_warning(archivoLog, "Sobrepase el limite del stack");
+		char* mensaje = string_new();
+		string_append(&mensaje,"0000");
+		char * char_id_pcb = toStringInt(pcb.id);
+		string_append(&mensaje,char_id_pcb);
+		send(nucleo,mensaje,strlen(mensaje),0);
+	return -1;
 	}
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
 	Pagina* pag = (Pagina*) pagina;
-	Variable* var  = (Variable*) pagina;
 	log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,pag->tamanio);
 	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
 }
