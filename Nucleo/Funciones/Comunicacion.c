@@ -120,7 +120,8 @@ char* header(int numero){										//Recibe numero de bytes, y lo devuelve en 4 
 
 void agregarHeader(char** mensaje){
 	char* head=string_new();
-	string_append(&head,header(string_length(*mensaje)));
+	char* numero=header(string_length(*mensaje));
+	string_append(&head,numero);
 	string_append(&head,*mensaje);
 	*mensaje=string_duplicate(head);
 	free (head);
