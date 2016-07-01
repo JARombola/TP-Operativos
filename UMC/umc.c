@@ -374,10 +374,8 @@ int inicializarPrograma(int conexion) {
     int i;
     pthread_mutex_lock(&mutexTablaPaginas);
     	usleep(datosMemoria->retardo*1000);							//todo 1 por cada acceso, o por cada escritura? :/
-		int h=list_size(tabla_de_paginas);
     	for (i = 0; i < paginasNecesarias; i++) {				//Registro el programa en la tabla, marco -1 porque está en Swap
-			  actualizarTabla(i, PID, h+i);
-			  vectorMarcos[h+i]=2;
+			  actualizarTabla(i, PID, -1);
 		}
     pthread_mutex_unlock(&mutexTablaPaginas);
     if (hayMarcosLibres()){
