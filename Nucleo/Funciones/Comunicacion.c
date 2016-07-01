@@ -88,7 +88,7 @@ int conectar(int puerto,char* ip){   							//Con la swap
 
 int recibirProtocolo(int conexion){
 	char* protocolo = malloc(5);
-	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), MSG_WAITALL);
+	int bytesRecibidos = recv(conexion, protocolo, 4, MSG_WAITALL);
 	if (bytesRecibidos <= 0) {printf("Error al recibir protocolo\n");
 		free(protocolo);
 		return -1;}
