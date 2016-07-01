@@ -63,6 +63,7 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar);
 void entradaSalida(t_nombre_dispositivo,int tiempo);
 void wait(t_nombre_semaforo identificador_semaforo);
 void post(t_nombre_semaforo identificador_semaforo);
+void retornar(t_valor_variable retorno);
 
 Variable* crearVariable(char variable);
 Pagina obtenerPagDisponible();
@@ -74,7 +75,7 @@ void enviarMensajeNucleoAsignacion(char* variable, int valor);
 void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pedir linea codigo, 1 = pedir valor almacenado
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
 void parsear(char* instruccion);
-void retornar(t_valor_variable retorno);
+int numeroPagina(Pagina pag);
 
 
 AnSISOP_funciones functions = {

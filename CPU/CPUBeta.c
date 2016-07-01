@@ -560,8 +560,36 @@ void retornar(t_valor_variable retorno){
 Variable* crearVariable(char variable){
 	Variable* var = malloc(sizeof(Variable));
 	var->id = variable;
+	Stack* stack = obtenerStack();
 	var->pagina = obtenerPagDisponible();
+	if (list_size(stack->args)>0){
+		Pagina pagArgs = ((Variable*)list_get(stack->args,list_size(stack->args)-1))->pagina;
+		if (numeroPagina(var->pagina)<=numeroPagina(pagArgs)){
+			if ((pagArgs.off+pagArgs.tamanio+4)<=TAMANIO_PAGINA){
+				var->pagina.pag = pagArgs.pag;
+				var->pagina.off = pagArgs.off+4;
+			}else{
+				var->pagina.pag = pagArgs.pag+1;
+				var->pagina.off = 0;
+			}
+			if (('0'>=variable)&&(variable<='9')){
+				list_add(stack->args,var);
+			}else{
+				list_add(stack->vars,var);
+			}
+		}
+	}
 	return var;
+}
+
+int numeroPagina(Pagina pag){
+	char* resultado = string_new();
+	string_append(&resultado,toStringInt(pag.pag));
+	string_append(&resultado,toStringInt(pag.off));
+	string_append(&resultado,toStringInt(pag.tamanio));
+	int result = atoi(resultado);
+	free(resultado);
+	return result;
 }
 
 Pagina obtenerPagDisponible(){
