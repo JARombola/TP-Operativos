@@ -58,8 +58,7 @@ FILE* reporteDump;
 
 
 int main(int argc, char* argv[]) {
-
-    archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
+	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
 
     int nucleo,nuevo_cliente,sin_size = sizeof(struct sockaddr_in);
     tabla_de_paginas = list_create();
@@ -182,10 +181,10 @@ void consola(){
                 }
                 else {
                     if (esIgual(comando, "MODIFICADAS")) {
-                       /* list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
-                        finalizarPrograma(0);
-                        list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);*/
                         scanf("%d",&nroProceso);
+                     /*   list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
+                        finalizarPrograma(nroProceso);
+                        list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);*/
 
                         void marcarModificadas(traductor_marco* pagina){
                         	if (nroProceso==-1){ pagina->modificada=1;}
@@ -202,6 +201,16 @@ void consola(){
         }
 
     }
+}
+
+void mostrarTablaPag(traductor_marco* fila) {
+    printf("Marco: %d, Pag: %d, Proc:%d | ", fila->marco, fila->pagina,fila->proceso);
+    if ((fila->marco)!=-1){
+    printf("VECTOR: %d\n",vectorMarcos[fila->marco]);}
+   // char* asd = malloc(datosMemoria->marco_size + 1);
+    //memcpy(asd, memoria + datosMemoria->marco_size * fila->pagina,datosMemoria->marco_size);//memcpy(asd, memoria + datosMemoria->marco_size * fila->marco,datosMemoria->marco_size);
+    //memcpy(asd + datosMemoria->marco_size , "\0", 1);
+   // printf("-[%s]\n", asd);
 }
 
 
@@ -365,8 +374,10 @@ int inicializarPrograma(int conexion) {
     int i;
     pthread_mutex_lock(&mutexTablaPaginas);
     	usleep(datosMemoria->retardo*1000);							//todo 1 por cada acceso, o por cada escritura? :/
-		for (i = 0; i < paginasNecesarias; i++) {				//Registro el programa en la tabla, marco -1 porque está en Swap
-			  actualizarTabla(i, PID, -1);
+		int h=list_size(tabla_de_paginas);
+    	for (i = 0; i < paginasNecesarias; i++) {				//Registro el programa en la tabla, marco -1 porque está en Swap
+			  actualizarTabla(i, PID, h+i);
+			  vectorMarcos[h+i]=2;
 		}
     pthread_mutex_unlock(&mutexTablaPaginas);
     if (hayMarcosLibres()){
@@ -407,7 +418,7 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 		memcpy(memoria+posicion,&buffer,size);
 		traductor_marco* datosTabla=list_find(tabla_de_paginas,(void*)buscarMarco);
 		datosTabla->modificada=1;
-		log_info("(Pagina modificada)-Proceso %d Pag %d\n",proceso,pagina);
+		log_info(archivoLog,"(Pagina modificada)-Proceso %d Pag %d\n",proceso,pagina);
 //    pthread_mutex_unlock(&mutexTablaPaginas);
 
     void* a=malloc(4);							//todo esto se va
@@ -422,9 +433,13 @@ int finalizarPrograma(int procesoEliminar){
     int paginasDelProceso(traductor_marco* entradaTabla){
         return (entradaTabla->proceso==procesoEliminar);}
 
-    void limpiar(traductor_marco* marco){
-    	if(marco->marco!=-1){
+    void limpiarMarcos(traductor_marco* marco){
+      	if((marco->marco!=-1) && (paginasDelProceso(marco))){
+     //  	printf("-----Limpio marco: %d\n",marco->marco);
        	vectorMarcos[marco->marco]=0;}
+    }
+
+    void limpiar(traductor_marco* marco){
         list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,free);}
 
     int clockDelProceso(unClock* clockDelProceso){
@@ -442,6 +457,8 @@ int finalizarPrograma(int procesoEliminar){
     pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
     	pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
     		usleep(datosMemoria->retardo*1000);
+    		printf("TAMAÑO LISTA: %d\n",list_size(tabla_de_paginas));
+    		list_iterate(tabla_de_paginas,(void*)limpiarMarcos);
     		list_iterate(tabla_de_paginas,(void*)limpiar);
     	pthread_mutex_unlock(&mutexTablaPaginas);
     pthread_mutex_unlock(&mutexMarcos);
