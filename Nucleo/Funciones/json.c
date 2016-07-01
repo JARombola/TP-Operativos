@@ -23,7 +23,6 @@ char* toJsonArchivo(FILE* archivo){
     	caracter[0] = ' ';
 	}
 	string_append(&ansisop,"\n\0");
-	free(ansisop);
 	fclose(archivo);
 	return ansisop;
 }
@@ -283,6 +282,7 @@ t_list* fromStringListStack(char* char_stack){
 			indice = i;
 			stack = fromStringStack(toSubString(char_stack,subIndice,indice-1));
 			list_add(lista_stack,stack);
+			indice++;
 		}
 	}
 	return lista_stack;
@@ -307,12 +307,14 @@ char* toStringListStack(t_list* lista_stack){
 
 char* toStringStack(Stack stack){
 	char* char_stack=string_new();
-	char* char_args = toStringListPagina(stack.args);
+	char* char_args = toStringListVariables(stack.args);
 	char* char_retpos = toStringInt(stack.retPos);
 	char* char_ret_var = toStringPagina(stack.retVar);
 	char* char_var_list = toStringListVariables(stack.vars);
-	string_append_with_format(&char_stack,"%s%s%s%s%s",toStringInt(strlen(char_args)),char_args,char_retpos,char_ret_var,char_var_list);
+	char* tamanioListaPagina = toStringInt(strlen(char_args));
+	string_append_with_format(&char_stack,"%s%s%s%s%s",tamanioListaPagina,char_args,char_retpos,char_ret_var,char_var_list);
 	free(char_args);
+	free(tamanioListaPagina);
 	free(char_retpos);
 	free(char_ret_var);
 	free(char_var_list);
@@ -325,7 +327,7 @@ Stack* fromStringStack(char* char_stack){
 	int arg_size = atoi(char_arg_size);
 	free(char_arg_size);
 	char* char_args = toSubString(char_stack,4,3+arg_size);
-	stack->args = fromStringListPage(char_args);
+	stack->args = fromStringListVariables(char_args);
 	free(char_args);
 	int puntero = 4+ arg_size;
 	char* char_retPos = toSubString(char_stack,puntero,puntero +3);
@@ -345,7 +347,6 @@ Stack* fromStringStack(char* char_stack){
 char* toStringListPagina(t_list* lista_page){
 	int i;
 	char* char_lista_page = string_new();
-	string_append(&char_lista_page,"\0");
 	Pagina* page;
 	char* char_page;
 	for (i=0; i<list_size(lista_page);i++){
