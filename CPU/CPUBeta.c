@@ -239,7 +239,6 @@ char* pedirLinea(){
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
 	size_page = longitud;
-
 	char* respuestaFinal = string_new();
 	while (longitud>0) {
 		if (longitud > TAMANIO_PAGINA - off) {
@@ -248,10 +247,9 @@ char* pedirLinea(){
 			size_page = longitud;
 		}
 		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
-		char* respuesta=malloc(size_page+1);
-		char* estado = malloc(3);
+		char* respuesta=malloc((size_page+1)*sizeof(char));
+		char* estado = malloc(3*sizeof(char));
 		recv(umc,estado,2,MSG_WAITALL);
-		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
 		if (estado[0]!='o'){
 			estado[2] = '\0';
 			log_warning(archivoLog,"Respuesta UMC: %s\n", estado);
@@ -266,6 +264,7 @@ char* pedirLinea(){
 			free(mensaje);
 			return NULL;
 		}
+		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
 		if (verificador <= 0){
 			log_error(archivoLog,"Error : Fallor la conexion con la UMC\n");
 			finalizado = -1;
@@ -708,6 +707,7 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 	string_append(&mensaje,offMje);
 	string_append(&mensaje,sizeMje);
 	string_append(&mensaje,"\0");
+	log_info(archivoLog,"Le envio a la UMC: %s", mensaje);
 	send(umc,mensaje,string_length(mensaje),0);
 	free(procesoMje);
 	free(pagMje);
