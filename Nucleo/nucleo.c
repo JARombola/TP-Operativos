@@ -420,7 +420,7 @@ void atender_Ejecuciones(){
 				}
 		 	 }
 		 }
-		 free(pcbListo);
+		 liberarPCBPuntero(pcbListo);
 	 }
  }
 
@@ -433,7 +433,7 @@ void atender_Ejecuciones(){
 		 queue_push(colaListos, pcbBloqueando->pcb);
 		 log_info(archivoLog,"El proceso %d paso de Bloqueado (IO) a Listo",pcbBloqueando->pcb->id);
 		 sem_post(&sem_Listos);
-		 free(pcbBloqueando);
+		 liberarPCBPuntero(pcbBloqueando->pcb);
 	 }
  }
 
@@ -459,7 +459,7 @@ void atender_Ejecuciones(){
 	 	 finalizarProgramaConsola(pcbTerminado->id, cod);
 	 	 log_info(archivoLog,"El proceso %d Termino su ejecucion\n",pcbTerminado->id);
 	 	 sem_post(&sem_Nuevos);
-	 	 free(pcbTerminado);
+	 	liberarPCBPuntero(pcbTerminado);
 	 }
  }
 
@@ -499,7 +499,7 @@ void atenderOperacion(int op,int cpu){
 		texto = recibirMensaje(cpu,tamanio);
 		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
- 		log_info("El proceso %d paso de Execute a Listo",pcbDesSerializado->id);
+ 		log_info(archivoLog,"El proceso %d paso de Execute a Listo",pcbDesSerializado->id);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void*)cpu);
  		}
@@ -670,7 +670,7 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 	char* mensaje=string_new();
 		char* quantum_char = toStringInt(quantum);
 		char* quantum_sleep_char = toStringInt(quantum_sleep);
-		char* pcb_char = toStringPCB(*pcbListo);
+		char* pcb_char = toStringPCB(pcbListo);
 		string_append(&mensaje,quantum_char);
 		string_append(&mensaje,quantum_sleep_char);
 		agregarHeader(&pcb_char);
@@ -739,7 +739,7 @@ void Modificacion_quantum(){
 		}while(archivoConfiguracion == NULL);
 		(datosNucleo)->quantum = config_get_int_value(archivoConfiguracion, "QUANTUM");
 		(datosNucleo)->quantum_sleep = config_get_int_value(archivoConfiguracion,"QUANTUM_SLEEP");
-		log_info("el quantum ahora es: %d | y el quantum_sleep: %d",(datosNucleo)->quantum, (datosNucleo)->quantum_sleep);
+		log_info(archivoLog,"el quantum ahora es: %d | y el quantum_sleep: %d",(datosNucleo)->quantum, (datosNucleo)->quantum_sleep);
 
 		config_destroy(archivoConfiguracion);
 	}

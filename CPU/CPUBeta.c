@@ -202,6 +202,7 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", toStringPCB(fromStringPCB(pcb_char)));
 			free(pcb_char);
 			free(mensaje);
 			log_info(archivoLog,"Fin de Quantum \n");
@@ -451,6 +452,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
 	log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
+	log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", toStringPCB(fromStringPCB(pcb_char)));
 	free(pcb_char);
 	free(mensaje);
 
@@ -483,7 +485,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		pcb.pc++;
 		char* mensaje = string_new();
 		char* char_pcb = toStringPCB(pcb);
-		liberar(pcb);
+		liberarPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(char_pcb)));
 		string_append(&mensaje,char_pcb);
 		string_append(&mensaje,toStringInt(status));
@@ -570,6 +572,9 @@ void finalizar() {
 		liberarPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(pcb_char)));
 		string_append(&mensaje,pcb_char);
+		log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", toStringPCB(fromStringPCB(pcb_char)));
+		log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", toStringPCB(fromStringPCB(pcb_char)));
+
 		free(pcb_char);
 		string_append(&mensaje,toStringInt(status));
 		string_append(&mensaje,"\0");

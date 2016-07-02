@@ -209,18 +209,18 @@ void invertir(char* palabra){
 }
 
 
-char* toStringPCB(PCB pcb){
+char* toStringPCB(PCB* pcb){
 	char* char_pcb=string_new();
 	char* char_id;
-	char_id = toStringInt(pcb.id);
+	char_id = toStringInt(pcb->id);
 	char *char_metadata;
-	char_metadata = toStringMetadata(pcb.indices);
+	char_metadata = toStringMetadata(pcb->indices);
 	char* char_paginas_codigo;
-	char_paginas_codigo = toStringInt(pcb.paginas_codigo);
+	char_paginas_codigo = toStringInt(pcb->paginas_codigo);
 	char* char_pc;
-	char_pc = toStringInt(pcb.pc);
+	char_pc = toStringInt(pcb->pc);
 	char* char_stack;
-	char_stack = toStringListStack(pcb.stack);
+	char_stack = toStringListStack(pcb->stack);
 	string_append(&char_pcb,char_id);
 	char* aux = toStringInt(strlen(char_metadata));
 	string_append(&char_pcb, aux);
@@ -234,10 +234,12 @@ char* toStringPCB(PCB pcb){
 	free(char_paginas_codigo);
 	free(char_pc);
 	free(char_stack);
+	printf("\n\n %s \n\n",char_pcb);
 	return char_pcb;
 }
 PCB* fromStringPCB(char* char_pcb){
-	PCB* pcb;
+	printf("\n\n\n %s \n\n\n",char_pcb);
+	PCB* pcb = malloc(2*sizeof(PCB));
 	char* char_id = toSubString(char_pcb,0,3);
 	pcb->id = atoi(char_id);
 	char* char_tam_meta= toSubString(char_pcb,4,7);
@@ -247,7 +249,6 @@ PCB* fromStringPCB(char* char_pcb){
 	int puntero = 8+tamanioMeta;
 	char* char_pags = toSubString(char_pcb,puntero,puntero+3);
 	pcb->paginas_codigo = atoi(char_pags);
-	puntero = puntero +4;
 	char* char_pc =toSubString(char_pcb,puntero, puntero +3);
 	pcb->pc = atoi(char_pc);
 	puntero = puntero + 4;
