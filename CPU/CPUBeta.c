@@ -249,9 +249,15 @@ char* pedirLinea(){
 		}
 		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
 		char* respuesta=malloc(size_page+1);
-		recv(umc,respuesta,2,MSG_WAITALL);
+		char* estado = malloc(3);
+		recv(umc,estado,2,MSG_WAITALL);
 		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
-		if (respuesta[0]!='o'){
+		if (estado[0]!='o'){
+			estado[2] = '\0';
+			log_warning(archivoLog,"Respuesta UMC: %s\n", estado);
+			free(respuesta);
+			free(estado);
+			log_warning(archivoLog,"La UMC rechazo el pedido, Eliminar Ansisop\n");
 			char *mensaje = string_new();
 			string_append(&mensaje,"0000");
 			string_append(&mensaje,toStringInt(pcb.id));
@@ -346,17 +352,16 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 			log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
 			finalizado = -1;}
 		log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
-	return valor;
+		return valor;
 	}
-	else{
-		log_warning(archivoLog, "Sobrepase el limite del stack");
-		char* mensaje = string_new();
-		string_append(&mensaje,"0000");
-		char * char_id_pcb = toStringInt(pcb.id);
-		string_append(&mensaje,char_id_pcb);
-		send(nucleo,mensaje,strlen(mensaje),0);
+	log_warning(archivoLog,"La UMC rechazo el pedido, Eliminar Ansisop\n");
+	log_warning(archivoLog, "Sobrepase el limite del stack");
+	char* mensaje = string_new();
+	string_append(&mensaje,"0000");
+	char * char_id_pcb = toStringInt(pcb.id);
+	string_append(&mensaje,char_id_pcb);
+	send(nucleo,mensaje,strlen(mensaje),0);
 	return -1;
-	}
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
