@@ -41,13 +41,14 @@ void hiloSignal(){
 }
 
 void cerrarCPU(int senial){
+		char* mensaje;
 		switch(senial){
 			case SIGUSR1:
 				log_info(archivoLog,"Rayos Me mataron con SIGUSR1\n");
 				status = 0;
 				return;
 			case SIGINT:
-				char* mensaje = string_new();
+				mensaje = string_new();
 				string_append(&mensaje,"0000");
 				string_append(&mensaje,toStringInt(pcb.id));
 				string_append(&mensaje,"0000");
