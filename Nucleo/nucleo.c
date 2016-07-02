@@ -670,7 +670,7 @@ char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep){
 	char* mensaje=string_new();
 		char* quantum_char = toStringInt(quantum);
 		char* quantum_sleep_char = toStringInt(quantum_sleep);
-		char* pcb_char = toStringPCB(pcbListo);
+		char* pcb_char = toStringPCB(*pcbListo);
 		string_append(&mensaje,quantum_char);
 		string_append(&mensaje,quantum_sleep_char);
 		agregarHeader(&pcb_char);

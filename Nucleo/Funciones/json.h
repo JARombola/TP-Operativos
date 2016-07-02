@@ -52,7 +52,7 @@ char* toStringMetadata(t_metadata_program meta);
 t_metadata_program fromStringMetadata(char* char_meta);
 
 PCB* fromStringPCB(char* char_pcb);
-char* toStringPCB(PCB* pcb);
+char* toStringPCB(PCB pcb);
 
 char* toStringList(t_list* lista, char simbol);
 t_list* fromStringList(char* char_list, char simbol);
