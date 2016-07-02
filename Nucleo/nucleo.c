@@ -64,11 +64,13 @@ void finalizarProgramaUMC(int id);
 void finalizarProgramaConsola(int consola, int codigo);
 void enviarTextoConsola(int consola, char* texto);
 void Modificacion_quantum();
+int buscar_pcb_en_bloqueados(int pid);
+int buscar_pcb_en_cola(t_queue* cola, int pid);
 
 
 datosConfiguracion* datosNucleo;
 t_dictionary *globales,*semaforos,*dispositivosES;
-int tamPagina=0,*dispositivosSleeps, *globalesValores, *contadorSemaforo, conexionUMC;
+int tamPagina=0,*dispositivosSleeps, *globalesValores, *contadorSemaforo, conexionUMC, cantidad_io, cantidad_sem;
 sem_t *semaforosES,*semaforosGlobales;
 t_queue **colasES,**colasSEM;
 t_log* archivoLog;
@@ -157,13 +159,18 @@ int main(int argc, char* argv[]) {
 		socketARevisar = revisarActividadConsolas(&descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			log_info(archivoLog,"Se desconecto la consola en %d, eliminada",socketARevisar);
-			close(socketARevisar);
+			int estaBloqueada = buscar_pcb_en_bloqueados(socketARevisar);
+			if(estaBloqueada==socketARevisar){
+				log_info(archivoLog,"se elimino el proceso %d que estaba bloqueado");//todo avisar
+			 	finalizarProgramaUMC(socketARevisar);
+			}
+			//close(socketARevisar);
 		}
 		else {
 			socketARevisar = revisarActividadCPUs(&descriptores);
 			if (socketARevisar) {								//Reviso actividad en cpus
 				log_info(archivoLog,"Se desconecto el CPU en %d, eliminado",socketARevisar);
-				close(socketARevisar);
+				//close(socketARevisar);
 			}
 			else {
 					if (FD_ISSET(conexionUMC, &descriptores)) {					//Me mando algo la UMC
@@ -240,6 +247,7 @@ t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
 	}
 	i--; //me pase, voy a la ultima que tiene algo
 	if(esIO){
+		cantidad_io=i;
 		dispositivosSleeps = malloc((i+1)*sizeof(uint32_t));
 		semaforosES = malloc((i+1)*sizeof(sem_t));
 		colasES = malloc((i+1)*sizeof(t_queue));
@@ -250,6 +258,7 @@ t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
 			pthread_create(&thread, &attr, (void*)atender_Bloq_ES, (void*)i);
 		}
 	}else{
+		cantidad_sem=i;
 		colasSEM = malloc((i+1)*sizeof(t_queue));
 		semaforosGlobales=malloc((i+1)*sizeof(sem_t));
 		contadorSemaforo = malloc((i+1)*sizeof(uint32_t));
@@ -473,10 +482,16 @@ void atenderOperacion(int op,int cpu){
 			operacion = 3;
 		 	finalizarProgramaConsola(pidMalo, operacion);
 		 	finalizarProgramaUMC(pidMalo);
+		 	log_info(archivoLog,"Hubo un error en la ejecucion del proceso %d, eliminado",pidMalo);
 		 	sem_post(&sem_Nuevos);
 		}
-		sacar_socket_de_lista(cpus,cpu);//todo error de ansisop pero sigue el cpu
-		log_info(archivoLog,"Se desconecto o envio algo mal el CPU en %d, eliminado",cpu);
+		sigueCPU = recibirProtocolo(cpu);
+ 		if(sigueCPU){
+			list_add(cpusDisponibles, (void*)cpu);
+ 		}else{
+ 			sacar_socket_de_lista(cpus,cpu);//todo error de ansisop pero sigue el cpu
+ 			log_info(archivoLog,"Se desconecto el CPU en %d, eliminado (v2)",cpu);
+ 		}
 		break;
 	case QUANTUM_OK:
 		//termino bien el quantum, no necesita nada
@@ -484,7 +499,7 @@ void atenderOperacion(int op,int cpu){
 		texto = recibirMensaje(cpu,tamanio);
 		pcbDesSerializado = fromStringPCB(texto);
 		sigueCPU = recibirProtocolo(cpu);
- 		log_info("El proceso %d paso de Execute a Listo\n",pcbDesSerializado->id);
+ 		log_info("El proceso %d paso de Execute a Listo",pcbDesSerializado->id);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void*)cpu);
  		}
@@ -728,4 +743,34 @@ void Modificacion_quantum(){
 
 		config_destroy(archivoConfiguracion);
 	}
+}
+
+int buscar_pcb_en_bloqueados(int pid){
+	//busco entre las de ES y despues las de SEM
+	//semaforo para bloquearo los hilos de las colas? todo
+	int i, encontro;
+	for(i=0;i<=cantidad_sem;i++){
+		encontro = buscar_pcb_en_cola(colasSEM[i], pid);
+		if(encontro){
+			return encontro;
+		}
+	}
+	for(i=0;i<=cantidad_io;i++){
+		encontro = buscar_pcb_en_cola(colasES[i],pid);
+		if(encontro){
+			return encontro;
+		}
+	}
+	return 0;
+}
+int buscar_pcb_en_cola(t_queue* cola, int pid){
+	int buscarIgual(PCB* elemLista){
+		return (pid==elemLista->id);}
+	PCB* eliminar = list_find(cola->elements,(void*)buscarIgual);
+	list_remove_by_condition(cola->elements,(void*)buscarIgual);
+	if(eliminar!=NULL){
+		return eliminar->id;
+		free(eliminar);
+	}
+	return 0;
 }
