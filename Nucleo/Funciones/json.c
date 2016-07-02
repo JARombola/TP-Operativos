@@ -107,8 +107,8 @@ char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio){
 	t_intructions* instrucciones = malloc(tamanio*sizeof(t_intructions));
 	int i;
-	char* offset;
 	char* start;
+	char* offset;
 	for (i=0;i<tamanio;i++){
 		start=string_substring(char_instrucciones,i*8,4);
 		instrucciones[i].start = atoi(start);
@@ -222,12 +222,14 @@ char* toStringPCB(PCB pcb){
 	char* char_stack;
 	char_stack = toStringListStack(pcb.stack);
 	string_append(&char_pcb,char_id);
-	string_append(&char_pcb, toStringInt(strlen(char_metadata)));
+	char* aux = toStringInt(strlen(char_metadata));
+	string_append(&char_pcb, aux);
 	string_append(&char_pcb,char_metadata);
 	string_append(&char_pcb, char_paginas_codigo);
 	string_append(&char_pcb, char_pc);
 	string_append(&char_pcb,char_stack);
 	free (char_id);
+	free(aux);
 	free(char_metadata);
 	free(char_paginas_codigo);
 	free(char_pc);
@@ -236,16 +238,26 @@ char* toStringPCB(PCB pcb){
 }
 PCB* fromStringPCB(char* char_pcb){
 	PCB* pcb = malloc(sizeof(PCB));
-	pcb->id = atoi(toSubString(char_pcb,0,3));
-	int tamanioMeta = atoi(toSubString(char_pcb,4,7));
-	pcb->indices = fromStringMetadata(toSubString(char_pcb,8,(7+tamanioMeta)));
+	char* char_id = toSubString(char_pcb,0,3);
+	pcb->id = atoi(char_id);
+	char* char_tam_meta= toSubString(char_pcb,4,7);
+	int tamanioMeta = atoi(char_tam_meta);
+	char* char_indices = toSubString(char_pcb,8,(7+tamanioMeta));
+	pcb->indices = fromStringMetadata(char_indices);
 	int puntero = 8+tamanioMeta;
-	pcb->paginas_codigo = atoi(toSubString(char_pcb,puntero,puntero+3));
+	char* char_pags = toSubString(char_pcb,puntero,puntero+3);
+	pcb->paginas_codigo = atoi(char_pags);
 	puntero = puntero +4;
-	pcb->pc = atoi(toSubString(char_pcb,puntero, puntero +3));
+	char* char_pc =toSubString(char_pcb,puntero, puntero +3);
+	pcb->pc = atoi(char_pc);
 	puntero = puntero + 4;
 	char *subString = string_substring_from(char_pcb,puntero);
 	pcb->stack = fromStringListStack(subString);
+	free(char_id);
+	free(char_tam_meta);
+	free(char_indices);
+	free(char_pags);
+	free(char_pc);
 	free(subString);
 	return pcb;
 }
