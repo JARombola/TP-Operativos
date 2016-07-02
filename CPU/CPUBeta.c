@@ -175,6 +175,10 @@ void procesarCodigo(int quantum, int quantum_sleep){
 	while (!finalizado){
 		log_info(archivoLog,"Ronda: %d\n\n\n", pcb.pc);
 		linea = pedirLinea();
+		if (linea == NULL){
+			finalizado = 0;
+			return;
+		}
 		log_info(archivoLog,"Recibi: %s \n", linea);
 
 		if (!finalizado){
@@ -247,6 +251,15 @@ char* pedirLinea(){
 		char* respuesta=malloc(size_page+1);
 		recv(umc,respuesta,2,MSG_WAITALL);
 		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
+		if (respuesta[0]!='o'){
+			char *mensaje = string_new();
+			string_append(&mensaje,"0000");
+			string_append(&mensaje,toStringInt(pcb.id));
+			string_append(&mensaje,"0001");
+			send(nucleo,mensaje,strlen(mensaje),0);
+			free(mensaje);
+			return NULL;
+		}
 		if (verificador <= 0){
 			log_error(archivoLog,"Error : Fallor la conexion con la UMC\n");
 			finalizado = -1;
