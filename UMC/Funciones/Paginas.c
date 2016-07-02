@@ -43,7 +43,7 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
 			return posicion;                                //devuelve la posicion dentro de la "memoria"
 			}
         else{
-        //	printf("No hay marcos disponibles\n");
+        	log_warning(archivoLog,"XX-No hay marcos disponibles-XX");
         	return -1;
        }
     }
@@ -119,7 +119,6 @@ int buscarMarco(int pid){
         traductor_marco* datosMarco;
         do {
             marco=(int) queue_pop(clockProceso->colaMarcos);
-          //  printf("%d--MARCO: %d | %d\n",pid,marco,vectorMarcos[marco]);
             datosMarco = list_find(tabla_de_paginas,(void*)paginaDelMarco);
 
             if (datosMemoria->algoritmo){
