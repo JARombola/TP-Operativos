@@ -1,6 +1,18 @@
+function x
+$0 = 4
+print $0
+return $0
+end 
+
 begin
 
 variables a,b
+
+print a
+
+a<-x a
+
+print a
 
 io Disco 100
 
