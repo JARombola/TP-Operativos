@@ -237,7 +237,7 @@ char* toStringPCB(PCB pcb){
 	return char_pcb;
 }
 PCB* fromStringPCB(char* char_pcb){
-	PCB* pcb = malloc(sizeof(PCB));
+	PCB* pcb;
 	char* char_id = toSubString(char_pcb,0,3);
 	pcb->id = atoi(char_id);
 	char* char_tam_meta= toSubString(char_pcb,4,7);
@@ -273,8 +273,10 @@ char* toSubString(char* string, int inicio, int fin){
 
 char* toStringInt(int numero){
 	char* longitud=string_new();
-	char* rev = string_reverse(string_itoa(numero));
+	char* num_char = string_itoa(numero);
+	char* rev = string_reverse(num_char);
 	string_append(&longitud,rev);
+	free(num_char);
 	free(rev);
 	string_append(&longitud,"0000");
 	longitud=string_substring(longitud,0,4);
@@ -288,12 +290,15 @@ t_list* fromStringListStack(char* char_stack){
 	int subIndice;
 	t_list* lista_stack = list_create();
 	Stack* stack;
+	char* subString_stack;
 	for(i=0; i<strlen(char_stack);i++){
 		subIndice = indice;
 		if (char_stack[i]=='-'){
 			indice = i;
-			stack = fromStringStack(toSubString(char_stack,subIndice,indice-1));
+			subString_stack = toSubString(char_stack,subIndice,indice-1);
+			stack = fromStringStack(subString_stack);
 			list_add(lista_stack,stack);
+			free(subString_stack);
 			indice++;
 		}
 	}
@@ -376,9 +381,12 @@ t_list* fromStringListPage(char* char_list_page){
 	int page_size = strlen(char_list_page)/12;
 	Pagina* pag = malloc(sizeof(Pagina));
 	t_list* lista_page = list_create();
+	char* pag_char;
 	for(i=0; i< page_size;i++){
-		pag = fromStringPagina(toSubString(char_list_page,i*12,i*12+11));
+		pag_char = toSubString(char_list_page,i*12,i*12+11);
+		pag = fromStringPagina(pag_char);
 		list_add(lista_page, pag);
+		free(pag_char);
 	}
 	return lista_page;
 }
@@ -454,4 +462,41 @@ Variable* fromStringVariable(char* char_variable){
 	return variable;
 }
 
+void liberarPCBPuntero(PCB* pcb){
+	int i;
+	Stack* stack;
+	for (i=0; i<list_size(pcb->stack);i++){
+		stack = list_get(pcb->stack,i);
+		liberarStack(stack);
+		free(stack);
+	}
+	list_destroy(pcb->stack);
+	free(pcb);
+}
+void liberarPCB(PCB pcb){
+	int i;
+	Stack* stack;
+	for (i=0; i<list_size(pcb.stack);i++){
+		stack = list_get(pcb.stack,i);
+		liberarStack(stack);
+		free(stack);
+	}
+	list_destroy(pcb.stack);
+}
+
+void liberarStack(Stack* stack){
+	int i;
+	Pagina* pagina;
+	for(i=0; i<list_size(stack->args);i++){
+		pagina = list_get(stack->args,i);
+		free(pagina);
+	}
+	list_destroy(stack->args);
+	Variable* var;
+	for(i=0; i<list_size(stack->vars);i++){
+		var = list_get(stack->vars,i);
+		free(var);
+	}
+	list_destroy(stack->vars);
+}
 

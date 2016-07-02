@@ -82,4 +82,9 @@ t_list* fromStringListVariables(char* char_list);
 char* toStringVariable(Variable variable);
 Variable* fromStringVariable(char* char_variable);
 
+
+void liberarPCBPuntero(PCB* pcb);
+void liberarPCB(PCB pcb);
+void liberarStack(Stack* stack);  //Private xD
+
 #endif								
