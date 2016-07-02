@@ -195,6 +195,7 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			char* mensaje = string_new();
 			string_append(&mensaje,"0001");
 			char* pcb_char = toStringPCB(pcb);
+			liberarPCB(pcb);
 			string_append(&mensaje,toStringInt(strlen(pcb_char)));
 			string_append(&mensaje,pcb_char);
 			string_append(&mensaje,toStringInt(status));
@@ -443,6 +444,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	string_append(&mensaje,tiempoEspera);
 	free(tiempoEspera);
 	char* pcb_char = toStringPCB(pcb);
+	liberarPCB(pcb);
 	string_append(&mensaje,toStringInt(strlen(pcb_char)));
 	string_append(&mensaje,pcb_char);
 	string_append(&mensaje,toStringInt(status));
@@ -481,6 +483,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		pcb.pc++;
 		char* mensaje = string_new();
 		char* char_pcb = toStringPCB(pcb);
+		liberar(pcb);
 		string_append(&mensaje,toStringInt(strlen(char_pcb)));
 		string_append(&mensaje,char_pcb);
 		string_append(&mensaje,toStringInt(status));
@@ -564,6 +567,7 @@ void finalizar() {
 		string_append(&mensaje,"0003");
 		pcb.stack = list_create();
 		char* pcb_char = toStringPCB(pcb);
+		liberarPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(pcb_char)));
 		string_append(&mensaje,pcb_char);
 		free(pcb_char);
