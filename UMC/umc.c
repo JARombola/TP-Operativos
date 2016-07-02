@@ -180,10 +180,6 @@ void consola(){
                 else {
                     if (esIgual(comando, "MODIFICADAS")) {
                         scanf("%d",&nroProceso);
-                     /*   list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);
-                        finalizarPrograma(nroProceso);
-                        list_iterate(tabla_de_paginas,(void*)mostrarTablaPag);*/
-
                         void marcarModificadas(traductor_marco* pagina){
                         	if (nroProceso==-1){ pagina->modificada=1;}
                         	else{
@@ -378,11 +374,6 @@ void* enviarBytes(int proceso,int pagina,int offset,int size){
     if (posicion!=-1){
         void* datos=(void*) malloc(size);
         memcpy(datos,memoria+posicion+offset,size);
-        void* a=(void*)malloc(size+1);
-        memcpy(a,datos,size);
-        memcpy(a+size,"\0",1);
-        printf("Pag: %d -> Envio: %s\n",pagina,a);					//todo esto se va
-        free(a);
         return datos;
     }
     char* mje=string_new();
@@ -406,10 +397,7 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
 		datosTabla->modificada=1;
 		log_info(archivoLog,"(Proceso %d - Pag %d) Modificada\n",proceso,pagina);
 //    pthread_mutex_unlock(&mutexTablaPaginas);
-
-    void* a=malloc(4);							//todo esto se va
-    memcpy(&a,memoria+posicion,4);
-    printf("Guardé: %d\n",a);}
+	}
 
     return posicion;
 }
