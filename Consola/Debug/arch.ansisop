@@ -1,33 +1,3 @@
-function x
-$0 = 4
-print $0
-return $0
-end 
-
 begin
-
-variables a,b
-
-print a
-
-a<-x a
-
-print a
-
-io Disco 100
-
-!tiempo3=2
-
-:inicio
-
-a=!tiempo3+2
-
-:perro
-
-b=5
-
-:gato
-
-a=b+12
-
+	io LPT1 20
 end
