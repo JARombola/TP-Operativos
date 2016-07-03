@@ -190,22 +190,25 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			usleep(quantum_sleep*1000);
 		}
 
-		if ((!finalizado) && (!quantum)){;
+		if ((!finalizado) && (!quantum)){
+			log_info(archivoLog,"Fin de Quantum \n");
 			finalizado = 4;
 			char* mensaje = string_new();
 			string_append(&mensaje,"0001");
 			char* pcb_char = toStringPCB(pcb);
 			liberarPCB(pcb);
+			printf("Liberado \n");
 			string_append(&mensaje,toStringInt(strlen(pcb_char)));
 			string_append(&mensaje,pcb_char);
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
+			printf("Pre envio\n");
 			send(nucleo,mensaje,strlen(mensaje),0);
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", toStringPCB(fromStringPCB(pcb_char)));
 			free(pcb_char);
 			free(mensaje);
-			log_info(archivoLog,"Fin de Quantum \n");
+			log_info(archivoLog,"Ansisop Enviado a Nucleo \n");
 		}
 	}
 	if (finalizado<0){
@@ -320,7 +323,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 			var = list_get(stackActual->args,i);
 			if (variable == var->id){
 				log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
-				log_info(archivoLog,"retorno : %d", (int)&var->pagina);
+				log_info(archivoLog,"retorno : %d\n", (int)&var->pagina);
 				return (int)&var->pagina;
 			}
 		}
@@ -330,7 +333,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		var = (Variable*) list_find(variables,(void*)variableBuscada);
 		if ( var!=NULL){
 			log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
-			log_info(archivoLog,"retorno : %d", (int)&var->pagina);
+			log_info(archivoLog,"retorno : %d\n", (int)&var->pagina);
 			return (int)&(var->pagina);
 		}
 	}
@@ -608,11 +611,6 @@ Variable* crearVariable(char variable){
 				var->pagina.pag = pagArgs.pag+1;
 				var->pagina.off = 0;
 			}
-			if (('0'>=variable)&&(variable<='9')){
-				list_add(stack->args,var);
-			}else{
-				list_add(stack->vars,var);
-			}
 		}
 	}
 	return var;
@@ -661,9 +659,13 @@ Pagina obtenerPagDisponible(){
 
 void sumarEnLasVariables(Variable* var){
 	Stack* stackActual = obtenerStack();
-	t_list* variables = stackActual->vars;
 	log_info(archivoLog,"Agregando a la lista de variables: %c \n", var->id);
-	list_add(variables,var);
+	if (('0'>=var->id)&&(var->id<='9')){
+		list_add(stackActual->args,var);
+	}else{
+		t_list* variables = stackActual->vars;
+		list_add(variables,var);
+	}
 }
 
 Stack* obtenerStack(){
