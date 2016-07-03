@@ -1,7 +1,4 @@
 #include "CPUBeta.h"
-#include <pthread.h>
-#include <commons/process.h>
-#include <signal.h>
 
 int main(){
 
@@ -197,12 +194,10 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,"0001");
 			char* pcb_char = toStringPCB(pcb);
 			liberarPCB(pcb);
-			printf("Liberado \n");
 			string_append(&mensaje,toStringInt(strlen(pcb_char)));
 			string_append(&mensaje,pcb_char);
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
-			printf("Pre envio\n");
 			send(nucleo,mensaje,strlen(mensaje),0);
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
 			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", toStringPCB(fromStringPCB(pcb_char)));
@@ -567,7 +562,7 @@ void finalizar() {
 		pcb.pc = stackActual->retPos;
 	}
 	list_remove(pcb.stack,tamanioStack-1);
-	if (tamanioStack == 1){
+	if (tamanioStack <= 1){
 		char* mensaje = string_new();
 		string_append(&mensaje,"0003");
 		pcb.stack = list_create();
