@@ -1,3 +1,32 @@
-begin
-	io LPT1 20
+function doble
+variables f
+    f = $0 + $0
+    return f
 end
+
+begin
+variables f,  A,  g
+    A = 	0
+    !compartida = 1+A
+    print !compartida
+    jnz !compartida Siguiente 
+	:Proximo
+	
+    f = 8	  
+    g <- doble !compartida	
+
+    textPrint    Hola Mundo!
+    
+    g = 1 + g
+    print 		g    
+    
+    textPrint Bye
+    
+	:Siguiente	
+	print A+1
+	goto Proximo
+    
+end
+
+
+
