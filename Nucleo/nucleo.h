@@ -26,7 +26,7 @@
 #define BUF_LEN     ( 1024 * EVENT_SIZE )
 
 typedef struct{
-	PCB* pcb;
+	char* pcb;
 	int ut;
 }pcbParaES;
 
@@ -45,7 +45,7 @@ sem_t sem_Nuevos, sem_Listos,sem_Terminado;
 t_dictionary* crearDiccionarioGlobales(char** keys);
 t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO);
 
-PCB* crearPCB(char*);
+char* crearPCB(char*, int);
 int calcularPaginas(char*);
 void enviarAnsisopAUMC(int, char*,int);
 void maximoDescriptor(int* maximo, t_list* lista, fd_set *descriptores);
@@ -61,7 +61,7 @@ int esa_consola_existe(int consola);
 int ese_PCB_hay_que_eliminarlo(int consola);
 int revisarActividadConsolas(fd_set*);
 int revisarActividadCPUs(fd_set*);
-char* serializarMensajeCPU(PCB* pcbListo, int quantum, int quantum_sleep);
+char* serializarMensajeCPU(char* pcbListo, int quantum, int quantum_sleep);
 void enviarPCBaCPU(int, char*);
 void finalizarProgramaUMC(int id);
 void finalizarProgramaConsola(int consola, int codigo);
@@ -69,13 +69,13 @@ void enviarTextoConsola(int consola, char* texto);
 void Modificacion_quantum();
 int buscar_pcb_en_bloqueados(int pid);
 int buscar_pcb_en_cola(t_queue* cola, int pid);
-
+int obtenerPID(char* pcb);
 
 datosConfiguracion* datosNucleo;
 t_dictionary *globales,*semaforos,*dispositivosES;
 int tamPagina=0,*dispositivosSleeps, *globalesValores, *contadorSemaforo, conexionUMC, cantidad_io, cantidad_sem;
 sem_t *semaforosES,*semaforosGlobales;
 t_queue **colasES,**colasSEM;
-t_log* archivoLog;
+
 
 #endif /* NUCLEO_H_ */

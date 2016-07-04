@@ -99,7 +99,7 @@ int recibirProtocolo(int conexion){
 }
 
 char* recibirMensaje(int conexion, int tamanio){
-	char* mensaje=(char*)malloc(tamanio+1);
+	char* mensaje=malloc(tamanio+1);
 	int bytesRecibidos = recv(conexion, mensaje, tamanio, MSG_WAITALL);
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
@@ -110,12 +110,17 @@ char* recibirMensaje(int conexion, int tamanio){
 }
 
 char* header(int numero){										//Recibe numero de bytes, y lo devuelve en 4 bytes (Ej. recibe "2" y devuelve "0002")
-	char* longitud=string_new();
-	string_append(&longitud,string_reverse(string_itoa(numero)));
-	string_append(&longitud,"0000");
-	longitud=string_substring(longitud,0,4);
-	longitud=string_reverse(longitud);
-	return longitud;
+	char* asd=string_new();
+	char* num_char = string_itoa(numero);
+	num_char = string_reverse(num_char);
+	string_append(&asd,num_char);
+	free(num_char);
+	string_append(&asd,"0000");
+	char* longitud=string_substring(asd,0,4);
+	free(asd);
+	char* longitudPosta=string_reverse(longitud);
+	free(longitud);
+	return longitudPosta;
 }
 
 void agregarHeader(char** mensaje){
@@ -124,6 +129,7 @@ void agregarHeader(char** mensaje){
 	string_append(&head,numero);
 	string_append(&head,*mensaje);
 	*mensaje=string_duplicate(head);
+	free(numero);
 	free (head);
 }
 
