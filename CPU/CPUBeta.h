@@ -76,6 +76,7 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso);	//0 = pe
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor);
 void parsear(char* instruccion);
 int numeroPagina(Pagina pag);
+Pagina siguientePagina(Pagina pagina);
 
 
 AnSISOP_funciones functions = {
@@ -104,6 +105,7 @@ AnSISOP_kernel kernel_functions = {
  * 	 2) Entrada / Salida
  * 	 3) Wait Bloqueante
  * 	 4) Quantum
+ * 	 5) Error con la UMC
  * Finalizado-Error:
  * 	-1) Error de conexion UMC
  * 	-2) Error de conexion Nucleo

@@ -2,9 +2,9 @@
 
 int main(){
 
-    archivoLog = log_create("CPU.log", "CPU", true, log_level_from_string("INFO"));
+    archivoLog = log_create("CPU.log", "CPU", true, log_level_from_string("DEBUG"));
 
-    log_info(archivoLog,"CPU estable...[%d] \n",process_getpid());
+    log_info(archivoLog,"CPU estable...[%d] \n",(int) process_getpid());
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
@@ -270,6 +270,7 @@ char* pedirLinea(){
 			break;
 		}
 		respuesta[size_page]='\0';
+		log_debug(archivoLog,"Envio Parcial de la UMC: %s",respuesta);
 
 		string_append(&respuestaFinal, respuesta);
 		free(respuesta);
@@ -288,18 +289,9 @@ t_puntero definirVariable(t_nombre_variable variable) {
 	log_info(archivoLog,"definir la variable %c\n", variable);
 	Variable* var = crearVariable(variable);
 	log_info(archivoLog,"Variable %c creada\n", var->id);
-	if ((variable>='0') && (variable <='9')){
-		int tamanioStack = list_size(pcb.stack);
-		Stack* stackActual = list_get(pcb.stack,tamanioStack-1);
-		if (stackActual->args == NULL){
-			stackActual->args = list_create();
-		}
-		list_add(stackActual->args,var);
-	}else{
-		sumarEnLasVariables(var);
-	}
+	sumarEnLasVariables(var);
 	log_info(archivoLog,"Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
-	log_info(archivoLog,"retorno : %d", (int)&var->pagina);
+	log_debug(archivoLog,"retorno : %d", (int)&var->pagina);
 	return  (int)&var->pagina;
 }
 
@@ -309,27 +301,16 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	}
 	Variable* var;
 	log_info(archivoLog,"Obtener posicion de %c\n", variable);
+	Stack* stackActual = obtenerStack();
 	if ((variable>='0') && (variable <='9')){
-		int tamanioStack = list_size(pcb.stack);
-		Stack* stackActual = list_get(pcb.stack,tamanioStack-1);
-		int i;
-		for(i=0; i<list_size(stackActual->args);i++){
-			var = list_get(stackActual->args,i);
-			if (variable == var->id){
-				log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
-				log_info(archivoLog,"retorno : %d\n", (int)&var->pagina);
-				return (int)&var->pagina;
-			}
-		}
+		var = (Variable*) list_find(stackActual->args, (void*)  variableBuscada);
 	}else{
-		Stack* stack = obtenerStack();
-		t_list* variables = stack->vars;
-		var = (Variable*) list_find(variables,(void*)variableBuscada);
-		if ( var!=NULL){
-			log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
-			log_info(archivoLog,"retorno : %d\n", (int)&var->pagina);
-			return (int)&(var->pagina);
-		}
+		var = (Variable*) list_find(stackActual->vars,(void*)variableBuscada);
+	}
+	if ( var!=NULL){
+		log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
+		log_debug(archivoLog,"retorno : %d\n", (int)&var->pagina);
+		return (int)&(var->pagina);
 	}
 	log_error(archivoLog,"Error: No se encontro la variable\n");
 	finalizado = -9; // Error turbio
@@ -337,18 +318,21 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 }
 
 t_valor_variable dereferenciar(t_puntero pagina) {
-	log_info(archivoLog,"Me llega : %d", (int) pagina);
+	log_debug(archivoLog,"Me llega : %d", (int) pagina);
 	Pagina*  pag = (Pagina*) pagina;
 	log_info(archivoLog,"Dereferenciar %d %d %d",pag->pag,pag->off,pag->tamanio);
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
-	char resp[2];
+	char resp[3];
 	recv(umc,resp,2,MSG_WAITALL);
-	if(resp[0]=='o'){
+	resp[3]='\0';
+	if(!(strcmp(resp,"ok"))){
 		int valor;
 		int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
 		if (recibidos<= 0){
 			log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
-			finalizado = -1;}
+			finalizado = -1;
+			return -1;
+		}
 		log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
 		return valor;
 	}
@@ -358,7 +342,13 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	string_append(&mensaje,"0000");
 	char * char_id_pcb = toStringInt(pcb.id);
 	string_append(&mensaje,char_id_pcb);
+	char* status_char = toStringInt(status);
+	string_append(&mensaje,status_char);
+	free(status_char);
+	free(char_id_pcb);
 	send(nucleo,mensaje,strlen(mensaje),0);
+	free(mensaje);
+	finalizado = 5;
 	return -1;
 }
 
@@ -590,20 +580,7 @@ void retornar(t_valor_variable retorno){
 Variable* crearVariable(char variable){
 	Variable* var = malloc(sizeof(Variable));
 	var->id = variable;
-	Stack* stack = obtenerStack();
 	var->pagina = obtenerPagDisponible();
-	if (list_size(stack->args)>0){
-		Pagina pagArgs = ((Variable*)list_get(stack->args,list_size(stack->args)-1))->pagina;
-		if (numeroPagina(var->pagina)<=numeroPagina(pagArgs)){
-			if ((pagArgs.off+pagArgs.tamanio+4)<=TAMANIO_PAGINA){
-				var->pagina.pag = pagArgs.pag;
-				var->pagina.off = pagArgs.off+4;
-			}else{
-				var->pagina.pag = pagArgs.pag+1;
-				var->pagina.off = 0;
-			}
-		}
-	}
 	return var;
 }
 
@@ -618,40 +595,54 @@ int numeroPagina(Pagina pag){
 }
 
 Pagina obtenerPagDisponible(){
-	Stack* stackActual = obtenerStack();
-	int cantidadDeVariables = list_size(stackActual->vars);
-	Pagina pagina;
-	if ((cantidadDeVariables<=0)&&(list_size(pcb.stack)==1)){
-		pagina.pag = pcb.paginas_codigo;
-		pagina.off = 0;
-	}else{
-		if (cantidadDeVariables <= 0){
-			stackActual = anteUltimoStack();
-			if (stackActual == NULL){
-				pagina.pag = pcb.paginas_codigo;
-			    pagina.off = 0;
-			    pagina.tamanio = 4;
-			    return pagina;
-			}
-			cantidadDeVariables = list_size(stackActual->vars);
+	int i = list_size(pcb.stack) -1;
+	Stack* stackActual;
+	int valorList = 0;
+	int valorArg = 0;
+	Variable* varList;
+	Variable* varArg;
+	for (;i>=0;i--){
+		stackActual = list_get(pcb.stack,i);
+		if (list_size(stackActual->args)>0){
+			varList = list_get(stackActual->args,list_size(stackActual->args)-1);
+			valorList = numeroPagina(varList->pagina);
 		}
-		Variable* ultimaVariable = list_get(stackActual->vars, cantidadDeVariables-1);
-		if ((ultimaVariable->pagina.off+ultimaVariable->pagina.tamanio+4)<=TAMANIO_PAGINA){
-			pagina.pag = ultimaVariable->pagina.pag;
-			pagina.off = ultimaVariable->pagina.off+4;
-		}else{
-			pagina.pag = ultimaVariable->pagina.pag+1;
-			pagina.off = 0;
+		if (list_size(stackActual->vars)>0){
+			varArg = list_get(stackActual->vars,list_size(stackActual->vars)-1);
+			valorArg = numeroPagina(varArg->pagina);
+		}
+		if (valorList>valorArg){
+			return siguientePagina(varList->pagina);
+		}
+		if (valorArg>valorList){
+			return siguientePagina(varArg->pagina);
 		}
 	}
-	pagina.tamanio = 4;
-	return pagina;
+	Pagina paginaInicial;
+	paginaInicial.tamanio = 4;
+	paginaInicial.pag = pcb.paginas_codigo;
+	paginaInicial.off = 0;
+	return paginaInicial;
+}
+
+Pagina siguientePagina(Pagina pagina){
+	Pagina siguientePagina;
+		if (pagina.off+7 > TAMANIO_PAGINA){
+			siguientePagina.pag = pagina.pag+1;
+			siguientePagina.off = 0;
+		}else{
+			siguientePagina.pag = pagina.pag;
+			siguientePagina.off = pagina.off+4;
+		}
+		siguientePagina.tamanio = 4;
+	return siguientePagina;
 }
 
 void sumarEnLasVariables(Variable* var){
 	Stack* stackActual = obtenerStack();
 	log_info(archivoLog,"Agregando a la lista de variables: %c \n", var->id);
 	if (('0'>=var->id)&&(var->id<='9')){
+		if (stackActual->args == NULL) stackActual->args= list_create();
 		list_add(stackActual->args,var);
 	}else{
 		t_list* variables = stackActual->vars;
@@ -719,15 +710,17 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 }
 
 void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int valor){
+	log_debug(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag,off,size);
 	char* mensaje = string_new();
-	valor=htonl(valor);
+	int valor_serializado=htonl(valor);
 	char* pid=toStringInt(proceso);
 	char* pagina=toStringInt(pag);
 	char* offset=toStringInt(off);
 	char* tam=toStringInt(size);
 	string_append_with_format(&mensaje,"3%s%s%s%s\0",pid,pagina,offset,tam);
+	log_info(archivoLog,"Le envie a la UMC: %s , con el valor: %d",mensaje,valor);
 	send(umc,mensaje,string_length(mensaje),0);
-	send(umc,&valor,sizeof(int),0);  // AK HAY ALGO TURBIO
+	send(umc,&valor_serializado,sizeof(int),0);  // AK HAY ALGO TURBIO
 	free(mensaje);
 	free(pid);
 	free(pagina);
@@ -740,8 +733,8 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 		finalizado = -1;
 	}else{
 		if (!atoi(resp)){
-			log_error(archivoLog,"Pagina inexistente\n");
-			finalizado = -1;
+			log_warning(archivoLog,"Pagina inexistente\n");
+			finalizado = 6;
 		}
 	}
 	free(resp);
