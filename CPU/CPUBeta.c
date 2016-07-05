@@ -234,7 +234,7 @@ char* pedirLinea(){
 
 	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;
-
+	log_debug(archivoLog,"Peticion de linea: %d , longitud: %d", start,longitud);
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
 	size_page = longitud;
