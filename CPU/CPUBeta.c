@@ -325,7 +325,7 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	char resp[3];
 	recv(umc,resp,2,MSG_WAITALL);
 	resp[3]='\0';
-	if(!(strcmp(resp,"ok"))){
+	if(resp[0]=='o'){
 		int valor;
 		int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
 		if (recibidos<= 0){
@@ -353,9 +353,11 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 }
 
 void asignar(t_puntero pagina, t_valor_variable valor) {
-	Pagina* pag = (Pagina*) pagina;
-	log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,pag->tamanio);
-	enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
+	if (pagina != -1){
+		Pagina* pag = (Pagina*) pagina;
+		log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,pag->tamanio);
+		enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
+	}
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
