@@ -234,7 +234,7 @@ char* pedirLinea(){
 
 	start = pcb.indices.instrucciones_serializado[pcb.pc].start;
 	longitud = pcb.indices.instrucciones_serializado[pcb.pc].offset-1;
-
+	log_debug(archivoLog,"Peticion de linea: %d , longitud: %d", start,longitud);
 	pag = start / TAMANIO_PAGINA;
 	int off = start%TAMANIO_PAGINA;
 	size_page = longitud;
@@ -735,7 +735,17 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 		finalizado = -1;
 	}else{
 		if (!atoi(resp)){
-			log_warning(archivoLog,"Pagina inexistente\n");
+			log_warning(archivoLog,"Sobrepaso el Stack\n");
+			char* mensaje = string_new();
+			string_append(&mensaje,"0000");
+			char* id = toStringInt(pcb.id);
+			string_append(&mensaje,id);
+			char* status_char = toStringInt(status);
+			string_append(&mensaje,status_char);
+			send(nucleo,mensaje,strlen(mensaje),0);
+			free(id);
+			free(status_char);
+			free(mensaje);
 			finalizado = 6;
 		}
 	}
