@@ -251,8 +251,12 @@ void atenderCpu(int conexion){
 		return entradaTlb->proceso!=procesoAnterior;
 	}
 	void* datos;
+	char* cod_op;
+	int bytesRecibidos;
 	while (!salir) {
-		operacion = atoi(recibirMensaje(conexion, 1));
+		cod_op=recibirMensaje(conexion, 1);
+		operacion = atoi(cod_op);
+		free(cod_op);
 		if (operacion) {
 
 			proceso = recibirProtocolo(conexion);
@@ -273,14 +277,16 @@ void atenderCpu(int conexion){
 				break;
 
 			case GUARDAR_BYTES:													//3 = Guardar Valor
-				recv(conexion,&buffer,sizeof(int),MSG_WAITALL);
-				buffer=ntohl(buffer);
-				char* resp;
-				if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
-					resp=header(0);
-				}else{resp=header(1);}
-					send(conexion,resp,string_length(resp),0);
-				free(resp);
+				bytesRecibidos=recv(conexion,&buffer,sizeof(int),MSG_WAITALL);
+				if(bytesRecibidos){
+					buffer=ntohl(buffer);
+					char* resp;
+					if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
+						resp=header(0);
+					}else{resp=header(1);}
+						send(conexion,resp,string_length(resp),0);
+					free(resp);}
+				else{salir=1;}
 				break;
 			}
 
@@ -296,8 +302,10 @@ void atenderCpu(int conexion){
 
 void atenderNucleo(int nucleo){
         int salir=0,guardar,procesoEliminar;
+        char* cod_op;
         while (!salir) {
-            int operacion = atoi(recibirMensaje(nucleo,1));
+            cod_op=recibirMensaje(nucleo,1);
+        	int operacion = atoi(cod_op);
                 if (operacion) {
                     switch (operacion) {
 
@@ -343,8 +351,12 @@ int inicializarPrograma(int conexion) {
     agregarHeader(&codigo);
     char* programa = string_new();
     string_append(&programa, "1");
-    string_append(&programa, header(PID));
-    string_append(&programa, header(paginasNecesarias));
+    char* pid_char=header(PID);
+    string_append(&programa, pid_char);
+    free(pid_char);
+    char* pags=header(paginasNecesarias);
+    string_append(&programa, pags);
+    free(pags);
     string_append(&programa, codigo);
     string_append(&programa, "\0");
     free(codigo);
