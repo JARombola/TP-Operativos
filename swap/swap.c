@@ -222,14 +222,14 @@ int compactar(){
 	int i,inicioAnterior, libre, cont;
 	traductor_marco* procesoAMover;
 
-	int inicioMenorMayor(traductor_marco* marco1, traductor_marco* marco2){
+	int ordenarPorInicioDeMenorAMayor(traductor_marco* marco1, traductor_marco* marco2){
 		return (marco1->inicio<marco2->inicio);
 	}
 	int proximoProceso(traductor_marco* proceso){
 		return (proceso->inicio>=i);
 	}
 
-	list_sort(tablaPaginas,(void*)inicioMenorMayor);
+	list_sort(tablaPaginas,(void*)ordenarPorInicioDeMenorAMayor);
 	log_info(logs,"INICIANDO COMPACTACION...");
 	usleep(datosSwap->retardoCompactacion*1000);
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
