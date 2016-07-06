@@ -51,7 +51,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	logs = log_create("Swap.log","Swap",true,log_level_from_string("INFO"));
 
 	if (!leerConfiguracion(argv[1], &datosSwap)) {
-		log_error(logs,"Error archivo de configuracion\n FIN.");
+		log_error(logs,"Error al leer el archivo de configuracion\n FIN.");
 		return 1;}
 
 
@@ -64,7 +64,6 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	struct sockaddr_in direccionSWAP=crearDireccion(datosSwap->puerto, datosSwap->ip);
 
 	pagsLibres=datosSwap->cantidadPaginas;
-
 
 	tablaPaginas=list_create();
 
@@ -178,7 +177,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		size=tamanio;
 		list_add(tablaPaginas, nuevaFila);
 		pagsLibres-=cantPaginas;
-		log_info(logs,"Nuevo ansisop\n");
+		log_info(logs,"Nuevo ansisop registrado\n");
 	}
 
 	else{												//actualizar pagina
@@ -299,6 +298,6 @@ void verMarcos(){
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		string_append_with_format(&marcos,"%d", bitarray_test_bit(bitArray,i));
 	}
-		log_info(logs,"%s",marcos);
+	log_info(logs,"%s",marcos);
 	free(marcos);
 }
