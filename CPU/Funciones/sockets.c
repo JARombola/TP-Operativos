@@ -84,7 +84,6 @@ char* esperarRespuesta(int conexion){
 	int bytes= recv(conexion, header,4,MSG_WAITALL);
 	header[4]= '\0';
 	uint32_t tamanioPaquete = atoi(header);
-	free(header);
 	if (bytes<=0){
 		buffer = malloc(2*sizeof(char));
 		buffer[0] = '\0';

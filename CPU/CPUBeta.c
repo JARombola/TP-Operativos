@@ -151,10 +151,6 @@ int procesarPeticion(){
 
 		log_info(archivoLog,"Quantum Sleep recibido: %d\n",quantum_sleep);
 
-		if (pcbRecibido[0] == '\0'){
-			log_error(archivoLog,"Error: Error de conexion con el nucleo\n");
-			return 0;
-		}
 		log_info(archivoLog,"\n Recibi del Nucleo: %s\n", pcbRecibido);
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
@@ -729,7 +725,7 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	free(pagina);
 	free(offset);
 	free(tam);
-	char* resp=malloc(5);
+	char resp[5];
 	int verificador = recv(umc,resp,4,MSG_WAITALL);
 	if (verificador <= 0){
 		log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
@@ -750,7 +746,6 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 			finalizado = 6;
 		}
 	}
-	free(resp);
 }
 
 void enviarMensajeNucleoConsulta(char* variable){
