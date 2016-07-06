@@ -51,7 +51,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	logs = log_create("Swap.log","Swap",true,log_level_from_string("INFO"));
 
 	if (!leerConfiguracion(argv[1], &datosSwap)) {
-		log_error(logs,"Error archivo de configuracion\n FIN.");
+		log_error(logs,"Error al leer el archivo de configuracion\n FIN.");
 		return 1;}
 
 
@@ -64,7 +64,6 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	struct sockaddr_in direccionSWAP=crearDireccion(datosSwap->puerto, datosSwap->ip);
 
 	pagsLibres=datosSwap->cantidadPaginas;
-
 
 	tablaPaginas=list_create();
 
@@ -178,7 +177,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		size=tamanio;
 		list_add(tablaPaginas, nuevaFila);
 		pagsLibres-=cantPaginas;
-		log_info(logs,"Nuevo ansisop\n");
+		log_info(logs,"Nuevo ansisop registrado\n");
 	}
 
 	else{												//actualizar pagina
@@ -286,9 +285,9 @@ int eliminarProceso(int pid){
 		}
 
 		pagsLibres+=datosProceso->paginas;
-		log_info(logs,"Lista antes: %d\n",list_size(tablaPaginas));
+		log_info(logs,"Cantidad de procesos de la lista antes: %d\n",list_size(tablaPaginas));
 		list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)free);			//Elimino las entradas de la tabla
-		log_info(logs, "Lista despues: %d\n",list_size(tablaPaginas));}
+		log_info(logs, "Cantidad de procesos de la lista despues: %d\n",list_size(tablaPaginas));}
 	return 1;
 }
 
@@ -299,6 +298,6 @@ void verMarcos(){
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		string_append_with_format(&marcos,"%d", bitarray_test_bit(bitArray,i));
 	}
-		log_info(logs,"%s",marcos);
+	log_info(logs,"%s",marcos);
 	free(marcos);
 }
