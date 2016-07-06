@@ -42,6 +42,7 @@ void cerrarCPU(int senial){
 			case SIGUSR1:
 				log_info(archivoLog,"Rayos Me mataron con SIGUSR1\n");
 				status = 0;
+				if (!enEjecucion) exit(0);
 				return;
 			case SIGINT:
 				mensaje = string_new();
@@ -132,8 +133,9 @@ int procesarPeticion(){
 	while ((!finalizado) && (status)){
 
 		log_info(archivoLog,"\n\nPeticion del Nucleo\n\n");
-
+		enEjecucion = 0;
 		quantum = recibirProtocolo(nucleo);
+		enEjecucion = 1;
 		quantum_sleep=recibirProtocolo(nucleo);
 		pcbRecibido = esperarRespuesta(nucleo);
 
