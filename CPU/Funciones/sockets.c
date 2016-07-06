@@ -79,7 +79,7 @@ int esperarConexion(int servidor,char* autentificacion){
 }
 
 char* esperarRespuesta(int conexion){
-	char *header=malloc(5);
+	char header[5];
 	char* buffer;
 	int bytes= recv(conexion, header,4,MSG_WAITALL);
 	header[4]= '\0';
@@ -113,7 +113,7 @@ char* header(int numero){
 }
 
 int recibirProtocolo(int conexion){
-	char* protocolo=malloc(5);
+	char protocolo[5];
 	int bytes= recv(conexion, protocolo,4,MSG_WAITALL);
 	if(bytes!=4){
 		perror("Error protocolo");
