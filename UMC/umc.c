@@ -8,8 +8,11 @@
 #define GUARDAR_BYTES 3
 #define FINALIZAR 4
 
-
-
+typedef struct{
+	int proc, hilo;
+}puto;
+t_dictionary* procesos;
+t_list* procesosActivos;
 int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../Config1		(o el numero de configuracion que sea)
 
 	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
@@ -62,13 +65,14 @@ int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../
 
     listen(umc_servidor, 1);
     nucleo=aceptarNucleo(umc_servidor,direccionCliente);
-
+    procesosActivos=list_create();
     //-------------------------------------------------------------------Funcionamiento de la UMC
-
+    procesos=dictionary_create();
     pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nucleo);                        //Hilo para atender al nucleo
     pthread_create(&thread, &attr, (void*) consola, NULL);                                        //Hilo para atender comandos
     listen(umc_servidor, 100);                                                                    //Para recibir conexiones (CPU's)
   //  pthread_mutex_lock(&mutexFinProceso);
+    dictionary_create(procesosActivos);
     int cpuRespuesta=htonl(datosMemoria->marco_size);
     while (1) {
         nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
@@ -205,8 +209,8 @@ int atenderCpu(int conexion){
 		return entradaTlb->proceso!=procesoAnterior;
 	}
 	void* datos;
-	char *cod_op, *resp;
-	int bytesRecibidos, bytesEnviados;
+	char *cod_op, *resp,*pid;
+	int bytesRecibidos, bytesEnviados, *hilo;
 	while (!salir) {
 		cod_op=recibirMensaje(conexion, 1);
 		operacion = atoi(cod_op);
@@ -216,6 +220,17 @@ int atenderCpu(int conexion){
 		if (operacion) {
 
 				proceso = recibirProtocolo(conexion);
+				pid=string_itoa(proceso);
+				hilo=malloc(4);
+				hilo=pthread_self();
+				dictionary_put(procesos,pid,hilo);
+				/*hilo=malloc(4);
+				hilo=pthread_self();
+				puto* registro=malloc(sizeof(puto));
+				registro->hilo=hilo;
+				registro->proc=proceso;
+				list_add(procesosActivos,registro);*/
+
 				pagina = recibirProtocolo(conexion);
 				offset = recibirProtocolo(conexion);
 				size=recibirProtocolo(conexion);
@@ -254,9 +269,21 @@ int atenderCpu(int conexion){
 				if (procesoAnterior!=proceso){													//cambió el proceso => limpio la tlb
 					tlb=list_filter(tlb,(void*)removerEntradasProcesoAnterior);					//filtra las que son DIFERENTES
 					procesoAnterior=proceso;}
+/*
+				int seVa(puto* asd){
+					if(asd->proc==proceso){
+						return 1;
+					}return 0;
+				}
+				list_remove_and_destroy_by_condition(procesosActivos,(void*)seVa,free);
+*/
+				printf("______Tamaño del diccionario ANTES:%d\n",dictionary_size(procesos));
+				dictionary_remove(procesos,pid);
+				free(pid);
+				printf("______Tamaño del diccionario DESPUES:%d\n",dictionary_size(procesos));
+				if(bytesEnviados==-1 || bytesRecibidos==-1){					//murió la cpu mientras ejecutaba
+					salir=1;}
 
-				if(!bytesEnviados && !bytesRecibidos){					//murió la cpu mientras ejecutaba
-							salir=1;}
 		} else {salir = 1;}
 	}
 	log_warning(archivoLog, "Se desconectó una CPU");
@@ -394,9 +421,27 @@ int finalizarPrograma(int procesoEliminar){
      //  	printf("-----Limpio marco: %d\n",marco->marco);
        	vectorMarcos[marco->marco]=0;}
     }
-
+  /*  int esta(puto* elemento){
+    	return elemento->proc==procesoEliminar;
+    }
+    puto* proc=list_find(procesosActivos,esta);
+    if(proc!=NULL){
+    	printf("ESTOY ESPERANDO....\n");
+    	int* h=malloc(4);
+    	h=proc->hilo;
+    	pthread_join(*h,NULL);
+    }
+*/
+    char* pro=string_itoa(procesoEliminar);
+    if(dictionary_has_key(procesos,pro)){
+    	int* c=dictionary_get(procesos,pro);
+    	printf("ESTOY ESPERANDO...\n");
+    	pthread_join(*c,NULL);
+    }
+    free(pro);
+    printf("AL FIN!!\n");
     void limpiar(traductor_marco* marco){
-        list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,free);}
+        list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)free);}
 
     int clockDelProceso(unClock* clockDelProceso){
         return(clockDelProceso->proceso==procesoEliminar);}
