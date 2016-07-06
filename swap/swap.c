@@ -285,9 +285,9 @@ int eliminarProceso(int pid){
 		}
 
 		pagsLibres+=datosProceso->paginas;
-		log_info(logs,"Lista antes: %d\n",list_size(tablaPaginas));
+		log_info(logs,"Cantidad de procesos de la lista antes: %d\n",list_size(tablaPaginas));
 		list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)free);			//Elimino las entradas de la tabla
-		log_info(logs, "Lista despues: %d\n",list_size(tablaPaginas));}
+		log_info(logs, "Cantidad de procesos de la lista despues: %d\n",list_size(tablaPaginas));}
 	return 1;
 }
 
