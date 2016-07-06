@@ -30,7 +30,7 @@ typedef struct{
 	int id;
 	int pc; //Número de la próxima instrucción del Programa que se debe ejecutar
 	int paginas_codigo;
-	t_metadata_program indices; // Índice de código + Índice de	etiquetas
+	t_metadata_program* indices; // Índice de código + Índice de	etiquetas
 	t_list* stack; // Lista de Stack
 }PCB;
 
@@ -48,7 +48,7 @@ u_int32_t valorInstruccion(char * char_meta,int subindice,int indice);
 char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio);
 t_intructions* fromStringInstrucciones(char* char_instrucciones, t_size tamanio);
 
-char* toStringMetadata(t_metadata_program meta);
+char* toStringMetadata(t_metadata_program* meta);
 t_metadata_program fromStringMetadata(char* char_meta);
 
 PCB* fromStringPCB(char* char_pcb);

@@ -20,13 +20,13 @@ char* toStringInstrucciones(t_intructions* instrucciones, t_size tamanio){
 	return char_instrucciones;
 }
 
-char* toStringMetadata(t_metadata_program meta){
+char* toStringMetadata(t_metadata_program* meta){
 	char* char_meta=string_new();
-	char* inicio=toStringInt(meta.instruccion_inicio);
-	char* instrSize=toStringInt(meta.instrucciones_size);
-	char* etiqSize=toStringInt(meta.etiquetas_size);
-	char* cantFunc=toStringInt(meta.cantidad_de_funciones);
-	char* cantEtiq=toStringInt(meta.cantidad_de_etiquetas);
+	char* inicio=toStringInt(meta->instruccion_inicio);
+	char* instrSize=toStringInt(meta->instrucciones_size);
+	char* etiqSize=toStringInt(meta->etiquetas_size);
+	char* cantFunc=toStringInt(meta->cantidad_de_funciones);
+	char* cantEtiq=toStringInt(meta->cantidad_de_etiquetas);
 	string_append(&char_meta,inicio);
 	string_append(&char_meta,instrSize);
 	string_append(&char_meta,etiqSize);
@@ -38,16 +38,19 @@ char* toStringMetadata(t_metadata_program meta){
 	free(cantFunc);
 	free(cantEtiq);
 	int i;
-	for(i=0;i<meta.etiquetas_size;i++){
-		if(meta.etiquetas[i]=='\0'){
-			meta.etiquetas[i]='@';
+	char* etiquetas=malloc(meta->etiquetas_size+1);
+	memcpy(etiquetas,meta->etiquetas,meta->etiquetas_size);
+		for(i=0;i<meta->etiquetas_size;i++){
+			if(etiquetas[i]=='\0'){
+				etiquetas[i]='@';
+			}
 		}
-	}
-	if(meta.etiquetas_size){
-		meta.etiquetas[meta.etiquetas_size]='\0';
-		string_append(&char_meta,meta.etiquetas);
-	}
-	char* char_instrucciones=toStringInstrucciones(meta.instrucciones_serializado,meta.instrucciones_size);
+		if(meta->etiquetas_size){
+			etiquetas[meta->etiquetas_size]='\0';
+			string_append(&char_meta,etiquetas);
+		}
+	free(etiquetas);
+	char* char_instrucciones=toStringInstrucciones(meta->instrucciones_serializado,meta->instrucciones_size);
 	string_append(&char_meta, char_instrucciones);
 	free(char_instrucciones);
 	return char_meta;
@@ -138,11 +141,11 @@ char* toStringStack(Stack stack){
 char* toStringListPagina(t_list* lista_page){
 	int i;
 	char* char_lista_page = string_new();
-	//Pagina* page;
-	//char* char_page;
+	Pagina* page;
+	char* char_page;
 	for (i=0; i<list_size(lista_page);i++){
-		Pagina* page = list_get(lista_page,i);
-		char* char_page = toStringPagina(*page);
+		page = list_get(lista_page,i);
+		char_page = toStringPagina(*page);
 		string_append(&char_lista_page,char_page);
 		free(char_page);
 	}
@@ -155,7 +158,9 @@ char* toStringPagina(Pagina page){
 	char* off = toStringInt(page.off);
 	char* pag = toStringInt(page.pag);
 	char* size = toStringInt(page.tamanio);
-	string_append_with_format(&char_page,"%s%s%s",pag,off,size);
+	string_append(&char_page,pag);
+	string_append(&char_page,off);
+	string_append(&char_page,size);
 	free(pag);
 	free(off);
 	free(size);
@@ -187,6 +192,18 @@ char* toStringVariable(Variable variable){
 	string_append(&char_variable,pagina);
 	free(pagina);
 	return char_variable;
+}
+
+void liberarPCBPuntero(PCB* pcb){
+	int i;
+	Stack* stack;
+	for (i=0; i<list_size(pcb->stack);i++){
+		stack = list_get(pcb->stack,i);
+		liberarStack(stack);
+		free(stack);
+	}
+	list_destroy(pcb->stack);
+	free(pcb);
 }
 
 
