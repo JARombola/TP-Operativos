@@ -31,11 +31,12 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 
 	printf("Consola creada. Conectando al Nucleo...\n");
 	int nucleo=conectar(puerto_nucleo,ip_nucleo);
-	if (!autentificar(nucleo)) {
+	int proceso=autentificar(nucleo);
+	if (!proceso) {
 		printf("Conexion al nucleo fail, error handshake\n");
 		return -1;
 	}
-	printf("Conexion Ok\n");
+	printf("Conexion Ok. Proceso N°:%d\n",proceso);
 	FILE* ansisop=fopen(argv[1],"r");
 	if (!ansisop){perror("Archivo");}
 	if(enviarAnsisop(ansisop, nucleo)){printf("Error en el envio del codigo\n");}
@@ -58,7 +59,6 @@ int main(int argc, char* argv[]) {//Se le envia por parametro el archivo a ejecu
 						return -1;
 						break;
 					case 1:														//IMPRIMIR
-						printf("el nucleo quiere que imprima\n");
 						tamanio = recibirProtocolo(nucleo);
 						texto = recibirMensaje(nucleo,tamanio);
 						texto[tamanio]='\0';

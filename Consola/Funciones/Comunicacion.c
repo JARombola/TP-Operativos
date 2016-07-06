@@ -25,6 +25,9 @@ int conectar(int puerto,char* ip){
 int recibirProtocolo(int conexion){
 	char* protocolo = malloc(5);
 	int bytesRecibidos = recv(conexion, protocolo, sizeof(int32_t), MSG_WAITALL);
+	if (bytesRecibidos!=sizeof(int)){
+		return 0;
+	}
 	protocolo[4]='\0';
 	int numero = atoi(protocolo);
 	free(protocolo);

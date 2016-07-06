@@ -62,7 +62,10 @@ int conectar(int puerto,char* ip){   							//Con la swap
 int autentificar(int conexion) {
 	send(conexion, "soy_la_umc", 10, 0);
 	char* bufferHandshakeSwap = malloc(8);
-	recv(conexion, bufferHandshakeSwap, 8, MSG_WAITALL);
+	int x=recv(conexion, bufferHandshakeSwap, 8, MSG_WAITALL);
+		if(x!=8){
+			perror("Fallo autentificacion con swap");
+		}
 	free (bufferHandshakeSwap);
 	return 1;
 }
@@ -115,7 +118,9 @@ char* recibirMensaje(int conexion, int tamanio){
 	if (bytesRecibidos != tamanio) {
 		perror("Error al recibir el mensaje\n");
 		free(mensaje);
-		return "0";}
+		char* resp=string_new();
+		string_append(&resp,"0");
+		return resp;}
 	mensaje[tamanio]='\0';
 	return mensaje;
 }

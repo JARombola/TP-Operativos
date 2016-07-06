@@ -65,7 +65,7 @@ int autentificarUMC(int conexion) {
 int comprobarCliente(int nuevoCliente) {
 	char* bufferHandshake = malloc(12);
 	int bytesRecibidosHs = recv(nuevoCliente, bufferHandshake, 11, MSG_WAITALL);
-	bufferHandshake[bytesRecibidosHs] = '\0'; //lo paso a string para comparar
+	bufferHandshake[bytesRecibidosHs] = '\0';				 //lo paso a string para comparar
 	if (string_equals_ignore_case("soy_una_cpu", bufferHandshake)) {
 		free(bufferHandshake);
 		return 1;

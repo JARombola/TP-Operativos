@@ -1,9 +1,10 @@
 #include "nucleo.h"
 
-t_log* archivoLog;
+char* rutaConfig;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../Config1		(o el numero de configuracion que sea)
 	archivoLog = log_create("Nucleo.log", "Nucleo", true, log_level_from_string("INFO"));
+	rutaConfig=argv[1];
 	fd_set descriptores;
 	cpus = list_create();
 	consolas = list_create();
@@ -16,9 +17,10 @@ int main(int argc, char* argv[]) {
 	//--------------------------------CONFIGURACION-----------------------------
 
 	datosNucleo=malloc(sizeof(datosConfiguracion));
-	if (!(leerConfiguracion("ConfigNucleo", &datosNucleo) || leerConfiguracion("../ConfigNucleo", &datosNucleo))){
+	if (!leerConfiguracion(rutaConfig, &datosNucleo)){
 			log_error(archivoLog,"No se pudo leer archivo de Configuracion");
 			return 1;}
+	pthread_create(&thread, &attr, (void*)Modificacion_quantum, NULL);
 //-------------------------------------------DICCIONARIOS---------------------------------------------------------------
 	globales = crearDiccionarioGlobales(datosNucleo->shared_vars);
 	semaforos = crearDiccionarioSEMyES(datosNucleo->sem_ids,datosNucleo->sem_init, 0);
@@ -35,7 +37,7 @@ int main(int argc, char* argv[]) {
 	colaListos=queue_create();
 	colaTerminados=queue_create();
 
-	pthread_create(&thread, &attr, (void*)Modificacion_quantum, NULL);
+
 
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
 	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
@@ -44,8 +46,11 @@ int main(int argc, char* argv[]) {
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in direccionNucleo = crearDireccion(datosNucleo->puerto_nucleo, datosNucleo->ip);
+
 	log_info(archivoLog,"Nucleo creado, conectando con la UMC...");
+
 	conexionUMC = conectar(datosNucleo->puerto_umc, datosNucleo->ip_umc);
+
 	tamPagina=autentificarUMC(conexionUMC);
 
 	if (!tamPagina) {log_error(archivoLog,"Falló el handshake");
@@ -67,6 +72,7 @@ int main(int argc, char* argv[]) {
 	//****/////////////////////////////////////////////////////////////////////////////////////////////////////////////*
 	//****-------------------------------------------ACA Arranca la Magia----------------------------------------------*
 	//****/////////////////////////////////////////////////////////////////////////////////////////////////////////////*
+	char* codigo;
 	while (1) {
 
 		FD_ZERO(&descriptores);
@@ -81,21 +87,22 @@ int main(int argc, char* argv[]) {
 			log_error(archivoLog,"Error en el select");
 			//exit(EXIT_FAILURE);
 		}
+
 		socketARevisar = revisarActividadConsolas(&descriptores);
 		if (socketARevisar) {								//Reviso actividad en consolas
 			log_info(archivoLog,"[Desconexion] Consola %d, eliminada",socketARevisar);
 			int estaBloqueada = buscar_pcb_en_bloqueados(socketARevisar);
-			if(estaBloqueada==socketARevisar){
+			if(estaBloqueada){										//TODO REVISAR ESTOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPUTO
 				log_info(archivoLog,"Proceso %d eliminado (estaba bloqueado)",socketARevisar);//todo avisar
 			 	finalizarProgramaUMC(socketARevisar);
 			}
-			close(socketARevisar);
+		//	close(socketARevisar);
 		}
 		else {
 			socketARevisar = revisarActividadCPUs(&descriptores);
 			if (socketARevisar) {								//Reviso actividad en cpus
 				log_info(archivoLog,"[Desconexion] CPU %d, eliminada",socketARevisar);
-				close(socketARevisar);
+		//		close(socketARevisar);
 			}
 			else {
 					if (FD_ISSET(conexionUMC, &descriptores)) {					//Me mando algo la UMC
@@ -110,6 +117,8 @@ int main(int argc, char* argv[]) {
 							log_error(archivoLog,"Fallo el accept");
 						}
 						int mjeCpu=htonl(1);
+						int tamanio;
+						char* mjeConsola;
 						switch (comprobarCliente(nuevo_cliente)) {
 
 						case 0:										//ERROR!!
@@ -125,12 +134,14 @@ int main(int argc, char* argv[]) {
 							break;
 
 						case 2:						//CONSOLA, RECIBO EL CODIGO
-							send(nuevo_cliente, "0001", 4, 0);
+							mjeConsola=toStringInt(nuevo_cliente);
+							send(nuevo_cliente, mjeConsola, 4, 0);
+							free(mjeConsola);
 							list_add(consolas, (void *) nuevo_cliente);
 							log_info(archivoLog,"--NUEVA consola: %d",nuevo_cliente);
-							int tamanio = recibirProtocolo(nuevo_cliente);
+							tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
-								char* codigo = recibirMensaje(nuevo_cliente, tamanio);
+								codigo = recibirMensaje(nuevo_cliente, tamanio);
 								enviarAnsisopAUMC(conexionUMC, codigo,nuevo_cliente);
 								free(codigo);
 							}
@@ -220,6 +231,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 	int aceptado;
 	recv(conexionUMC, &aceptado, sizeof(int), MSG_WAITALL);
 	aceptado=ntohl(aceptado);
+	char* pcbNuevo;
 	if(!aceptado){													//consola rechazada
 		log_warning(archivoLog,"Ansisop rechazado");
 		send(consola,"0000",4,0);}
@@ -228,7 +240,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 
 			char* prog=string_substring_from(codigo,4);
 
-			char* pcbNuevo= crearPCB(prog,consola);
+			pcbNuevo= crearPCB(prog,consola);
 			free(prog);
 
 	if(aceptado==1){
@@ -243,11 +255,41 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 			sem_post(&sem_Nuevos);
 		}
 	}
-	free(codigo);
 }
 
 
 char* crearPCB(char* codigo, int pid) {
+	printf("!!!!!!!!!!!!!LLegó a CREARPCB\n");
+	/*char* pcb=string_new();
+	char* char_id;
+	char_id = toStringInt(pid);
+	char *char_metadata;
+	t_metadata_program* metadata=metadata_desde_literal(codigo);
+	char_metadata = toStringMetadata(*metadata);
+	char* char_paginas_codigo;
+	int paginasNecesarias=calcularPaginas(codigo);
+	char_paginas_codigo = toStringInt(paginasNecesarias);
+	char* char_pc;
+	char_pc = toStringInt(metadata->instruccion_inicio);
+	char* char_stack;
+	t_list *stack=list_create();
+	char_stack = toStringListStack(stack);
+	string_append(&pcb,char_id);
+	char* aux = toStringInt(strlen(char_metadata));
+	string_append(&pcb, aux);
+	string_append(&pcb,char_metadata);
+	string_append(&pcb, char_paginas_codigo);
+	string_append(&pcb, char_pc);
+	string_append(&pcb,char_stack);
+	free (char_id);
+	free(aux);
+	free(char_metadata);
+	free(char_paginas_codigo);
+	free(char_pc);
+	free(char_stack);
+*/
+
+
 	PCB* pcb=malloc(sizeof(PCB));
 	t_metadata_program* metadata = metadata_desde_literal(codigo);
 	pcb->indices = *metadata;
@@ -256,6 +298,7 @@ char* crearPCB(char* codigo, int pid) {
 	pcb->stack = list_create();
 	pcb->id=pid;
 	char* pcbChar=toStringPCB(*pcb);
+	list_destroy(pcb->stack);
 	free(metadata);
 	free(pcb);
 	return pcbChar;
@@ -319,10 +362,11 @@ int revisarActividadCPUs(fd_set *descriptores) {
 //--------------------------------------------PLANIFICACION----------------------------------------------------
 
 void atender_Nuevos(){
+	char* pcbNuevo;
 	while(1){
 		 sem_wait(&sem_Nuevos); //se libero un pcb en la umc
 		 if(!queue_is_empty(colaNuevos)){ //si hay alguno
-			 char* pcbNuevo = queue_pop(colaNuevos);
+			 pcbNuevo = queue_pop(colaNuevos);
 		 	 queue_push(colaListos,pcbNuevo); //entonces lo mando a Listos
 			 log_info(archivoLog,"Proceso %d: [Nuevo] => [Listo]",obtenerPID(pcbNuevo));
 		 	 sem_post(&sem_Listos);
@@ -331,9 +375,11 @@ void atender_Nuevos(){
 }
 
 void atender_Ejecuciones(){
+	char* mensajeCPU,*pcbListo;
+	int cpu;
 	 while(1){
 		 sem_wait(&sem_Listos);
-		 char* pcbListo= queue_pop(colaListos);
+		 pcbListo= queue_pop(colaListos);
 		 int pid=obtenerPID(pcbListo);
 		 if(ese_PCB_hay_que_eliminarlo(pid)){
 			 log_info(archivoLog,"Consola del Proceso %d no existe, se lo ELIMINARÁ",pid);
@@ -343,8 +389,8 @@ void atender_Ejecuciones(){
 		 int paso=1;
 		 	 while(paso){
 		 		 if(!list_is_empty(cpusDisponibles)){
-					int cpu = (int)list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
-					char* mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);		//todo TERMINAR ESTO!!!!!!!!
+					cpu = (int) list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
+					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);		//todo TERMINAR ESTO!!!!!!!!
 				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 					log_info(archivoLog,"Proceso %d: [Listo] => [Execute]",pid);
 					paso=0;
@@ -372,7 +418,7 @@ void atender_Ejecuciones(){
 		 log_info(archivoLog,"Proceso %d: [Bloqueado] (IO) => [Listo]",pid);
 		 sem_post(&sem_Listos);
 
-		 free(pcbBloqueando);						//TESTEADO, PARECE NO IR...
+	//	 free(pcbBloqueando);						//TESTEADO, PARECE NO IR...
 	 }
  }
 
@@ -393,12 +439,13 @@ void atender_Ejecuciones(){
  void atender_Terminados(){
 	 int cod=2;
 	 int pid;
+	 char* pcbTerminado;
 	 while(1){
 		 sem_wait(&sem_Terminado);
-	 	 char* pcbTerminado = queue_pop(colaTerminados);
+	 	 pcbTerminado = queue_pop(colaTerminados);
 	 	 pid=obtenerPID(pcbTerminado);
-	 	 finalizarProgramaUMC(pid);
 	 	 finalizarProgramaConsola(pid, cod);
+	 	 finalizarProgramaUMC(pid);
 	 	 log_info(archivoLog,"Proceso %d: TERMINADO\n",pid);
 	 	 free(pcbTerminado);
 	 	 sem_post(&sem_Nuevos);
@@ -490,7 +537,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 #define E_S 5
 
 	int tamanioNombre, posicion, unidadestiempo,valor,tamanio,sigueCPU, pid;
-	char *identificador, *texto, *valor_char, *ut;
+	char *identificador, *valor_char, *ut;
 	char *pcb;
 
 	if (operacion){
@@ -504,6 +551,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			break;
 
 		case OBTENER_COMPARTIDA:						//envía el valor
+			printf("Me pidio una compartida\n");
 			posicion = (int)dictionary_get(globales,identificador);
 			valor = globalesValores[posicion];
 			valor=htonl(valor);
@@ -512,6 +560,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			break;
 
 		case GUARDAR_COMPARTIDA:							//guarda y devuelve el valor
+			printf("Me asigno una compartida\n");
 			tamanio=recibirProtocolo(cpu);
 			valor_char=recibirMensaje(cpu,tamanio);
 			valor=atoi(valor_char);
@@ -549,7 +598,9 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			free(identificador);
 			contadorSemaforo[posicion]++;
 			if(contadorSemaforo[posicion]<=0){
-				sem_post(&semaforosGlobales[posicion]); //si era < 0, tengo alguien que desbloquear
+				if(!queue_is_empty(colasSEM[posicion])){
+					sem_post(&semaforosGlobales[posicion]); //si era < 0, tengo alguien que desbloquear
+				}
 			}
 			break;
 
@@ -614,7 +665,7 @@ char* serializarMensajeCPU(char* pcbListo, int quantum, int quantum_sleep){
 	agregarHeader(&pcbListo);
 	string_append(&mensaje,pcbListo);
 	string_append(&mensaje,"\0");
-	printf("Mensaje: %s\n",mensaje); //pcb serializado
+//	printf("Mensaje: %s\n",mensaje); //pcb serializado
 	free(quantum_char);
 	free(quantum_sleep_char);
 return mensaje;
@@ -661,22 +712,22 @@ void enviarPCBaCPU(int cpu, char* pcbSerializado){
 void Modificacion_quantum(){
 	char buffer[BUF_LEN];
 	int fd_config = inotify_init();
+	t_config* archivoConfiguracion;
 	if (fd_config < 0) {
 		perror("inotify_init");
 	}
-	int watch_descriptor = inotify_add_watch(fd_config, "../ConfigNucleo", IN_MODIFY);//IN_CLOSE_WRITE);IN_MODIFY
+	int watch_descriptor = inotify_add_watch(fd_config, rutaConfig, IN_MODIFY);//IN_CLOSE_WRITE);IN_MODIFY
 
 	while(watch_descriptor){
-		t_config* archivoConfiguracion;
 		int length = read(fd_config, buffer, BUF_LEN);
 		if (length < 0) {
 			perror("read");
 		}
 		do{
-		archivoConfiguracion = config_create("../ConfigNucleo");
+			archivoConfiguracion = config_create(rutaConfig);
 		}while(archivoConfiguracion == NULL);
-		(datosNucleo)->quantum = config_get_int_value(archivoConfiguracion, "QUANTUM");
-		(datosNucleo)->quantum_sleep = config_get_int_value(archivoConfiguracion,"QUANTUM_SLEEP");
+			datosNucleo->quantum = config_get_int_value(archivoConfiguracion, "QUANTUM");
+			datosNucleo->quantum_sleep = config_get_int_value(archivoConfiguracion,"QUANTUM_SLEEP");
 		log_info(archivoLog,"---QUANTUM nuevo: %d |	QUANTUM_SLEEP: %d",(datosNucleo)->quantum, (datosNucleo)->quantum_sleep);
 
 		config_destroy(archivoConfiguracion);
@@ -703,13 +754,16 @@ int buscar_pcb_en_bloqueados(int pid){
 }
 
 int buscar_pcb_en_cola(t_queue* cola, int pid){
+	void eliminar(char* pcb){
+		free(pcb);
+	}
 	int buscarIgual(char* elemLista){
 		int idEliminar=obtenerPID(elemLista);
 		return (pid==idEliminar);}
 
-	int encontrado=list_any_satisfy(cola->elements,buscarIgual);
+	int encontrado=list_any_satisfy(cola->elements,(void*)buscarIgual);
 
-	list_remove_and_destroy_by_condition(cola->elements,buscarIgual,free);
+	list_remove_and_destroy_by_condition(cola->elements,(void*)buscarIgual,(void*)eliminar);
 
 	return encontrado;
 }

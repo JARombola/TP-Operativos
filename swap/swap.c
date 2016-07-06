@@ -41,7 +41,8 @@ void* archivoSwap;
 t_list* tablaPaginas;
 t_log* logs;
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Config1		(o el numero de configuracion que sea)
+
 
 	int	conexionUmc, swap_servidor=socket(AF_INET, SOCK_STREAM, 0);
 
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]){
 
 	logs = log_create("Swap.log","Swap",true,log_level_from_string("INFO"));
 
-	if (!(leerConfiguracion("ConfigSwap", &datosSwap)|| leerConfiguracion("../ConfigSwap", &datosSwap))) {
+	if (!leerConfiguracion(argv[1], &datosSwap)) {
 		log_error(logs,"Error archivo de configuracion\n FIN.");
 		return 1;}
 
@@ -98,6 +99,7 @@ int main(int argc, char* argv[]){
 
 			case GUARDAR:															//Almacenar codigo, PROTOCOLO: [1° PID, 2° Cant paginas (4 bytes c/u))]
 					cantPaginas = recibirProtocolo(conexionUmc);
+					printf(">>>>>Cant Paginas:%d\n",cantPaginas);
 					usleep(datosSwap->retardoAcceso*1000);
 					if (pagsLibres>=cantPaginas){
 						guardarDatos(conexionUmc,cantPaginas, PID);
@@ -114,12 +116,19 @@ int main(int argc, char* argv[]){
 			case ENVIAR:																//enviar pagina a la UMC
 					usleep(datosSwap->retardoAcceso*1000);
 					pagina=recibirProtocolo(conexionUmc);
+					printf("ME PIDIO PROCESO:%d | Pag:%d\n",PID,pagina);
 					void* datos=buscar(PID,pagina);
-					send(conexionUmc,datos,datosSwap->tamPagina,0);
-					free(datos);
+					if(datos==NULL){
+						send(conexionUmc,"no",2,0);
+					}else{
+						send(conexionUmc,"ok",2,0);
+						send(conexionUmc,datos,datosSwap->tamPagina,0);
+						free(datos);
+					}
 					break;
 
 			case ELIMINAR:																//eliminar ansisop
+					printf("-----ELIMINANDO PROCESO :%d\n",PID);
 					eliminarProceso(PID);
 					verMarcos();
 					break;
@@ -251,6 +260,9 @@ void* buscar(int pid, int pag){
 		return (fila->proceso==pid);
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
+	if (datosProceso==NULL){
+		return NULL;
+	}
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
 	int pos=(datosProceso->inicio+pag)*datosSwap->tamPagina;
 	memcpy(pagina,archivoSwap+pos,datosSwap->tamPagina);
@@ -264,25 +276,29 @@ int eliminarProceso(int pid){
 		return (entrada->proceso==pid);}
 
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)entradaDelProceso);
-	int posicion=datosProceso->inicio;
-	int i;
+	if(datosProceso!=NULL){
+		int posicion=datosProceso->inicio;
+		int i;
 
-	for(i=0;i<datosProceso->paginas;i++){					//Marco los marcos del proceso como vacíos
-		bitarray_clean_bit(bitArray,posicion+i);
-	//	log_info(logs,"Cambie el bit a 0 de la posicion nro %d", posicion);
-	}
+		for(i=0;i<datosProceso->paginas;i++){					//Marco los marcos del proceso como vacíos
+			bitarray_clean_bit(bitArray,posicion+i);
+		//	log_info(logs,"Cambie el bit a 0 de la posicion nro %d", posicion);
+		}
 
-	pagsLibres+=datosProceso->paginas;
-	log_info(logs,"Lista antes: %d\n",list_size(tablaPaginas));
-	list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)free);			//Elimino las entradas de la tabla
-	log_info(logs, "Lista despues: %d\n",list_size(tablaPaginas));
+		pagsLibres+=datosProceso->paginas;
+		log_info(logs,"Lista antes: %d\n",list_size(tablaPaginas));
+		list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)free);			//Elimino las entradas de la tabla
+		log_info(logs, "Lista despues: %d\n",list_size(tablaPaginas));}
 	return 1;
 }
 
 void verMarcos(){
 	int i;
+	char* marcos=string_new();
 	log_info(logs,"Estado de los marcos:");
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
-		log_info(logs,"Pos %d | Ocupado:%d",i,bitarray_test_bit(bitArray,i));
+		string_append_with_format(&marcos,"%d", bitarray_test_bit(bitArray,i));
 	}
+		log_info(logs,"%s",marcos);
+	free(marcos);
 }

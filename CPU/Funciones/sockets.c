@@ -79,11 +79,12 @@ int esperarConexion(int servidor,char* autentificacion){
 }
 
 char* esperarRespuesta(int conexion){
-	char header[5];
+	char *header=malloc(5);
 	char* buffer;
 	int bytes= recv(conexion, header,4,MSG_WAITALL);
 	header[4]= '\0';
 	uint32_t tamanioPaquete = atoi(header);
+	free(header);
 	if (bytes<=0){
 		buffer = malloc(2*sizeof(char));
 		buffer[0] = '\0';
@@ -112,8 +113,12 @@ char* header(int numero){
 }
 
 int recibirProtocolo(int conexion){
-	char protocolo[5];
+	char* protocolo=malloc(5);
 	int bytes= recv(conexion, protocolo,4,MSG_WAITALL);
+	if(bytes!=4){
+		perror("Error protocolo");
+		return -1;
+	}
 	protocolo[4] = '\0';
 	return atoi(protocolo);
 }

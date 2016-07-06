@@ -1,10 +1,13 @@
 #include "CPUBeta.h"
 
+int quantum;
+int quantum_sleep;
+
 int main(){
 
-    archivoLog = log_create("CPU.log", "CPU", true, log_level_from_string("DEBUG"));
+    archivoLog = log_create("CPU.log", "CPU", true, log_level_from_string("INFO"));
 
-    log_info(archivoLog,"CPU estable...[%d] \n",(int) process_getpid());
+    log_info(archivoLog,"CPU estable...\n");
 
 	if(levantarArchivoDeConfiguracion()<0) return -1;
 
@@ -43,6 +46,7 @@ void cerrarCPU(int senial){
 			case SIGUSR1:
 				log_info(archivoLog,"Rayos Me mataron con SIGUSR1\n");
 				status = 0;
+				if (!quantum){exit(0);}
 				return;
 			case SIGINT:
 				mensaje = string_new();
@@ -128,8 +132,8 @@ void conectarseALaUMC(){
 
 int procesarPeticion(){
 	char *pcbRecibido;
-	int quantum = 0;
-	int quantum_sleep = 0;
+	quantum = 0;
+	quantum_sleep = 0;
 	while ((!finalizado) && (status)){
 
 		log_info(archivoLog,"\n\nPeticion del Nucleo\n\n");
@@ -142,6 +146,7 @@ int procesarPeticion(){
 			close(nucleo);
 			close(umc);
 			log_error(archivoLog,"Error: Error de conexion con el nucleo\n");
+			printf("Q: %d, QS:%d, pcb:%s\n",quantum,quantum_sleep,pcbRecibido);
 			return 0;
 		}
 
@@ -181,11 +186,11 @@ void procesarCodigo(int quantum, int quantum_sleep){
 		if (!finalizado){
 			parsear(linea);
 			log_info(archivoLog,"\nFin del parser\n");
-			free(linea);
 			quantum--;
 			pcb.pc++;
 			usleep(quantum_sleep*1000);
 		}
+		free(linea);
 
 		if ((!finalizado) && (!quantum)){
 			log_info(archivoLog,"Fin de Quantum \n");
@@ -246,13 +251,12 @@ char* pedirLinea(){
 			size_page = longitud;
 		}
 		enviarMensajeUMCConsulta(pag, off, size_page, proceso);
-		char* respuesta=malloc((size_page+1)*sizeof(char));
-		char* estado = malloc(3*sizeof(char));
+
+		char* estado = malloc(2*sizeof(char));
 		recv(umc,estado,2,MSG_WAITALL);
 		if (estado[0]!='o'){
 			estado[2] = '\0';
 			log_warning(archivoLog,"Respuesta UMC: %s\n", estado);
-			free(respuesta);
 			free(estado);
 			log_warning(archivoLog,"La UMC rechazo el pedido, Eliminar Ansisop\n");
 			char *mensaje = string_new();
@@ -263,6 +267,8 @@ char* pedirLinea(){
 			free(mensaje);
 			return NULL;
 		}
+		free(estado);
+		char* respuesta=malloc((size_page+1)*sizeof(char));
 		int verificador = recv(umc, respuesta, size_page, MSG_WAITALL);
 		if (verificador <= 0){
 			log_error(archivoLog,"Error : Fallor la conexion con la UMC\n");
@@ -322,10 +328,11 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	Pagina*  pag = (Pagina*) pagina;
 	log_info(archivoLog,"Dereferenciar %d %d %d",pag->pag,pag->off,pag->tamanio);
 	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
-	char resp[3];
+	char *resp=malloc(3);
 	recv(umc,resp,2,MSG_WAITALL);
 	resp[3]='\0';
 	if(resp[0]=='o'){
+		free(resp);
 		int valor;
 		int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
 		if (recibidos<= 0){
@@ -336,6 +343,7 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 		log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
 		return valor;
 	}
+	free(resp);
 	log_warning(archivoLog,"La UMC rechazo el pedido, Eliminar Ansisop\n");
 	log_warning(archivoLog, "Sobrepase el limite del stack");
 	char* mensaje = string_new();
@@ -767,8 +775,7 @@ void enviarMensajeNucleoConsulta(char* variable){
 void enviarMensajeNucleoAsignacion(char* variable, int valor){
 	char* mje=string_new();
 	string_append(&mje,"00020002");
-	string_append(&mje,toStringInt(string_length(variable)+1));
-	string_append(&mje,"!");
+	string_append(&mje,toStringInt(string_length(variable)));
 	string_append(&mje,variable);
 	char* numeroChar=string_new();
 	string_append(&numeroChar,string_itoa(valor));

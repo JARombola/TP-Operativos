@@ -32,7 +32,7 @@ typedef struct{
 
 
 t_list *cpus, *consolas, *listConsolasParaEliminarPCB, *cpusDisponibles;
-
+t_log* archivoLog;
 //estructuras para planificacion
 pthread_attr_t attr;
 pthread_t thread;

@@ -31,6 +31,10 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
         if (paginaBuscada->marco <0) {    //no está en memoria => peticion a swap
             log_info(archivoLog,"(Proceso %d | Pag %d) Pedido a Swap",proceso,pag);
         	paginaBuscada=solicitarPaginaASwap(proceso,pag);
+        	if (paginaBuscada->marco==-666){
+        		log_error(archivoLog,"Página %d Proceso %d pedida a swap INEXISTENTE (fue eliminada)\n",pag,proceso);
+        		return -1;
+        	}
         }else{
         	log_info(archivoLog,"(Proceso %d | Pag %d) Estaba en memoria",proceso,pag);
             }
@@ -39,9 +43,13 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
 			if(list_size(tlb)>datosMemoria->entradas_tlb){                            //Actualizar tlb
 				list_remove(tlb,0);
 			}
+			if(paginaBuscada!=NULL){
 			posicion=paginaBuscada->marco * datosMemoria->marco_size;
-			return posicion;                                //devuelve la posicion dentro de la "memoria"
+			return posicion;}                                //devuelve la posicion dentro de la "memoria"
+			else{
+				return -1;
 			}
+        }
         else{
         	log_warning(archivoLog,"XX-No hay marcos disponibles-XX");
         	return -1;
@@ -81,6 +89,7 @@ traductor_marco* guardarPagina(void* datos,int proceso,int pag){
     if (marco==-1){                                //no hay marcos para darle => hay que eliminar el proceso
         traductor_marco* traductorErroneo=malloc(sizeof(traductor_marco));
         traductorErroneo->marco=-666;
+        printf("NO HAY LUGAR\n");
         return traductorErroneo;
     }
 
@@ -101,6 +110,7 @@ int buscarMarco(int pid){
     int clockDelProceso(unClock* marco){
           return(marco->proceso==pid);
       }
+    printf("Buscando marcos...\n");
     if (cantMarcos < datosMemoria->marco_x_proc) {                                                //cantidad de marcos del proceso para ver si reemplazo, o asigno vacios
         pthread_mutex_lock(&mutexMarcos);
         if(hayMarcosLibres()){
@@ -132,9 +142,7 @@ int buscarMarco(int pid){
             	if (datosMarco->modificada) {                                                        //Estaba modificada => se la mando a la swap
                     log_info(archivoLog,"(Proceso %d | Pag %d) Envío a swap (Estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                     enviarPaginaASwap(datosMarco);
-                    char *respuesta = malloc(2);
-                    recv(conexionSwap, respuesta, 2, MSG_WAITALL);
-                    free(respuesta);
+                    esperarRespuestaSwap();
                 }else{
                     log_info(archivoLog,"(Proceso %d | Pag %d) No se envia a swap (no estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                 }
@@ -213,10 +221,17 @@ traductor_marco* solicitarPaginaASwap(int proceso, int pagina){
 	 free(pedido);
 	 free(proceso_char);
 	 free(pag);
-	 recv(conexionSwap, datos, datosMemoria->marco_size, MSG_WAITALL);
-	 traductor_marco* paginaBuscada=guardarPagina(datos, proceso, pagina);
-	 free(datos);
-	 return paginaBuscada;
+	 int aceptado=esperarRespuestaSwap();
+	 if(aceptado){
+		 recv(conexionSwap, datos, datosMemoria->marco_size, MSG_WAITALL);
+		 printf("DATOS RECIBIDOS\n");
+		 traductor_marco* paginaBuscada=guardarPagina(datos, proceso, pagina);
+		 printf("DATOS GUARDADOS EN:%d\n",paginaBuscada->marco);
+		 free(datos);
+		 return paginaBuscada;}
+	 traductor_marco* pagErronea=malloc(sizeof(traductor_marco));
+	 pagErronea->marco=-666;
+	 return pagErronea;
 }
 
 
