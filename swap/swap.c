@@ -72,7 +72,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	}
 
 	log_info(logs,"Swap Funcionando - Esperando UMC...");
-	listen(swap_servidor, 5);
+	listen(swap_servidor, 1);
 
 	//----------------------------creo cliente para umc
 
@@ -87,9 +87,11 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 
 	//----------------Recibo datos de la UMC
 
-	int operacion=1, PID, cantPaginas, pagina;
+	int operacion=1, PID, cantPaginas, pagina, tamanio;
+	void* datos;
+	char* codOp;
 	while (operacion){
-		char* codOp=(char*)recibirMensaje(conexionUmc,1);
+		codOp=(char*)recibirMensaje(conexionUmc,1);
 		operacion = atoi(codOp);
 		free(codOp);
 		if(operacion){
@@ -98,15 +100,18 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 
 			case GUARDAR:															//Almacenar codigo, PROTOCOLO: [1° PID, 2° Cant paginas (4 bytes c/u))]
 					cantPaginas = recibirProtocolo(conexionUmc);
-					printf(">>>>>Cant Paginas:%d\n",cantPaginas);
 					usleep(datosSwap->retardoAcceso*1000);
 					if (pagsLibres>=cantPaginas){
 						guardarDatos(conexionUmc,cantPaginas, PID);
-						send(conexionUmc, "ok", 2, 0);
-					verMarcos();}
+						if(cantPaginas){
+							printf(">>>>>Cant Paginas:%d\n",cantPaginas);
+							send(conexionUmc, "ok", 2, 0);
+							verMarcos();
+						}
+					}
 					else {
-						int tamanio = recibirProtocolo(conexionUmc);			//Recibo el programa, pero lo ignoro xq no tengo espacio
-						void* datos = recibirMensaje(conexionUmc, tamanio);
+						tamanio = recibirProtocolo(conexionUmc);			//Recibo el programa, pero lo ignoro xq no tengo espacio
+						datos = recibirMensaje(conexionUmc, tamanio);
 						free(datos);
 						send(conexionUmc,"no",2,0);
 					}
@@ -116,14 +121,9 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 					usleep(datosSwap->retardoAcceso*1000);
 					pagina=recibirProtocolo(conexionUmc);
 					printf("ME PIDIO PROCESO:%d | Pag:%d\n",PID,pagina);
-					void* datos=buscar(PID,pagina);
-					if(datos==NULL){
-						send(conexionUmc,"no",2,0);
-					}else{
-						send(conexionUmc,"ok",2,0);
-						send(conexionUmc,datos,datosSwap->tamPagina,0);
-						free(datos);
-					}
+					datos=buscar(PID,pagina);
+					send(conexionUmc,datos,datosSwap->tamPagina,0);
+					free(datos);
 					break;
 
 			case ELIMINAR:																//eliminar ansisop
@@ -260,6 +260,7 @@ void* buscar(int pid, int pag){
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
 	if (datosProceso==NULL){
+		printf("ACA NO TENIA QUE HABER ENTRADO NUNCA; LA PUTA MADRE QUE LO RE MIL PARIO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 		return NULL;
 	}
 	void* pagina=(void*)malloc(datosSwap->tamPagina);

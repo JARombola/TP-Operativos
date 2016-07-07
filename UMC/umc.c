@@ -8,11 +8,8 @@
 #define GUARDAR_BYTES 3
 #define FINALIZAR 4
 
-typedef struct{
-	int proc, hilo;
-}puto;
-t_dictionary* procesos;
-t_list* procesosActivos;
+
+
 int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../Config1		(o el numero de configuracion que sea)
 
 	archivoLog = log_create("UMC.log", "UMC", true, log_level_from_string("INFO"));
@@ -44,7 +41,7 @@ int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../
     struct sockaddr_in direccionUMC = crearDireccion(datosMemoria->puerto_umc,datosMemoria->ip);
     struct sockaddr_in direccionCliente;
     int umc_servidor = socket(AF_INET, SOCK_STREAM, 0);
-
+    log_info(archivoLog,"--------------------------------------------------------------------------------------");
     log_info(archivoLog,"UMC Creada. Conectando con la Swap...");
     conexionSwap = conectar(datosMemoria->puerto_swap, datosMemoria->ip_swap);
 
@@ -63,16 +60,14 @@ int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../
 
     //-------------------------------------------------------------------------NUCLEO
 
-    listen(umc_servidor, 1);
+    listen(umc_servidor, 100);
     nucleo=aceptarNucleo(umc_servidor,direccionCliente);
-    procesosActivos=list_create();
     //-------------------------------------------------------------------Funcionamiento de la UMC
     procesos=dictionary_create();
     pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nucleo);                        //Hilo para atender al nucleo
     pthread_create(&thread, &attr, (void*) consola, NULL);                                        //Hilo para atender comandos
     listen(umc_servidor, 100);                                                                    //Para recibir conexiones (CPU's)
-  //  pthread_mutex_lock(&mutexFinProceso);
-    dictionary_create(procesosActivos);
+
     int cpuRespuesta=htonl(datosMemoria->marco_size);
     while (1) {
         nuevo_cliente = accept(umc_servidor, (void *) &direccionCliente,(void *) &sin_size);
@@ -102,11 +97,11 @@ void consola(){
         int nroProceso;
         comando=string_new();
         scanf("%s", comando);
-        log_info(archivoLog,">>> Comando introducido: %s <<<",comando);
+        log_info(archivoLog,"[[[[[[[[[[[[[[[	COMANDO INTRODUCIDO: %s	]]]]]]]]]]]]]]]",comando);
         if (esIgual(comando, "RETARDO")) {
             int velocidadNueva;
             scanf("%d", &velocidadNueva);
-            log_info(archivoLog,"Retardo nuevo: %d\n",velocidadNueva);
+            log_info(archivoLog,">>>>>>>>>> Retardo nuevo: %d\n",velocidadNueva);
             //actualizar retardo en el config
             datosMemoria->retardo= velocidadNueva;
         }
@@ -127,13 +122,13 @@ void consola(){
 
                 fclose(reporteDump);
                 list_clean(nueva);
-                log_info(archivoLog,"Reporte dump generado\n");
+                log_info(archivoLog,">>>>>>>>>> Reporte dump generado\n");
             }
             else {
                 if (esIgual(comando, "TLB")) {
-                	log_info(archivoLog,"TLB Antes: %d",list_size(tlb));
+                	log_info(archivoLog,">>>>>>>>>> TLB Antes: %d",list_size(tlb));
                     list_clean(tlb);
-                    log_info(archivoLog,"TLB Después: %d\n",list_size(tlb));
+                    log_info(archivoLog,">>>>>>>>>> TLB Después: %d\n",list_size(tlb));
                 }
                 else {
                     if (esIgual(comando, "MODIFICADAS")) {
@@ -146,7 +141,7 @@ void consola(){
                         }
                         list_iterate(tabla_de_paginas,(void*)marcarModificadas);
 
-                        log_info(archivoLog,"(Proceso: %d) Páginas Modificadas\n",nroProceso);
+                        log_info(archivoLog,">>>>>>>>>> (Proceso: %d) Páginas Modificadas\n",nroProceso);
                     }
                 }
             }
@@ -163,12 +158,12 @@ void guardarDump(t_list* proceso){
     }
     list_sort(proceso,(void*)menorMayorMarco);
 
-    fprintf(reporteDump,"___TABLA DE PAGINAS___\n");
+    fprintf(reporteDump,"//////////// -- TABLA DE PAGINAS -- \\\\\\\\\\\\\\\\\\\\\n");
     for(i=0;i<list_size(proceso);i++){
         traductor_marco* datosProceso=list_get(proceso,i);
         dumpTabla(datosProceso);
     }
-    fprintf(reporteDump,"___Datos___\n");
+    fprintf(reporteDump,"////////////-- DATOS --\\\\\\\\\\\\\\\\\\\\\n");
     for(i=0;i<list_size(proceso);i++){
         traductor_marco* datosProceso=list_get(proceso,i);
         dumpDatos(datosProceso);
@@ -187,7 +182,7 @@ void dumpDatos(traductor_marco* datosProceso){
     	if (datosProceso->pagina>=list_count_satisfying(tabla_de_paginas,(void*)numeros)-cantSt){
     		void* datos=malloc(sizeof(int));
     		int i=0;
-    		fprintf(reporteDump,"Marco: %d - [",datosProceso->marco);
+    		fprintf(reporteDump,"Marco: %d [",datosProceso->marco);
 
     		for(i=0;i<datosMemoria->marco_size%4;i++){
     			memcpy(&datos,memoria+datosProceso->marco*datosMemoria->marco_size+i*4,sizeof(int));
@@ -224,12 +219,6 @@ int atenderCpu(int conexion){
 				hilo=malloc(4);
 				hilo=pthread_self();
 				dictionary_put(procesos,pid,hilo);
-				/*hilo=malloc(4);
-				hilo=pthread_self();
-				puto* registro=malloc(sizeof(puto));
-				registro->hilo=hilo;
-				registro->proc=proceso;
-				list_add(procesosActivos,registro);*/
 
 				pagina = recibirProtocolo(conexion);
 				offset = recibirProtocolo(conexion);
@@ -244,8 +233,8 @@ int atenderCpu(int conexion){
 						bytesEnviados=send(conexion,"no",2,MSG_NOSIGNAL);}											//NO hay marcos/No existe la pág :/
 					else{
 						bytesEnviados=send(conexion,"ok",2,MSG_NOSIGNAL);
-						bytesEnviados=send(conexion,datos,size,MSG_NOSIGNAL);
-					}
+						bytesEnviados=send(conexion,datos,size,MSG_NOSIGNAL);}
+
 					x=malloc(size+1);
 					memcpy(x,datos,size);
 					memcpy(x+size,"\0",1);
@@ -269,21 +258,11 @@ int atenderCpu(int conexion){
 				if (procesoAnterior!=proceso){													//cambió el proceso => limpio la tlb
 					tlb=list_filter(tlb,(void*)removerEntradasProcesoAnterior);					//filtra las que son DIFERENTES
 					procesoAnterior=proceso;}
-/*
-				int seVa(puto* asd){
-					if(asd->proc==proceso){
-						return 1;
-					}return 0;
-				}
-				list_remove_and_destroy_by_condition(procesosActivos,(void*)seVa,free);
-*/
-				printf("______Tamaño del diccionario ANTES:%d\n",dictionary_size(procesos));
+
 				dictionary_remove(procesos,pid);
 				free(pid);
-				printf("______Tamaño del diccionario DESPUES:%d\n",dictionary_size(procesos));
 				if(bytesEnviados==-1 || bytesRecibidos==-1){					//murió la cpu mientras ejecutaba
 					salir=1;}
-
 		} else {salir = 1;}
 	}
 	log_warning(archivoLog, "Se desconectó una CPU");
@@ -307,7 +286,7 @@ void atenderNucleo(int nucleo){
                         guardar=inicializarPrograma(nucleo);
                         if (!guardar){                            //1 = hay marcos (cola ready), 2 = no hay marcos (cola new)
                             log_warning(archivoLog,"Ansisop rechazado, memoria insuficiente");
-                        perror("cagamos");}
+                            perror("cagamos");}
                         guardar=htonl(guardar);
                         send(nucleo, &guardar,sizeof(int),0);
                     break;
@@ -323,10 +302,12 @@ void atenderNucleo(int nucleo){
         log_warning(archivoLog,"Nucleo desconectado\n");
         log_info(archivoLog, "Desconectando UMC...\n");
         list_destroy_and_destroy_elements(tabla_de_paginas,free);
+
         void eliminarClock(unClock* clock){
         	queue_clean(clock->colaMarcos);
         	free(clock);
         }
+
         list_destroy_and_destroy_elements(tablaClocks,(void*)eliminarClock);
         free(datosMemoria);
         exit(0);
@@ -364,12 +345,14 @@ int inicializarPrograma(int conexion) {
     }
     log_info(archivoLog,"ANSISOP %d GUARDADO\n",PID);
     int i;
+
     pthread_mutex_lock(&mutexTablaPaginas);
     	usleep(datosMemoria->retardo*1000);							//todo 1 por cada acceso, o por cada escritura? :/
     	for (i = 0; i < paginasNecesarias; i++) {				//Registro el programa en la tabla, marco -1 porque está en Swap
 			  actualizarTabla(i, PID, -1);
 		}
     pthread_mutex_unlock(&mutexTablaPaginas);
+
     if (hayMarcosLibres()){
         return 1;
     }
@@ -379,11 +362,13 @@ int inicializarPrograma(int conexion) {
 
 void* enviarBytes(int proceso,int pagina,int offset,int size){
    	int posicion=buscar(proceso, pagina);
-    if (posicion>=0 && posicion<datosMemoria->marco_size*datosMemoria->marcos){
+
+    if (posicion!=-1){
         void* datos=(void*) malloc(size);
         memcpy(datos,memoria+posicion+offset,size);
         return datos;
     }
+
     char* mje=string_new();
     string_append(&mje,"@\0");
     return mje;                //No existe la pag
@@ -395,7 +380,7 @@ int almacenarBytes(int proceso, int pagina, int offset, int size, int buffer){
             return (fila->proceso==proceso && fila->pagina==pagina);}
 
     int posicion=buscar(proceso,pagina);
-    if(posicion>=0 && posicion<datosMemoria->marco_size*datosMemoria->marcos){                                //no existe la pagina
+    if(posicion!=-1){                                //no existe la pagina
 
     posicion+=offset;
 
@@ -421,17 +406,7 @@ int finalizarPrograma(int procesoEliminar){
      //  	printf("-----Limpio marco: %d\n",marco->marco);
        	vectorMarcos[marco->marco]=0;}
     }
-  /*  int esta(puto* elemento){
-    	return elemento->proc==procesoEliminar;
-    }
-    puto* proc=list_find(procesosActivos,esta);
-    if(proc!=NULL){
-    	printf("ESTOY ESPERANDO....\n");
-    	int* h=malloc(4);
-    	h=proc->hilo;
-    	pthread_join(*h,NULL);
-    }
-*/
+
     char* pro=string_itoa(procesoEliminar);
     if(dictionary_has_key(procesos,pro)){
     	int* c=dictionary_get(procesos,pro);
@@ -439,6 +414,7 @@ int finalizarPrograma(int procesoEliminar){
     	pthread_join(*c,NULL);
     }
     free(pro);
+
     printf("AL FIN!!\n");
     void limpiar(traductor_marco* marco){
         list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)free);}
@@ -471,7 +447,8 @@ int finalizarPrograma(int procesoEliminar){
 		}
 
 		log_info(archivoLog,"[Despues] Paginas: %d | Clocks: %d | TLB: %d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
-    char* mensajeEliminar=string_new();
+
+	char* mensajeEliminar=string_new();
     string_append(&mensajeEliminar,"3");
     char* proceso=header(procesoEliminar);
     string_append(&mensajeEliminar,proceso);
@@ -485,8 +462,12 @@ int finalizarPrograma(int procesoEliminar){
 
 
 int esperarRespuestaSwap(){
-    char *respuesta = malloc(3);
-    recv(conexionSwap, respuesta, 2, MSG_WAITALL);
+
+	pthread_mutex_lock(&mutexSwap);
+    	char *respuesta = malloc(3);
+    	recv(conexionSwap, respuesta, 2, MSG_WAITALL);
+    pthread_mutex_unlock(&mutexSwap);
+
     respuesta[2] = '\0';
     printf("_____________________________SWAP CONTESTÓ:%s\n",respuesta);
     int aceptado = esIgual(respuesta, "ok");

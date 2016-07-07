@@ -27,8 +27,13 @@ typedef struct{
     t_queue* colaMarcos;
 }unClock;
 
-extern pthread_mutex_t mutexMarcos,mutexTablaPaginas;
-extern t_list* tablaClocks, *tabla_de_paginas, *tlb;
+extern pthread_mutex_t mutexMarcos,
+					   mutexTablaPaginas,
+					   mutexSwap;
+
+extern t_list *tablaClocks,
+			  *tabla_de_paginas,
+			  *tlb;
 
 extern int conexionSwap;
 extern void* memoria;
