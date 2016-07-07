@@ -564,12 +564,12 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			send(cpu,"0001",4,0);
 			posicion = (int)dictionary_get(semaforos,identificador);
 			free(identificador);
-			contadorSemaforo[posicion]++;
 			if(contadorSemaforo[posicion]<=0){
 				if(!queue_is_empty(colasSEM[posicion])){
 					sem_post(&semaforosGlobales[posicion]); //si era < 0, tengo alguien que desbloquear
 				}
 			}
+			contadorSemaforo[posicion]++;
 			break;
 
 		case E_S:											//ansisop bloqueado => recibo pcb
