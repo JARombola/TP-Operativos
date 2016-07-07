@@ -31,17 +31,16 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 	sem_init(&sem_Nuevos, 0, 0);
 	sem_init(&sem_Listos, 0, 0);
 	sem_init(&sem_Terminado, 0, 0);
+	sem_init(&sem_cpusDisponibles, 0, 0);
 
 	cpusDisponibles=list_create();
 	colaNuevos=queue_create();
 	colaListos=queue_create();
 	colaTerminados=queue_create();
 
-
-
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
 	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
-	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);
+	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);//todo eliminar? y juntar en switch terminados
 
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -92,8 +91,8 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 		if (socketARevisar) {								//Reviso actividad en consolas
 			log_info(archivoLog,"[Desconexion] Consola %d, eliminada",socketARevisar);
 			int estaBloqueada = buscar_pcb_en_bloqueados(socketARevisar);
-			if(estaBloqueada){										//TODO REVISAR ESTOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPUTO
-				log_info(archivoLog,"Proceso %d eliminado (estaba bloqueado)",socketARevisar);//todo avisar
+			if(estaBloqueada){										//TODO REVISAR ESTOOOOOOOOOOOOOOOOOOOOOOOOO
+				log_info(archivoLog,"Proceso %d eliminado (estaba bloqueado)",socketARevisar);
 			 	finalizarProgramaUMC(socketARevisar);
 			}
 		//	close(socketARevisar);
@@ -130,6 +129,7 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 							send(nuevo_cliente, &mjeCpu, 4, 0);
 							log_info(archivoLog,"--NUEVO CPU: %d",nuevo_cliente);
 							list_add(cpusDisponibles, (void *)nuevo_cliente);
+							sem_post(&sem_cpusDisponibles);
 							list_add(cpus, (void *) nuevo_cliente);
 							break;
 
@@ -137,7 +137,6 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 							mjeConsola=toStringInt(nuevo_cliente);
 							send(nuevo_cliente, mjeConsola, 4, 0);
 							free(mjeConsola);
-							list_add(consolas, (void *) nuevo_cliente);
 							log_info(archivoLog,"--NUEVA consola: %d",nuevo_cliente);
 							tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
@@ -237,7 +236,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 		send(consola,"0000",4,0);}
 	else{
 			send(consola,"0001",4,0);
-
+			list_add(consolas,(void*)consola);
 			char* prog=string_substring_from(codigo,4);
 
 			pcbNuevo= crearPCB(prog,consola);
@@ -259,7 +258,6 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 
 
 char* crearPCB(char* codigo, int pid) {
-	printf("!!!!!!!!!!!!!LLegó a CREARPCB\n");
 	PCB* pcb=malloc(sizeof(PCB));
 	t_metadata_program* metadata = metadata_desde_literal(codigo);
 	pcb->indices = metadata;
@@ -271,6 +269,7 @@ char* crearPCB(char* codigo, int pid) {
 	list_destroy(pcb->stack);
 	metadata_destruir(pcb->indices);
 	free(pcb);
+	printf("!!!!!!!!!!!!!LLegó a CREARPCB\n");
 	return pcbChar;
 }
 
@@ -296,7 +295,7 @@ for (i = 0; i < list_size(lista); i++) {
 int revisarActividadConsolas(fd_set *descriptores) {
 	int i;
 	for (i = 0; i < list_size(consolas); i++) {
-		int componente = list_get(consolas, i);
+		int componente = (int)list_get(consolas, i);
 		if (FD_ISSET(componente, descriptores)) {
 			int protocolo = recibirProtocolo(componente);
 			if (protocolo == -1) {				//si murio de golpe, tengo que eliminar el pcb
@@ -356,18 +355,13 @@ void atender_Ejecuciones(){
 		 	 finalizarProgramaUMC(pid);
 		 	 sem_post(&sem_Nuevos);
 		 }else{
-		 int paso=1;
-		 	 while(paso){
-		 		 if(!list_is_empty(cpusDisponibles)){
-					cpu = (int) list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
-					mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);		//todo TERMINAR ESTO!!!!!!!!
-				 	send(cpu,mensajeCPU,string_length(mensajeCPU),0);
-					log_info(archivoLog,"Proceso %d: [Listo] => [Execute]",pid);
-					paso=0;
-					free(mensajeCPU);
-					free(pcbListo);
-				}
-		 	 }
+		 sem_wait(&sem_cpusDisponibles);
+			cpu = (int) list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
+			mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);		//todo TERMINAR ESTO!!!!!!!!
+			send(cpu,mensajeCPU,string_length(mensajeCPU),0);
+			log_info(archivoLog,"Proceso %d: [Listo] => [Execute]",pid);
+			free(mensajeCPU);
+			free(pcbListo);
 		 }
 		 //free(pcbListo);
 		 // liberarPCBPuntero(pcbListo);									//todo
@@ -447,6 +441,7 @@ void atenderOperacion(int op,int cpu){
 		sigueCPU = recibirProtocolo(cpu);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void*)cpu);
+			sem_post(&sem_cpusDisponibles);
  		}else{
  			sacar_socket_de_lista(cpus,cpu);//todo error de ansisop pero sigue el cpu
  			log_info(archivoLog,"[Desconexion] CPU %d: ELIMINADA (v2)",cpu);
@@ -462,6 +457,7 @@ void atenderOperacion(int op,int cpu){
  		log_info(archivoLog,"Proceso %d: [Execute] => [Listo]",pid);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void*)cpu);
+			sem_post(&sem_cpusDisponibles);
  		}
 		queue_push(colaListos, pcb);
 		sem_post(&sem_Listos);
@@ -480,6 +476,7 @@ void atenderOperacion(int op,int cpu){
 		log_info(archivoLog,"Proceso %d: [Execute] => [Terminado]",pid);
  		if(sigueCPU){
 			list_add(cpusDisponibles, (void *)cpu);
+			sem_post(&sem_cpusDisponibles);
  		}
 		queue_push(colaTerminados, pcb);
 		sem_post(&sem_Terminado);
@@ -555,6 +552,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 				log_info(archivoLog,"Proceso %d: [Execute] => [Bloqueado]",pid);
 				if(sigueCPU){
 					list_add(cpusDisponibles, (void *)cpu);
+					sem_post(&sem_cpusDisponibles);
 				}
 			}else{											//si no, ok
 				send(cpu, "ok", 2, 0);
@@ -586,7 +584,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 
 			sigueCPU = recibirProtocolo(cpu);
 
-			pcbParaES *pcbParaBloquear=malloc(sizeof(pcbParaES));		//todo revisar, pero creo que ahora guarda bien
+			pcbParaES *pcbParaBloquear=malloc(sizeof(pcbParaES));
 
 			pcbParaBloquear->pcb = pcb;
 			pcbParaBloquear->ut = unidadestiempo;
@@ -599,15 +597,15 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			sem_post(&semaforosES[posicion]);
 			if(sigueCPU){
 				list_add(cpusDisponibles, (void *)cpu);
+				sem_post(&sem_cpusDisponibles);
 			}
-			//free(pcbDesSerializado);			//ACA: TESTEADO, NO VAA!!!
 			break;
 	}
 }
 void sacar_socket_de_lista(t_list* lista,int socket){
 	int buscarIgual(int elemLista){
 		return (socket==elemLista);}
-	list_remove_by_condition(lista,(void*)buscarIgual);
+	list_remove_by_condition(lista,(void*)buscarIgual);//todo habra que usar el sem_cpusDisponibles??
 }
 
 int esa_consola_existe(int consola){

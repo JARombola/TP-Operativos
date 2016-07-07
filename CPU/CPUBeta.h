@@ -34,6 +34,8 @@ char IP_UMC[50];
 int PUERTO_UMC = 0;
 int status = 1;
 
+int enEjecucion=0;
+
 int finalizado = 0;
 
 int TAMANIO_PAGINA = 1;
