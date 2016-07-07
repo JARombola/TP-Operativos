@@ -137,7 +137,6 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 							mjeConsola=toStringInt(nuevo_cliente);
 							send(nuevo_cliente, mjeConsola, 4, 0);
 							free(mjeConsola);
-							list_add(consolas, (void *) nuevo_cliente);
 							log_info(archivoLog,"--NUEVA consola: %d",nuevo_cliente);
 							tamanio = recibirProtocolo(nuevo_cliente);
 							if (tamanio > 0) {
@@ -237,7 +236,7 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 		send(consola,"0000",4,0);}
 	else{
 			send(consola,"0001",4,0);
-
+			list_add(consolas,(void*)consola);
 			char* prog=string_substring_from(codigo,4);
 
 			pcbNuevo= crearPCB(prog,consola);
@@ -259,46 +258,16 @@ void enviarAnsisopAUMC(int conexionUMC, char* codigo,int consola){
 
 
 char* crearPCB(char* codigo, int pid) {
-	/*char* pcb=string_new();
-	char* char_id;
-	char_id = toStringInt(pid);
-	char *char_metadata;
-	t_metadata_program* metadata=metadata_desde_literal(codigo);
-	char_metadata = toStringMetadata(*metadata);
-	char* char_paginas_codigo;
-	int paginasNecesarias=calcularPaginas(codigo);
-	char_paginas_codigo = toStringInt(paginasNecesarias);
-	char* char_pc;
-	char_pc = toStringInt(metadata->instruccion_inicio);
-	char* char_stack;
-	t_list *stack=list_create();
-	char_stack = toStringListStack(stack);
-	string_append(&pcb,char_id);
-	char* aux = toStringInt(strlen(char_metadata));
-	string_append(&pcb, aux);
-	string_append(&pcb,char_metadata);
-	string_append(&pcb, char_paginas_codigo);
-	string_append(&pcb, char_pc);
-	string_append(&pcb,char_stack);
-	free (char_id);
-	free(aux);
-	free(char_metadata);
-	free(char_paginas_codigo);
-	free(char_pc);
-	free(char_stack);
-*/
-
-
 	PCB* pcb=malloc(sizeof(PCB));
 	t_metadata_program* metadata = metadata_desde_literal(codigo);
-	pcb->indices = *metadata;
+	pcb->indices = metadata;
 	pcb->paginas_codigo = calcularPaginas(codigo);
 	pcb->pc = metadata->instruccion_inicio;
 	pcb->stack = list_create();
 	pcb->id=pid;
 	char* pcbChar=toStringPCB(*pcb);
 	list_destroy(pcb->stack);
-	free(metadata);
+	metadata_destruir(pcb->indices);
 	free(pcb);
 	printf("!!!!!!!!!!!!!LLegó a CREARPCB\n");
 	return pcbChar;
