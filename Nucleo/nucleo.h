@@ -38,7 +38,7 @@ pthread_attr_t attr;
 pthread_t thread;
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 t_queue *colaNuevos, *colaListos,*colaTerminados;
-sem_t sem_Nuevos, sem_Listos,sem_Terminado;
+sem_t sem_Nuevos, sem_Listos,sem_Terminado,sem_cpusDisponibles;
 
 
 
