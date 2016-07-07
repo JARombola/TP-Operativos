@@ -45,6 +45,7 @@ void cerrarCPU(int senial){
 				if (!enEjecucion) exit(0);
 				return;
 			case SIGINT:
+				if (!enEjecucion) exit(0);
 				mensaje = string_new();
 				string_append(&mensaje,"0000");
 				string_append(&mensaje,toStringInt(pcb.id));
