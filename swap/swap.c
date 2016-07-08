@@ -127,6 +127,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 					break;
 
 			case ELIMINAR:																//eliminar ansisop
+					usleep(datosSwap->retardoAcceso*1000);
 					printf("-----ELIMINANDO PROCESO :%d\n",PID);
 					eliminarProceso(PID);
 					verMarcos();
