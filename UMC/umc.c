@@ -134,9 +134,9 @@ void consola(){
                     if (esIgual(comando, "MODIFICADAS")) {
                         scanf("%d",&nroProceso);
                         void marcarModificadas(traductor_marco* pagina){
-                        	if (nroProceso==-1){ pagina->modificada=1;}
+                        	if (nroProceso==-1 && pagina->marco>=0){ pagina->modificada=1;}
                         	else{
-                        		if(pagina->proceso==nroProceso)pagina->modificada=1;
+                        		if(pagina->proceso==nroProceso && pagina->marco>=0)pagina->modificada=1;
                         	}
                         }
                         list_iterate(tabla_de_paginas,(void*)marcarModificadas);
@@ -171,7 +171,7 @@ void guardarDump(t_list* proceso){
 }
 
 void dumpTabla(traductor_marco* datosProceso){
-    fprintf(reporteDump,"Proceso: %d	|	Pág: %d	|	Marco: %d (modif=%d)\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco,datosProceso->modificada);
+    fprintf(reporteDump,"Proceso: %d	|	Pág: %d		|	Marco: %d	(modif=%d)\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco,datosProceso->modificada);
 }
 
 void dumpDatos(traductor_marco* datosProceso){

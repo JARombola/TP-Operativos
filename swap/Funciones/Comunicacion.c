@@ -43,14 +43,14 @@ struct sockaddr_in crearDireccion(int puerto,char* ip){
 }
 
 int comprobarCliente(int cliente){
-	char* bufferHandshake = malloc(11);
+	char bufferHandshake[11];
 	recv(cliente, bufferHandshake, 10, MSG_WAITALL);				//lo paso a string para comparar
 	bufferHandshake[10] = '\0';
 	if (string_equals_ignore_case("soy_la_umc", bufferHandshake)) {
-		free(bufferHandshake);
-		send(cliente, "Hola_umc", 8, 0);
+		//free(bufferHandshake);
+		send(cliente, "Aceptada", 8, 0);
 		return 1;}
-	free(bufferHandshake);
+	//free(bufferHandshake);
 	return 0;													//No era la UMC :/
 }
 

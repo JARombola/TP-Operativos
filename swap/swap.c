@@ -90,6 +90,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	int operacion=1, PID, cantPaginas, pagina, tamanio;
 	void* datos;
 	char* codOp;
+
 	while (operacion){
 		codOp=(char*)recibirMensaje(conexionUmc,1);
 		operacion = atoi(codOp);
