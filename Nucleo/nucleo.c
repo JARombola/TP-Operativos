@@ -30,17 +30,14 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 
 	sem_init(&sem_Nuevos, 0, 0);
 	sem_init(&sem_Listos, 0, 0);
-	sem_init(&sem_Terminado, 0, 0);
 	sem_init(&sem_cpusDisponibles, 0, 0);
 
 	cpusDisponibles=list_create();
 	colaNuevos=queue_create();
 	colaListos=queue_create();
-	colaTerminados=queue_create();
 
 	pthread_create(&thread, &attr, (void*)atender_Ejecuciones, NULL);
 	pthread_create(&thread, &attr, (void*)atender_Nuevos, NULL);
-	pthread_create(&thread, &attr, (void*)atender_Terminados, NULL);//todo eliminar? y juntar en switch terminados
 
 	//------------------------------------CONEXION UMC--------------------------------
 	int nucleo_servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -91,7 +88,7 @@ int main(int argc, char* argv[]) {			// 	!!!!!PARA EJECUTAR: 						./Nucleo ../C
 		if (socketARevisar) {								//Reviso actividad en consolas
 			log_info(archivoLog,"[Desconexion] Consola %d, eliminada",socketARevisar);
 			int estaBloqueada = buscar_pcb_en_bloqueados(socketARevisar);
-			if(estaBloqueada){										//TODO REVISAR ESTOOOOOOOOOOOOOOOOOOOOOOOOO
+			if(estaBloqueada){										//TODO REVISAR ESTOOOOOOOO
 				log_info(archivoLog,"Proceso %d eliminado (estaba bloqueado)",socketARevisar);
 			 	finalizarProgramaUMC(socketARevisar);
 			}
@@ -357,14 +354,14 @@ void atender_Ejecuciones(){
 		 }else{
 		 sem_wait(&sem_cpusDisponibles);
 			cpu = (int) list_remove(cpusDisponibles, 0); //saco el socket de ese cpu disponible
-			mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);		//todo TERMINAR ESTO!!!!!!!!
+		    pthread_mutex_lock(&mutexInotify);
+			mensajeCPU = serializarMensajeCPU(pcbListo, datosNucleo->quantum, datosNucleo->quantum_sleep);		//todo TERMINAR ESTO!!! semaforo para inotify?
+		    pthread_mutex_unlock(&mutexInotify);
 			send(cpu,mensajeCPU,string_length(mensajeCPU),0);
 			log_info(archivoLog,"Proceso %d: [Listo] => [Execute]",pid);
 			free(mensajeCPU);
 			free(pcbListo);
 		 }
-		 //free(pcbListo);
-		 // liberarPCBPuntero(pcbListo);									//todo
 	 }
  }
 
@@ -381,7 +378,6 @@ void atender_Ejecuciones(){
 		 pid=obtenerPID(pcbBloqueando->pcb);
 		 log_info(archivoLog,"Proceso %d: [Bloqueado] (IO) => [Listo]",pid);
 		 sem_post(&sem_Listos);
-
 	//	 free(pcbBloqueando);						//TESTEADO, PARECE NO IR...
 	 }
  }
@@ -400,22 +396,6 @@ void atender_Ejecuciones(){
 	 }
 }
 
- void atender_Terminados(){
-	 int cod=2;
-	 int pid;
-	 char* pcbTerminado;
-	 while(1){
-		 sem_wait(&sem_Terminado);
-	 	 pcbTerminado = queue_pop(colaTerminados);
-	 	 pid=obtenerPID(pcbTerminado);
-	 	 finalizarProgramaConsola(pid, cod);
-	 	 finalizarProgramaUMC(pid);
-	 	 log_info(archivoLog,"Proceso %d: TERMINADO\n",pid);
-	 	 free(pcbTerminado);
-	 	 sem_post(&sem_Nuevos);
-	 }
- }
-
 
 void atenderOperacion(int op,int cpu){
 #define ERROR 0
@@ -424,7 +404,7 @@ void atenderOperacion(int op,int cpu){
 #define FIN_ANSISOP 3
 #define IMPRIMIR 4
 
-	int tamanio, consola, operacion, pidMalo, sigueCPU, pid;
+	int tamanio, consola, operacion, pidMalo, sigueCPU, pid, cod_fin;
 	char *texto, *pcb;
 
 	switch (op){
@@ -443,7 +423,7 @@ void atenderOperacion(int op,int cpu){
 			list_add(cpusDisponibles, (void*)cpu);
 			sem_post(&sem_cpusDisponibles);
  		}else{
- 			sacar_socket_de_lista(cpus,cpu);//todo error de ansisop pero sigue el cpu
+ 			sacar_socket_de_lista(cpus,cpu);
  			log_info(archivoLog,"[Desconexion] CPU %d: ELIMINADA (v2)",cpu);
  		}
 		break;
@@ -469,6 +449,7 @@ void atenderOperacion(int op,int cpu){
 		break;
 
 	case FIN_ANSISOP:
+		cod_fin = 2;
 		tamanio = recibirProtocolo(cpu);
 		pcb = recibirMensaje(cpu,tamanio);
 		sigueCPU = recibirProtocolo(cpu);
@@ -478,8 +459,11 @@ void atenderOperacion(int op,int cpu){
 			list_add(cpusDisponibles, (void *)cpu);
 			sem_post(&sem_cpusDisponibles);
  		}
-		queue_push(colaTerminados, pcb);
-		sem_post(&sem_Terminado);
+	 	 finalizarProgramaConsola(pid, cod_fin);
+	 	 finalizarProgramaUMC(pid);
+	 	 log_info(archivoLog,"Proceso %d: TERMINADO\n",pid);
+	 	 free(pcb);
+	 	 sem_post(&sem_Nuevos);
 		break;
 
 	case IMPRIMIR:
@@ -603,7 +587,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 void sacar_socket_de_lista(t_list* lista,int socket){
 	int buscarIgual(int elemLista){
 		return (socket==elemLista);}
-	list_remove_by_condition(lista,(void*)buscarIgual);//todo habra que usar el sem_cpusDisponibles??
+	list_remove_by_condition(lista,(void*)buscarIgual);//entra por cpusDisponibles?
 }
 
 int esa_consola_existe(int consola){
@@ -682,7 +666,8 @@ void Modificacion_quantum(){
 	if (fd_config < 0) {
 		perror("inotify_init");
 	}
-	int watch_descriptor = inotify_add_watch(fd_config, rutaConfig, IN_MODIFY);//IN_CLOSE_WRITE);IN_MODIFY
+
+	int watch_descriptor = inotify_add_watch(fd_config, rutaConfig, IN_CLOSE_WRITE);//IN_CLOSE_WRITE);IN_MODIFY
 
 	while(watch_descriptor){
 		int length = read(fd_config, buffer, BUF_LEN);
@@ -692,9 +677,11 @@ void Modificacion_quantum(){
 		do{
 			archivoConfiguracion = config_create(rutaConfig);
 		}while(archivoConfiguracion == NULL);
+	    	pthread_mutex_lock(&mutexInotify);
 			datosNucleo->quantum = config_get_int_value(archivoConfiguracion, "QUANTUM");
 			datosNucleo->quantum_sleep = config_get_int_value(archivoConfiguracion,"QUANTUM_SLEEP");
-		log_info(archivoLog,"---QUANTUM nuevo: %d |	QUANTUM_SLEEP: %d",(datosNucleo)->quantum, (datosNucleo)->quantum_sleep);
+		    pthread_mutex_unlock(&mutexInotify);
+			log_info(archivoLog,"---QUANTUM nuevo: %d |	QUANTUM_SLEEP: %d",(datosNucleo)->quantum, (datosNucleo)->quantum_sleep);
 
 		config_destroy(archivoConfiguracion);
 	}
@@ -702,7 +689,7 @@ void Modificacion_quantum(){
 
 int buscar_pcb_en_bloqueados(int pid){
 	//busco entre las de ES y despues las de SEM
-	//semaforo para bloquearo los hilos de las colas? todo
+	//semaforo para bloquearo los hilos de las colas? no hizo falta
 	int i, encontro;
 	for(i=0;i<=cantidad_sem;i++){
 		encontro = buscar_pcb_en_cola(colasSEM[i], pid);
