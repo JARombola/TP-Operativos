@@ -105,12 +105,12 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 					if (pagsLibres>=cantPaginas){
 						guardarDatos(conexionUmc,cantPaginas, PID);
 						if(cantPaginas){
-							printf(">>>>>Cant Paginas:%d\n",cantPaginas);
 							send(conexionUmc, "ok", 2, 0);
 							verMarcos();
 						}
 					}
 					else {
+						log_warning(logs,"XX -- UN ansisop rechazado -- XX\n");
 						tamanio = recibirProtocolo(conexionUmc);			//Recibo el programa, pero lo ignoro xq no tengo espacio
 						datos = recibirMensaje(conexionUmc, tamanio);
 						free(datos);
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 
 			case ELIMINAR:																//eliminar ansisop
 					usleep(datosSwap->retardoAcceso*1000);
-					printf("-----ELIMINANDO PROCESO :%d\n",PID);
+					log_info(logs,"-----ELIMINANDO PROCESO :%d\n",PID);
 					eliminarProceso(PID);
 					verMarcos();
 					break;
@@ -140,6 +140,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 	bitarray_destroy(bitArray);
 	list_destroy_and_destroy_elements(tablaPaginas,free);
 	munmap(archivoSwap,sizeof(archivoSwap));
+	close(conexionUmc);
 	log_error(logs,"Cayó la Umc, swap autodestruida!\n");
 	return 0;
 }
@@ -179,7 +180,7 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		size=tamanio;
 		list_add(tablaPaginas, nuevaFila);
 		pagsLibres-=cantPaginas;
-		log_info(logs,"Nuevo ansisop registrado\n");
+		log_info(logs,"Nuevo ansisop %d registrado\n", PID);
 	}
 
 	else{												//actualizar pagina
@@ -262,7 +263,7 @@ void* buscar(int pid, int pag){
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
 	if (datosProceso==NULL){
-		printf("ACA NO TENIA QUE HABER ENTRADO NUNCA; LA PUTA MADRE QUE LO RE MIL PARIO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+		printf("ACA NO TENIA QUE HABER ENTRADO NUNCA; LPM!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 		return NULL;
 	}
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
@@ -288,9 +289,9 @@ int eliminarProceso(int pid){
 		}
 
 		pagsLibres+=datosProceso->paginas;
-		log_info(logs,"Cantidad de procesos de la lista antes: %d\n",list_size(tablaPaginas));
+		log_info(logs,"[Antes] PROCESOS: %d",list_size(tablaPaginas));
 		list_remove_and_destroy_by_condition(tablaPaginas,(void*)entradaDelProceso,(void*)free);			//Elimino las entradas de la tabla
-		log_info(logs, "Cantidad de procesos de la lista despues: %d\n",list_size(tablaPaginas));}
+		log_info(logs, "[Despues] PROCESOS: %d\n",list_size(tablaPaginas));}
 	return 1;
 }
 
@@ -301,6 +302,6 @@ void verMarcos(){
 	for(i=0;i<datosSwap->cantidadPaginas;i++){
 		string_append_with_format(&marcos,"%d", bitarray_test_bit(bitArray,i));
 	}
-	log_info(logs,"%s",marcos);
+	log_info(logs,"%s\n",marcos);
 	free(marcos);
 }

@@ -298,7 +298,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		return (var->id==variable);
 	}
 	Variable* var;
-	log_info(archivoLog,"Obtener posicion de %c\n", variable);
+	log_info(archivoLog,"Obtener posicion de %c", variable);
 	Stack* stackActual = obtenerStack();
 	if ((variable>='0') && (variable <='9')){
 		var = (Variable*) list_find(stackActual->args, (void*)  variableBuscada);
@@ -306,7 +306,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		var = (Variable*) list_find(stackActual->vars,(void*)variableBuscada);
 	}
 	if ( var!=NULL){
-		log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
+		log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, 4);
 		log_debug(archivoLog,"retorno : %d\n", (int)&var->pagina);
 		return (int)&(var->pagina);
 	}
@@ -319,13 +319,13 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	log_debug(archivoLog,"Me llega : %d", (int) pagina);
 	Pagina*  pag = (Pagina*) pagina;
 	log_info(archivoLog,"Dereferenciar %d %d %d",pag->pag,pag->off,pag->tamanio);
-	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
+	enviarMensajeUMCConsulta(pag->pag,pag->off,4,pcb.id);
 	char resp[3];
 	recv(umc,resp,2,MSG_WAITALL);
 	resp[3]='\0';
 	if(resp[0]=='o'){
 		int valor;
-		int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
+		int recibidos=recv(umc,&valor,4,MSG_WAITALL);
 		if (recibidos<= 0){
 			log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
 			finalizado = -1;
@@ -353,8 +353,8 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 void asignar(t_puntero pagina, t_valor_variable valor) {
 	if (pagina != -1){
 		Pagina* pag = (Pagina*) pagina;
-		log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,pag->tamanio);
-		enviarMensajeUMCAsignacion(pag->pag,pag->off,pag->tamanio,pcb.id,valor);
+		log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,4);
+		enviarMensajeUMCAsignacion(pag->pag,pag->off,4,pcb.id,valor);
 	}
 }
 

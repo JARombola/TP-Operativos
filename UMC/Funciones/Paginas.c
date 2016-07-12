@@ -54,7 +54,7 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
         	return -1;
        }
     }
-    log_error(archivoLog,"Proceso %d | Pag %d PÁGINA INEXISTENTE!!!\n",proceso,pag);
+    log_error(archivoLog,"(Proceso %d | Pag %d) PÁGINA INEXISTENTE!!!(Stack Overflow?)\n",proceso,pag);
     return -1;
 }
 
@@ -92,10 +92,10 @@ traductor_marco* guardarPagina(void* datos,int proceso,int pag){
         return traductorErroneo;
     }
 
-    pthread_mutex_lock(&mutexTablaPaginas);
+   // pthread_mutex_lock(&mutexTablaPaginas);
         traductor_marco* datosPagina=actualizarTabla(pag, proceso, marco);
         memcpy(memoria + (marco * tamMarco), datos, tamMarco);
-    pthread_mutex_unlock(&mutexTablaPaginas);
+   // pthread_mutex_unlock(&mutexTablaPaginas);
 
     return datosPagina;
 }
@@ -147,9 +147,9 @@ int buscarMarco(int pid){
                 vectorMarcos[marco] = 2;
                 queue_push(clockProceso->colaMarcos,marco);
                 log_info(archivoLog,"--- Proceso %d ---	Marco Reemplazado: %d",pid, marco);
-                pthread_mutex_lock(&mutexTablaPaginas);
+           //     pthread_mutex_lock(&mutexTablaPaginas);
                 	actualizarTabla(datosMarco->pagina,pid,-1);
-                pthread_mutex_unlock(&mutexTablaPaginas);
+           //     pthread_mutex_unlock(&mutexTablaPaginas);
                 return marco;}                                    //La nueva posicion libre
 
             queue_push(clockProceso->colaMarcos,marco);

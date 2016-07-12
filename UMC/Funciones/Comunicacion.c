@@ -61,15 +61,13 @@ int conectar(int puerto,char* ip){   							//Con la swap
 
 int autentificar(int conexion) {
 	send(conexion, "soy_la_umc", 10, 0);
-	char* bufferHandshakeSwap = malloc(9);
+	char bufferHandshakeSwap[9];
 	int x=recv(conexion, bufferHandshakeSwap, 8, MSG_WAITALL);
-	bufferHandshakeSwap[x]='\0';
+	bufferHandshakeSwap[8]='\0';
 	if(!string_equals_ignore_case(bufferHandshakeSwap,"Aceptada")){
-			free(bufferHandshakeSwap);
 			perror("Fallo autentificacion con swap");
 			return 0;
 		}
-	free (bufferHandshakeSwap);
 	return 1;
 }
 

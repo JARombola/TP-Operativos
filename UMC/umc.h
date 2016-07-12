@@ -34,7 +34,7 @@ pthread_mutex_t mutexMarcos=PTHREAD_MUTEX_INITIALIZER,								// Para sincroniza
 				mutexTablaPaginas=PTHREAD_MUTEX_INITIALIZER,						// Sincroniza entradas a la tabla de paginas
 				mutexSwap=PTHREAD_MUTEX_INITIALIZER;								// Sincroniza pedidos a Swap
 
-t_list *tabla_de_paginas, *tablaClocks,*tlb;
+t_list *tabla_de_paginas, *tablaClocks,*tlb;//, *procesosActivos;
 int totalPaginas,conexionSwap,cantSt, *vectorMarcos;
 void* memoria;
 datosConfiguracion* datosMemoria;

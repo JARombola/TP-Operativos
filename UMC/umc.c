@@ -64,6 +64,11 @@ int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../
     nucleo=aceptarNucleo(umc_servidor,direccionCliente);
     //-------------------------------------------------------------------Funcionamiento de la UMC
     procesos=dictionary_create();
+//    procesosActivos=list_create();
+
+
+
+
     pthread_create(&thread, &attr, (void*) atenderNucleo,(void*) nucleo);                        //Hilo para atender al nucleo
     pthread_create(&thread, &attr, (void*) consola, NULL);                                        //Hilo para atender comandos
     listen(umc_servidor, 100);                                                                    //Para recibir conexiones (CPU's)
@@ -116,9 +121,9 @@ void consola(){
                 t_list* nueva = list_filter(tabla_de_paginas,(void*) filtrarPorPid);
                 reporteDump=fopen("reporteDump","a");
 
-                pthread_mutex_lock(&mutexTablaPaginas);
+          //     pthread_mutex_lock(&mutexTablaPaginas);
                 	guardarDump(nueva);
-                pthread_mutex_unlock(&mutexTablaPaginas);
+          //      pthread_mutex_unlock(&mutexTablaPaginas);
 
                 fclose(reporteDump);
                 list_clean(nueva);
@@ -171,7 +176,7 @@ void guardarDump(t_list* proceso){
 }
 
 void dumpTabla(traductor_marco* datosProceso){
-    fprintf(reporteDump,"Proceso: %d	|	Pág: %d		|	Marco: %d	(modif=%d)\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco,datosProceso->modificada);
+    fprintf(reporteDump,"Proceso: %d		|		Pág: %d		|		Marco: %d		(modif=%d)\n",datosProceso->proceso,datosProceso->pagina,datosProceso->marco,datosProceso->modificada);
 }
 
 void dumpDatos(traductor_marco* datosProceso){
@@ -215,6 +220,7 @@ int atenderCpu(int conexion){
 		if (operacion) {
 
 				proceso = recibirProtocolo(conexion);
+				//list_add(procesosActivos,proceso);
 				pid=string_itoa(proceso);
 				hilo=malloc(4);
 				hilo=pthread_self();
@@ -229,6 +235,7 @@ int atenderCpu(int conexion){
 
 				case ENVIAR_BYTES:													//2 = Enviar Bytes (busco pag, y devuelvo el valor)
 					datos=enviarBytes(proceso,pagina,offset,size);
+
 					if (string_equals_ignore_case(datos,"@")){
 						bytesEnviados=send(conexion,"no",2,MSG_NOSIGNAL);}											//NO hay marcos/No existe la pág :/
 					else{
@@ -244,13 +251,14 @@ int atenderCpu(int conexion){
 					break;
 
 				case GUARDAR_BYTES:													//3 = Guardar Valor
+
 					bytesRecibidos=recv(conexion,&buffer,sizeof(int),MSG_WAITALL);
 					if(bytesRecibidos){
 						buffer=ntohl(buffer);
 						if (almacenarBytes(proceso,pagina,offset,size,buffer)==-1){						//La pag no existe
 							resp=header(0);
 						}else{resp=header(1);}
-							bytesEnviados=send(conexion,resp,string_length(resp),MSG_NOSIGNAL);
+						bytesEnviados=send(conexion,resp,string_length(resp),MSG_NOSIGNAL);
 						free(resp);}
 					break;
 				}
@@ -259,10 +267,15 @@ int atenderCpu(int conexion){
 					tlb=list_filter(tlb,(void*)removerEntradasProcesoAnterior);					//filtra las que son DIFERENTES
 					procesoAnterior=proceso;}
 
+		/*		int termino(int p){
+					return p==proceso;
+				}
+			list_remove_by_condition(procesosActivos,termino);*/
 				dictionary_remove(procesos,pid);
 				free(pid);
 				if(bytesEnviados==-1 || bytesRecibidos==-1){					//murió la cpu mientras ejecutaba
 					salir=1;}
+
 		} else {salir = 1;}
 	}
 	log_warning(archivoLog, "Se desconectó una CPU");
@@ -310,6 +323,8 @@ void atenderNucleo(int nucleo){
 
         list_destroy_and_destroy_elements(tablaClocks,(void*)eliminarClock);
         free(datosMemoria);
+        close(nucleo);
+        close(conexionSwap);
         exit(0);
 }
 
@@ -346,12 +361,12 @@ int inicializarPrograma(int conexion) {
     log_info(archivoLog,"ANSISOP %d GUARDADO\n",PID);
     int i;
 
-    pthread_mutex_lock(&mutexTablaPaginas);
+   // pthread_mutex_lock(&mutexTablaPaginas);
     	usleep(datosMemoria->retardo*1000);							//todo 1 por cada acceso, o por cada escritura? :/
     	for (i = 0; i < paginasNecesarias; i++) {				//Registro el programa en la tabla, marco -1 porque está en Swap
 			  actualizarTabla(i, PID, -1);
 		}
-    pthread_mutex_unlock(&mutexTablaPaginas);
+    //pthread_mutex_unlock(&mutexTablaPaginas);
 
     if (hayMarcosLibres()){
         return 1;
@@ -406,11 +421,16 @@ int finalizarPrograma(int procesoEliminar){
      //  	printf("-----Limpio marco: %d\n",marco->marco);
        	vectorMarcos[marco->marco]=0;}
     }
+    	printf("ESTOY ESPERANDO...\n");
+    	usleep(datosMemoria->retardo*1000);
+   /* 	int estaEjecutando(int p){
+    		return p==procesoEliminar;
+    	}
+    	while(list_any_satisfy(procesosActivos,(void*)estaEjecutando));*/
 
     char* pro=string_itoa(procesoEliminar);
     if(dictionary_has_key(procesos,pro)){
     	int* c=dictionary_get(procesos,pro);
-    	printf("ESTOY ESPERANDO...\n");
     	pthread_join(*c,NULL);
     }
     free(pro);
@@ -426,18 +446,18 @@ int finalizarPrograma(int procesoEliminar){
            list_remove_by_condition(tlb,(void*)paginasDelProceso);
     }
 
-    log_info(archivoLog,"-----FINALIZA PROCESO: %d",procesoEliminar);
-    log_info(archivoLog,"[Antes] Paginas: %d | Clocks: %d | TLB:%d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
    // pthread_mutex_lock(&mutexFinProceso);
 		list_iterate(tlb,(void*)limpiarTLB);
 
-		pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
+		//pthread_mutex_lock(&mutexTablaPaginas);								//Voy a eliminar entradas de la tabla
 			pthread_mutex_lock(&mutexMarcos);									//Porque quizá algunos quedan libres ahora
-				usleep(datosMemoria->retardo*1000);
+				log_info(archivoLog,"-----FINALIZA PROCESO: %d",procesoEliminar);
+				log_info(archivoLog,"[Antes] Paginas: %d | Clocks: %d | TLB:%d\n",list_size(tabla_de_paginas),list_size(tablaClocks),list_size(tlb));
+
 				list_iterate(tabla_de_paginas,(void*)limpiarMarcos);
 				list_iterate(tabla_de_paginas,(void*)limpiar);
 			pthread_mutex_unlock(&mutexMarcos);
-		pthread_mutex_unlock(&mutexTablaPaginas);
+		//pthread_mutex_unlock(&mutexTablaPaginas);
 
 		unClock* clockProceso=list_find(tablaClocks,(void*)clockDelProceso);
 		list_remove_by_condition(tablaClocks,(void*)clockDelProceso);

@@ -19,7 +19,7 @@
 
 
 typedef struct{
-    int proceso, pagina, marco, enMemoria, modificada;
+    int proceso, pagina, marco, modificada;
 }traductor_marco;
 
 typedef struct{
