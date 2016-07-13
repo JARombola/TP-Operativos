@@ -198,14 +198,14 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 
 
 int buscarEspacioLibre(int paginasNecesarias){							//todo debe buscar espacios CONTIGUOS o compactar
-	int pos=0, i,contador=0,compactado=0;
+	int posInicialLibre=0, i,contador=0,compactado=0;
 	do{
 	for(i=0;i<datosSwap->cantidadPaginas && contador<paginasNecesarias;i++){
 		if (!bitarray_test_bit(bitArray,i)){
 			contador++;}
 		else{
 			contador=0;
-			pos=i+1;}
+			posInicialLibre=i+1;}
 	}
 	if (contador<paginasNecesarias){
 		compactar();
@@ -213,10 +213,10 @@ int buscarEspacioLibre(int paginasNecesarias){							//todo debe buscar espacios
 	}else{compactado=1;}
 	}while(!compactado);
 
-	for(i=pos;i<pos+contador;i++){
+	for(i=posInicialLibre;i<posInicialLibre+contador;i++){
 		bitarray_set_bit(bitArray,i);
 	}
-	return pos;
+	return posInicialLibre;
 }
 
 
