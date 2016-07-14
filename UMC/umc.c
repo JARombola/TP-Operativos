@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {								//!!!!!	PARA EJECUTAR: 						./UMC ../
 
 
     datosMemoria=(datosConfiguracion*) malloc(sizeof(datosConfiguracion));
-    if (!leerConfiguracion(argv[1], &datosMemoria)){
+    if (!leerConfiguracion("Config1", &datosMemoria)){
         log_error(archivoLog,"No se pudo leer archivo de Configuracion");
         return 1;}                                                                //El posta por parametro es: leerConfiguracion(argv[1], &datosMemoria)
 
@@ -229,7 +229,7 @@ int atenderCpu(int conexion){
 				pagina = recibirProtocolo(conexion);
 				offset = recibirProtocolo(conexion);
 				size=recibirProtocolo(conexion);
-				printf("Recibi: %d %d %d %d\n",proceso,pagina,offset,size);
+				//log_debug("Recibi: %d %d %d %d\n",proceso,pagina,offset,size);
 				void* x;
 				switch (operacion) {
 
@@ -245,7 +245,7 @@ int atenderCpu(int conexion){
 					x=malloc(size+1);
 					memcpy(x,datos,size);
 					memcpy(x+size,"\0",1);
-					printf("ENVIE:%s\n",x);
+				//	log_debug("ENVIE:%s\n",x);
 					free(x);
 					free(datos);
 					break;
@@ -306,7 +306,6 @@ void atenderNucleo(int nucleo){
 
                     case FINALIZAR:                                                //Finalizar programa
                     	procesoEliminar=recibirProtocolo(nucleo);
-                    	printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>EL NUCLEO ME PIDE ELIMINAR A: %d\n",procesoEliminar);
                         finalizarPrograma(procesoEliminar);
                     break;
                     }
@@ -421,7 +420,6 @@ int finalizarPrograma(int procesoEliminar){
      //  	printf("-----Limpio marco: %d\n",marco->marco);
        	vectorMarcos[marco->marco]=0;}
     }
-    	printf("ESTOY ESPERANDO...\n");
     	usleep(datosMemoria->retardo*1000);
    /* 	int estaEjecutando(int p){
     		return p==procesoEliminar;
@@ -435,7 +433,6 @@ int finalizarPrograma(int procesoEliminar){
     }
     free(pro);
 
-    printf("AL FIN!!\n");
     void limpiar(traductor_marco* marco){
         list_remove_and_destroy_by_condition(tabla_de_paginas,(void*)paginasDelProceso,(void*)free);}
 
@@ -489,7 +486,7 @@ int esperarRespuestaSwap(){
     pthread_mutex_unlock(&mutexSwap);
 
     respuesta[2] = '\0';
-    printf("_____________________________SWAP CONTESTÓ:%s\n",respuesta);
+   // printf("_____________________________SWAP CONTESTÓ:%s\n",respuesta);
     int aceptado = esIgual(respuesta, "ok");
     free(respuesta);
     return aceptado;

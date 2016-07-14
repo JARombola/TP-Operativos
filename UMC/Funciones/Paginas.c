@@ -25,10 +25,8 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
         }
         else{
             log_info(archivoLog,"(Proceso %d | Pag %d) TLB MISS! ",proceso,pag);
-
-        paginaBuscada=list_find(tabla_de_paginas,(void*) paginaEncontrada);
-        usleep(datosMemoria->retardo*1000);}										//Acceso a la tabla de paginas
-
+            paginaBuscada=list_find(tabla_de_paginas,(void*) paginaEncontrada);
+            usleep(datosMemoria->retardo*1000);}										//Acceso a la tabla de paginas
 
         if (paginaBuscada->marco <0) {    //no está en memoria => peticion a swap
             log_info(archivoLog,"(Proceso %d | Pag %d) Pedido a Swap",proceso,pag);
@@ -88,7 +86,6 @@ traductor_marco* guardarPagina(void* datos,int proceso,int pag){
     if (marco==-1){                                //no hay marcos para darle => hay que eliminar el proceso
         traductor_marco* traductorErroneo=malloc(sizeof(traductor_marco));
         traductorErroneo->marco=-666;
-        printf("NO HAY LUGAR\n");
         return traductorErroneo;
     }
 
@@ -114,6 +111,7 @@ int buscarMarco(int pid){
         pthread_mutex_lock(&mutexMarcos);
         if(hayMarcosLibres()){
         	marco=buscarMarcoLibre(pid, cantMarcos);
+        	log_info("(Proceso %d) ==> Nuevo Marco: %d",pid,marco);
         	pthread_mutex_unlock(&mutexMarcos);
         	return marco;														//encontró un marco libre
         }
@@ -126,6 +124,7 @@ int buscarMarco(int pid){
             primeraVuelta=1;}
         int cont=0;
         traductor_marco* datosMarco;
+
         do {
             marco=(int) queue_pop(clockProceso->colaMarcos);
             datosMarco = list_find(tabla_de_paginas,(void*)paginaDelMarco);
@@ -146,7 +145,7 @@ int buscarMarco(int pid){
                 }
                 vectorMarcos[marco] = 2;
                 queue_push(clockProceso->colaMarcos,marco);
-                log_info(archivoLog,"--- Proceso %d ---	Marco Reemplazado: %d",pid, marco);
+                log_info(archivoLog,"(Proceso %d) ===> Marco Reemplazado: %d",pid, marco);
            //     pthread_mutex_lock(&mutexTablaPaginas);
                 	actualizarTabla(datosMarco->pagina,pid,-1);
            //     pthread_mutex_unlock(&mutexTablaPaginas);
@@ -225,9 +224,7 @@ traductor_marco* solicitarPaginaASwap(int proceso, int pagina){
 	 	 recv(conexionSwap, datos, datosMemoria->marco_size, MSG_WAITALL);
 	 pthread_mutex_unlock(&mutexSwap);
 
-	 printf("DATOS RECIBIDOS\n");
 	 traductor_marco* paginaBuscada=guardarPagina(datos, proceso, pagina);
-	 printf("DATOS GUARDADOS EN:%d\n",paginaBuscada->marco);
 	 free(datos);
 
 	 return paginaBuscada;

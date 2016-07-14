@@ -266,7 +266,6 @@ char* crearPCB(char* codigo, int pid) {
 	list_destroy(pcb->stack);
 	metadata_destruir(pcb->indices);
 	free(pcb);
-	printf("!!!!!!!!!!!!!LLegó a CREARPCB\n");
 	return pcbChar;
 }
 
@@ -301,7 +300,6 @@ int revisarActividadConsolas(fd_set *descriptores) {
 				return componente;
 			}else{
 				list_remove(consolas, i);		//sino, me manda un 1, que termino bien
-			//	printf("LLegó HASTA ACA\n");
 				log_info(archivoLog,"[Desconexion] Consola: %d eliminada. (Terminó su programa)",componente);
 			}
 		}
@@ -431,7 +429,7 @@ void atenderOperacion(int op,int cpu){
 	case QUANTUM_OK:
 		tamanio = recibirProtocolo(cpu);
 		pcb = recibirMensaje(cpu,tamanio);
-		printf("PCB RECIBIDO: \n %s\n",pcb);
+	//	printf("PCB RECIBIDO: \n %s\n",pcb);
 		pid=obtenerPID(pcb);
 		sigueCPU = recibirProtocolo(cpu);
  		log_info(archivoLog,"Proceso %d: [Execute] => [Listo]",pid);
@@ -502,7 +500,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			break;
 
 		case OBTENER_COMPARTIDA:						//envía el valor
-			printf("Me pidio una compartida\n");
+			//printf("Me pidio una compartida\n");
 			posicion = (int)dictionary_get(globales,identificador);
 			valor = globalesValores[posicion];
 			valor=htonl(valor);
@@ -511,7 +509,7 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			break;
 
 		case GUARDAR_COMPARTIDA:							//guarda y devuelve el valor
-			printf("Me asigno una compartida\n");
+			//printf("Me asigno una compartida\n");
 			tamanio=recibirProtocolo(cpu);
 			valor_char=recibirMensaje(cpu,tamanio);
 			valor=atoi(valor_char);

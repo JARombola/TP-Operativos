@@ -71,7 +71,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 		return 1;
 	}
 
-	log_info(logs,"Swap Funcionando - Esperando UMC...");
+	log_info(logs,"---------------------------------------------------------------------------\nSwap Funcionando - Esperando UMC...");
 	listen(swap_servidor, 1);
 
 	//----------------------------creo cliente para umc
@@ -121,7 +121,7 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 			case ENVIAR:																//enviar pagina a la UMC
 					usleep(datosSwap->retardoAcceso*1000);
 					pagina=recibirProtocolo(conexionUmc);
-					printf("ME PIDIO PROCESO:%d | Pag:%d\n",PID,pagina);
+					log_info(logs,"ME PIDIO -> Proceso:%d | Pag:%d\n",PID,pagina);
 					datos=buscar(PID,pagina);
 					send(conexionUmc,datos,datosSwap->tamPagina,0);
 					free(datos);
