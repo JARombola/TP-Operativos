@@ -166,10 +166,10 @@ int procesarPeticion(){
 
 void procesarCodigo(int quantum, int quantum_sleep){
 
-	log_info(archivoLog,"-----Iniciando Proceso de Codigo...\n");
+	log_info(archivoLog,"Iniciando Proceso de Codigo...\n");
 	char* linea;
 	while (!finalizado){
-		log_info(archivoLog,">>Program Counter: %d\n", pcb.pc);
+		log_info(archivoLog,"Program Counter: %d\n", pcb.pc);
 		linea = pedirLinea();
 		if (linea == NULL){
 			finalizado = 0;
@@ -198,7 +198,7 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
-			log_debug(archivoLog,">> Le mande al nucleo el PCB: %s \n\n", pcb_char);
+			log_debug(archivoLog,"Le mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
 			log_info(archivoLog,"PCB enviado al nucleo \n");
@@ -306,7 +306,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 		var = (Variable*) list_find(stackActual->vars,(void*)variableBuscada);
 	}
 	if ( var!=NULL){
-		log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, 4);
+		log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, var->pagina.tamanio);
 		log_debug(archivoLog,"Retorno : %d\n", (int)&var->pagina);
 		return (int)&(var->pagina);
 	}
@@ -319,13 +319,13 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 	log_debug(archivoLog,"Me llega : %d", (int) pagina);
 	Pagina*  pag = (Pagina*) pagina;
 	log_info(archivoLog,"Dereferenciar %d %d %d",pag->pag,pag->off,pag->tamanio);
-	enviarMensajeUMCConsulta(pag->pag,pag->off,4,pcb.id);
+	enviarMensajeUMCConsulta(pag->pag,pag->off,pag->tamanio,pcb.id);
 	char resp[3];
 	recv(umc,resp,2,MSG_WAITALL);
 	resp[3]='\0';
 	if(resp[0]=='o'){
 		int valor;
-		int recibidos=recv(umc,&valor,4,MSG_WAITALL);
+		int recibidos=recv(umc,&valor,sizeof(int),MSG_WAITALL);
 		if (recibidos<= 0){
 			log_error(archivoLog,"Error: Fallo la conexion con la UMC\n");
 			finalizado = -1;
@@ -335,7 +335,7 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 		return valor;
 	}
 	log_warning(archivoLog,"La UMC rechazo el pedido, ELIMINAR ANSISOP\n");
-	log_warning(archivoLog, "(Sobrepase el limite del stack)");
+	log_warning(archivoLog, "Sobrepase el limite del stack");
 	char* mensaje = string_new();
 	string_append(&mensaje,"0000");
 	char * char_id_pcb = toStringInt(pcb.id);
@@ -353,7 +353,7 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 void asignar(t_puntero pagina, t_valor_variable valor) {
 	if (pagina != -1){
 		Pagina* pag = (Pagina*) pagina;
-		log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,4);
+		log_info(archivoLog,"Asignar %d -> %d %d %d\n",valor,pag->pag,pag->off,pag->tamanio);
 		enviarMensajeUMCAsignacion(pag->pag,pag->off,4,pcb.id,valor);
 	}
 }
@@ -371,7 +371,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
  	}
 
  	valor=ntohl(valor);
- 	log_info(archivoLog,"--> Valor recibido: %d\n",valor);
+ 	log_info(archivoLog,"Valor recibido: %d\n",valor);
 
  	return (valor);
 }
@@ -541,7 +541,7 @@ void imprimirTexto(char* texto) {
 }
 
 void finalizar() {
-	log_info(archivoLog,"Finalizado! \n");
+	log_info(archivoLog,"Finalizado\n");
 	int tamanioStack = list_size(pcb.stack);
 	log_info(archivoLog,"Remueve: %d \n", tamanioStack-1);
 
