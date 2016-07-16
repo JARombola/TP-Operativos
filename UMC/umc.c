@@ -199,9 +199,11 @@ void dumpDatos(traductor_marco* datosProceso){
 int atenderCpu(int conexion){
 	log_info(archivoLog, "Nuevo CPU Conectado!");
 	int salir = 0, operacion, proceso, pagina, offset, buffer, size,procesoAnterior=-1;
+
 	int removerEntradasProcesoAnterior(traductor_marco* entradaTlb){
 		return entradaTlb->proceso!=procesoAnterior;
 	}
+
 	void* datos;
 	char *cod_op, *resp,*pid;
 	int bytesRecibidos, bytesEnviados, *hilo;
@@ -218,6 +220,12 @@ int atenderCpu(int conexion){
 				hilo=malloc(4);
 				hilo=pthread_self();
 				dictionary_put(procesos,pid,hilo);
+
+				if (procesoAnterior!=proceso){													//cambió el proceso => limpio la tlb
+					log_debug(archivoLog,"[Cambio de proceso] Tlb Antes: %d",list_size(tlb));
+					tlb=list_filter(tlb,(void*)removerEntradasProcesoAnterior);					//filtra las que son DIFERENTES
+					log_debug(archivoLog,"[Cambio de proceso] Tlb Después: %d\n",list_size(tlb));
+					procesoAnterior=proceso;}
 
 				pagina = recibirProtocolo(conexion);
 				offset = recibirProtocolo(conexion);
@@ -254,10 +262,6 @@ int atenderCpu(int conexion){
 						free(resp);}
 					break;
 				}
-
-				if (procesoAnterior!=proceso){													//cambió el proceso => limpio la tlb
-					tlb=list_filter(tlb,(void*)removerEntradasProcesoAnterior);					//filtra las que son DIFERENTES
-					procesoAnterior=proceso;}
 
 				dictionary_remove(procesos,pid);
 				free(pid);
