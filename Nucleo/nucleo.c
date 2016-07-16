@@ -195,8 +195,8 @@ t_dictionary* crearDiccionarioSEMyES(char** keys, char** init, int esIO){
 		semaforosGlobales=malloc((i+1)*sizeof(sem_t));
 		contadorSemaforo = malloc((i+1)*sizeof(uint32_t));
 		for(;i>=0;i--){
-			sem_init(&semaforosGlobales[i], 0, 0);		//vector de semaforos de los hilos
-			contadorSemaforo[i] = atoi(init[i]);			//vector de "semaforos" de las variables globales
+			sem_init(&semaforosGlobales[i], 0, 0);				//vector de semaforos de los hilos
+			contadorSemaforo[i] = atoi(init[i]);				//vector de "semaforos" de las variables globales
 			colasSEM[i] = queue_create();						//vector de colas
 			pthread_create(&thread, &attr, (void*)atender_Bloq_SEM, (void*)i);
 		}
@@ -376,7 +376,6 @@ void atender_Ejecuciones(){
 		 pid=obtenerPID(pcbBloqueando->pcb);
 		 log_info(archivoLog,"Proceso %d: [Bloqueado] (IO) => [Listo]",pid);
 		 sem_post(&sem_Listos);
-	//	 free(pcbBloqueando);						//TESTEADO, PARECE NO IR...
 	 }
  }
 
@@ -500,7 +499,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			break;
 
 		case OBTENER_COMPARTIDA:						//envía el valor
-			//printf("Me pidio una compartida\n");
 			posicion = (int)dictionary_get(globales,identificador);
 			valor = globalesValores[posicion];
 			valor=htonl(valor);
@@ -509,7 +507,6 @@ void procesar_operacion_privilegiada(int operacion, int cpu){
 			break;
 
 		case GUARDAR_COMPARTIDA:							//guarda y devuelve el valor
-			//printf("Me asigno una compartida\n");
 			tamanio=recibirProtocolo(cpu);
 			valor_char=recibirMensaje(cpu,tamanio);
 			valor=atoi(valor_char);
@@ -629,8 +626,7 @@ void finalizarProgramaUMC(int id){
 	 free(mensaje);
 }
 
-void finalizarProgramaConsola(int consola, int codigo){
-	//codigo: el ansisop termino 2=ok / 3=mal
+void finalizarProgramaConsola(int consola, int codigo){				//(CODIGO) 2 = ok, 3 = mal
 	char* cod = header(codigo);
 	if(esa_consola_existe(consola)){
 		send(consola, cod, 4, 0);

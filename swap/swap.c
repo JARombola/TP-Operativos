@@ -121,9 +121,9 @@ int main(int argc, char* argv[]){							// 	PARA EJECUTAR: 						./Swap ../Confi
 			case ENVIAR:																//enviar pagina a la UMC
 					usleep(datosSwap->retardoAcceso*1000);
 					pagina=recibirProtocolo(conexionUmc);
-					log_info(logs,"ME PIDIO -> Proceso:%d | Pag:%d\n",PID,pagina);
 					datos=buscar(PID,pagina);
 					send(conexionUmc,datos,datosSwap->tamPagina,0);
+					log_info(logs,"ENVIO -> Proceso:%d | Pag:%d",(int)PID,(int)pagina);
 					free(datos);
 					break;
 
@@ -182,11 +182,10 @@ int guardarDatos(int conexionUmc,int cantPaginas, int PID){
 		pagsLibres-=cantPaginas;
 		log_info(logs,"Nuevo ansisop %d registrado\n", PID);
 	}
-
-	else{												//actualizar pagina
+	else{															//actualizar pagina
 		datos = recibirMensaje(conexionUmc, datosSwap->tamPagina);
 		posicion=recibirProtocolo(conexionUmc);
-		posicion+=proceso->inicio;					//donde arranca el proceso + pag
+		posicion+=proceso->inicio;											//donde arranca el proceso + pag
 		log_info(logs,"Proceso %d | Pagina %d modificada\n",PID,posicion);
 		size=datosSwap->tamPagina;
 	}
@@ -240,17 +239,17 @@ int compactar(){
 				// busque el proximo proceso ocupado a mover
 				procesoAMover=list_find(tablaPaginas,(void*)proximoProceso);
 				if (procesoAMover!=NULL){
-				log_info(logs, ">>>El proceso a mover es: %d<<<", procesoAMover);
-					inicioAnterior=procesoAMover->inicio;
-					for (cont=0;cont<procesoAMover->paginas;cont++){
-								bitarray_clean_bit(bitArray,inicioAnterior+cont);				//porque ahora va a estar vacia
-								bitarray_set_bit(bitArray,libre+cont);									//Ahora va a estar ocupada
+					log_info(logs, ">>>El proceso a mover es: %d<<<", procesoAMover);
+						inicioAnterior=procesoAMover->inicio;
+						for (cont=0;cont<procesoAMover->paginas;cont++){
+							bitarray_clean_bit(bitArray,inicioAnterior+cont);						//porque ahora va a estar vacia
+							bitarray_set_bit(bitArray,libre+cont);									//Ahora va a estar ocupada
 						}
-			memcpy(archivoSwap+ libre * datosSwap->tamPagina, archivoSwap+inicioAnterior * datosSwap->tamPagina, procesoAMover->paginas * datosSwap->tamPagina);		//Modifique los marcos, ahora copio los datos
-			// el que estaba ocupado ahora va a empezar a partir del que estaba libre para compactarlo
-			// como la tablaPaginas esta compuesta por procesos, aca la estaria actualizando
-			procesoAMover->inicio = libre;}
-			else{i=datosSwap->cantidadPaginas;}							//No hay mas procesos para mover => salgo del ciclo, no necesito buscar mas
+					memcpy(archivoSwap+ libre * datosSwap->tamPagina, archivoSwap+inicioAnterior * datosSwap->tamPagina, procesoAMover->paginas * datosSwap->tamPagina);		//Modifique los marcos, ahora copio los datos
+					procesoAMover->inicio = libre;
+				}
+				else{
+					i=datosSwap->cantidadPaginas;}							//No hay mas procesos para mover => salgo del ciclo, no necesito buscar mas
 		}
 	}
 	log_info(logs,"Compactacion realizada con exito!!\n");
@@ -263,7 +262,7 @@ void* buscar(int pid, int pag){
 	}
 	traductor_marco* datosProceso=list_find(tablaPaginas,(void*)proceso);
 	if (datosProceso==NULL){
-		printf("ACA NO TENIA QUE HABER ENTRADO NUNCA; LPM!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+		printf("MMM...\n");
 		return NULL;
 	}
 	void* pagina=(void*)malloc(datosSwap->tamPagina);
@@ -285,7 +284,7 @@ int eliminarProceso(int pid){
 
 		for(i=0;i<datosProceso->paginas;i++){					//Marco los marcos del proceso como vacíos
 			bitarray_clean_bit(bitArray,posicion+i);
-		//	log_info(logs,"Cambie el bit a 0 de la posicion nro %d", posicion);
+			log_debug(logs,"Cambie el bit a 0 de la posicion nro %d", posicion);
 		}
 
 		pagsLibres+=datosProceso->paginas;

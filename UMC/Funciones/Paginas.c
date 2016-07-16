@@ -89,10 +89,8 @@ traductor_marco* guardarPagina(void* datos,int proceso,int pag){
         return traductorErroneo;
     }
 
-   // pthread_mutex_lock(&mutexTablaPaginas);
         traductor_marco* datosPagina=actualizarTabla(pag, proceso, marco);
         memcpy(memoria + (marco * tamMarco), datos, tamMarco);
-   // pthread_mutex_unlock(&mutexTablaPaginas);
 
     return datosPagina;
 }
@@ -111,7 +109,7 @@ int buscarMarco(int pid){
         pthread_mutex_lock(&mutexMarcos);
         if(hayMarcosLibres()){
         	marco=buscarMarcoLibre(pid, cantMarcos);
-        	log_info("(Proceso %d) ==> Nuevo Marco: %d",pid,marco);
+        	log_info(archivoLog,"(Proceso %d) ==> Nuevo Marco: %d",pid,marco);
         	pthread_mutex_unlock(&mutexMarcos);
         	return marco;														//encontró un marco libre
         }
@@ -144,14 +142,14 @@ int buscarMarco(int pid){
                     log_info(archivoLog,"(Proceso %d | Pag %d) No se envia a swap (no estaba modificada)\n",datosMarco->proceso,datosMarco->pagina);
                 }
                 vectorMarcos[marco] = 2;
-                queue_push(clockProceso->colaMarcos,marco);
+                queue_push(clockProceso->colaMarcos,(void*)marco);
                 log_info(archivoLog,"(Proceso %d) ===> Marco Reemplazado: %d",pid, marco);
-           //     pthread_mutex_lock(&mutexTablaPaginas);
-                	actualizarTabla(datosMarco->pagina,pid,-1);
-           //     pthread_mutex_unlock(&mutexTablaPaginas);
+
+                actualizarTabla(datosMarco->pagina,pid,-1);
+
                 return marco;}                                    //La nueva posicion libre
 
-            queue_push(clockProceso->colaMarcos,marco);
+            queue_push(clockProceso->colaMarcos,(void*)marco);
             if(!primeraVuelta){
             vectorMarcos[marco]=1;}
             if (cont==queue_size(clockProceso->colaMarcos)-1){primeraVuelta=0;}
@@ -171,12 +169,12 @@ int buscarMarcoLibre(int pid, int cantMarcos){
             if (!cantMarcos) { 							//Para el clock mejorado, registro el clock del proceso
                 unClock* clockProceso = malloc(sizeof(unClock));
                 clockProceso->colaMarcos = queue_create();
-                queue_push(clockProceso->colaMarcos, marco);
+                queue_push(clockProceso->colaMarcos,(void*) marco);
                 clockProceso->proceso = pid;
                 list_add(tablaClocks, clockProceso);
             } else {
                 unClock* clockProceso = list_find(tablaClocks,(void*) clockDelProceso);
-                queue_push(clockProceso->colaMarcos, marco);
+                queue_push(clockProceso->colaMarcos, (void*)marco);
             }
             vectorMarcos[marco] = 2;
             return marco;

@@ -123,7 +123,7 @@ void conectarseALaUMC(){
 	if (!TAMANIO_PAGINA){
 		log_error(archivoLog,"Error: No se ha logrado establecer la conexion con la UMC\n");
 	}
-	log_info(archivoLog,"Conexion con la UMC OK...\n");
+	log_info(archivoLog,"Conexion con la UMC OK...");
 	log_info(archivoLog,"Tamanio de la Pagina : %d", TAMANIO_PAGINA);
 }
 
@@ -133,7 +133,7 @@ int procesarPeticion(){
 	int quantum_sleep = 0;
 	while ((!finalizado) && (status)){
 
-		log_info(archivoLog,"\n\nPeticion del Nucleo\n\n");
+		log_info(archivoLog,"\nPeticion del Nucleo\n");
 		enEjecucion = 0;
 		quantum = recibirProtocolo(nucleo);
 		enEjecucion = 1;
@@ -148,15 +148,15 @@ int procesarPeticion(){
 			return 0;
 		}
 
-		log_info(archivoLog,"Quantum recibido: %d\n",quantum);
+		log_info(archivoLog,"Quantum recibido: %d",quantum);
 
 		log_info(archivoLog,"Quantum Sleep recibido: %d\n",quantum_sleep);
 
-		log_info(archivoLog,"\n Recibi del Nucleo: %s\n", pcbRecibido);
+		log_debug(archivoLog,"Recibi del Nucleo: %s\n", pcbRecibido);
 		pcb = fromStringPCB(pcbRecibido);
 		free(pcbRecibido);
 
-		log_info(archivoLog,"\n Ejecutar Proceso: %d\n", pcb.id);
+		log_info(archivoLog,"Ejecutar Proceso: %d\n", pcb.id);
 		procesarCodigo(quantum, quantum_sleep);
 
 		log_info(archivoLog,"Fin del Proceso %d %d\n", finalizado, status);
@@ -166,10 +166,10 @@ int procesarPeticion(){
 
 void procesarCodigo(int quantum, int quantum_sleep){
 
-	log_info(archivoLog,"Iniciando Proceso de Codigo...\n");
+	log_info(archivoLog,"-----Iniciando Proceso de Codigo...\n");
 	char* linea;
 	while (!finalizado){
-		log_info(archivoLog,"Ronda: %d\n\n\n", pcb.pc);
+		log_info(archivoLog,">>Program Counter: %d\n", pcb.pc);
 		linea = pedirLinea();
 		if (linea == NULL){
 			finalizado = 0;
@@ -198,10 +198,10 @@ void procesarCodigo(int quantum, int quantum_sleep){
 			string_append(&mensaje,toStringInt(status));
 			string_append(&mensaje,"\0");
 			send(nucleo,mensaje,strlen(mensaje),0);
-			log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", pcb_char);
+			log_debug(archivoLog,">> Le mande al nucleo el PCB: %s \n\n", pcb_char);
 			free(pcb_char);
 			free(mensaje);
-			log_info(archivoLog,"Ansisop Enviado a Nucleo \n");
+			log_info(archivoLog,"PCB enviado al nucleo \n");
 		}
 	}
 	if (finalizado<0){
@@ -251,7 +251,7 @@ char* pedirLinea(){
 		if (estado[0]!='o'){
 			estado[2] = '\0';
 			log_warning(archivoLog,"Respuesta UMC: %s\n", estado);
-			log_warning(archivoLog,"La UMC rechazo el pedido, Eliminar Ansisop\n");
+			log_warning(archivoLog,"La UMC rechazo el pedido, ELIMINAR ANSISOP\n");
 			char *mensaje = string_new();
 			string_append(&mensaje,"0000");
 			string_append(&mensaje,toStringInt(pcb.id));
@@ -284,12 +284,12 @@ char* pedirLinea(){
 ////////////////////////////////////----PARSER-------///////////////////////////////////////////////////
 
 t_puntero definirVariable(t_nombre_variable variable) {
-	log_info(archivoLog,"definir la variable %c\n", variable);
+	log_info(archivoLog,"Definir la variable %c", variable);
 	Variable* var = crearVariable(variable);
-	log_info(archivoLog,"Variable %c creada\n", var->id);
+	log_info(archivoLog,"Variable %c creada", var->id);
 	sumarEnLasVariables(var);
-	log_info(archivoLog,"Pag: %d Off: %d size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
-	log_debug(archivoLog,"retorno : %d", (int)&var->pagina);
+	log_info(archivoLog,"Pag: %d | Off: %d | size: %d\n",var->pagina.pag,var->pagina.off,var->pagina.tamanio);
+	log_debug(archivoLog,"Retorno : %d", (int)&var->pagina);
 	return  (int)&var->pagina;
 }
 
@@ -307,7 +307,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable variable) {
 	}
 	if ( var!=NULL){
 		log_info(archivoLog,"La posicion de %c es: %d %d %d\n", variable, var->pagina.pag, var->pagina.off, 4);
-		log_debug(archivoLog,"retorno : %d\n", (int)&var->pagina);
+		log_debug(archivoLog,"Retorno : %d\n", (int)&var->pagina);
 		return (int)&(var->pagina);
 	}
 	log_error(archivoLog,"Error: No se encontro la variable\n");
@@ -334,8 +334,8 @@ t_valor_variable dereferenciar(t_puntero pagina) {
 		log_info(archivoLog,"VALOR VARIABLE: %d \n",valor);
 		return valor;
 	}
-	log_warning(archivoLog,"La UMC rechazo el pedido, Eliminar Ansisop\n");
-	log_warning(archivoLog, "Sobrepase el limite del stack");
+	log_warning(archivoLog,"La UMC rechazo el pedido, ELIMINAR ANSISOP\n");
+	log_warning(archivoLog, "(Sobrepase el limite del stack)");
 	char* mensaje = string_new();
 	string_append(&mensaje,"0000");
 	char * char_id_pcb = toStringInt(pcb.id);
@@ -359,7 +359,7 @@ void asignar(t_puntero pagina, t_valor_variable valor) {
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
-	log_info(archivoLog,"Obtener Valor Compartido de: %s\n", variable);
+	log_info(archivoLog,"Obtener Valor Compartido de: %s", variable);
  	enviarMensajeNucleoConsulta(variable);
  	int valor;
  	int verificador = recv(nucleo,&valor,sizeof(int),MSG_WAITALL);
@@ -371,18 +371,18 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable){
  	}
 
  	valor=ntohl(valor);
- 	log_info(archivoLog,"--> Valor recibido:%d\n",valor);
+ 	log_info(archivoLog,"--> Valor recibido: %d\n",valor);
 
  	return (valor);
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor){
-	log_info(archivoLog,"Asignar valor compatido \n");
+	log_info(archivoLog,"Asignar valor compartido");
 	enviarMensajeNucleoAsignacion(variable,valor);
 	int valor_nucleo;
 
  	int verificador = recv(nucleo,&valor_nucleo,sizeof(int),MSG_WAITALL);
- 	log_info(archivoLog,"Valor de %s : %d",variable, verificador);
+ 	log_info(archivoLog,"Valor de %s: %d\n",variable, verificador);
  	if (verificador <= 0){
  		finalizado = -2;
  		log_error(archivoLog,"Error: Fallo la conexion con el Nucleo\n");
@@ -392,14 +392,14 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 }
 
 void irAlLabel(t_nombre_etiqueta etiqueta){
-	log_info(archivoLog,"Ir a Label: %s \n", etiqueta);
+	log_info(archivoLog,"Ir a Label: %s", etiqueta);
 	pcb.pc =  metadata_buscar_etiqueta(etiqueta,pcb.indices.etiquetas,pcb.indices.etiquetas_size);
-	log_info(archivoLog,"Salto a: %d", pcb.pc);
+	log_info(archivoLog,"Salto a: %d\n", pcb.pc);
 	pcb.pc--;
 }
 
 void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
-	log_info(archivoLog,"Llamada con retorno a : %s \n", etiqueta);
+	log_info(archivoLog,"Llamada con retorno a: %s", etiqueta);
 
 	Stack* stack = malloc(sizeof(Stack));
 	Pagina* paginaReturn = (Pagina*) donde_retornar;
@@ -417,7 +417,7 @@ void llamarConRetorno(t_nombre_etiqueta	etiqueta, t_puntero	donde_retornar){
 }
 
 void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
-	log_info(archivoLog,"Entrada/Salida: %s tiempo: %d\n", dispositivo, tiempo);
+	log_info(archivoLog,"Entrada/Salida:%s  (Tiempo: %d)\n", dispositivo, tiempo);
 
 	char* mensaje=string_new();
 	string_append(&mensaje,"00020005");
@@ -438,7 +438,7 @@ void entradaSalida(t_nombre_dispositivo dispositivo,int tiempo){
 	string_append(&mensaje,toStringInt(status));
 	string_append(&mensaje,"\0");
 	send(nucleo,mensaje,string_length(mensaje),0);
-	log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
+	log_debug(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
 	free(pcb_char);
 	free(mensaje);
 
@@ -451,7 +451,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	string_append(&mensaje,"00020003");
 	string_append(&mensaje,toStringInt(strlen(identificador_semaforo)));
 	string_append(&mensaje,identificador_semaforo);
-	log_info(archivoLog,"Le mando el mensaje al nucleo: %s \n", mensaje);
+	log_debug(archivoLog,"Le mando el mensaje al nucleo: %s \n", mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	char respuesta[3];
@@ -465,9 +465,9 @@ void wait(t_nombre_semaforo identificador_semaforo){
 	respuesta[2]= '\0';
 
 	if(strcmp(respuesta,"ok")==0){
-		log_info(archivoLog,"Wait ok sin problemas\n");
+		log_info(archivoLog,"Wait OK, Sin problemas!\n");
 	}else if(strcmp(respuesta,"no")==0){
-		log_info(archivoLog,"Semaforo bloqueante\n");
+		log_info(archivoLog,"Semaforo bloqueante!\n");
 		pcb.pc++;
 		char* mensaje = string_new();
 		char* char_pcb = toStringPCB(pcb);
@@ -476,7 +476,7 @@ void wait(t_nombre_semaforo identificador_semaforo){
 		string_append(&mensaje,char_pcb);
 		string_append(&mensaje,toStringInt(status));
 		send(nucleo,mensaje,strlen(mensaje),0);
-		log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
+		log_debug(archivoLog,"\n\nLe mande al nucleo el PCB: %s \n\n", char_pcb);
 		free(mensaje);
 		free(char_pcb);
 		finalizado = 3;
@@ -489,21 +489,21 @@ void post(t_nombre_semaforo identificador_semaforo){
 	string_append(&mensaje,"00020004");
 	string_append(&mensaje,toStringInt(strlen(identificador_semaforo)));
 	string_append(&mensaje,identificador_semaforo);
-	log_info(archivoLog,"Le mando el mensaje al nucleo: %s \n", mensaje);
+	log_debug(archivoLog,"Le mando el mensaje al nucleo: %s \n", mensaje);
 	send(nucleo, mensaje,strlen(mensaje),0);
 	free(mensaje);
 	int verificador = recibirProtocolo(nucleo);
-	log_info(archivoLog,"Recibi del nucleo %d\n", verificador);
+	log_debug(archivoLog,"Recibi del nucleo %d\n", verificador);
 	if (verificador != 1){
 		finalizado = -2;
-		log_error(archivoLog,"Error: Erro de conexion con el Nucleo \n");
+		log_error(archivoLog,"Error: Error de conexion con el Nucleo \n");
 		log_error(archivoLog,"Error: Algo fallo al enviar el mensaje para realizar un signal, recibi: %d \n", verificador);
 	}
 }
 
 
 void imprimir(t_valor_variable valor){
-	log_info(archivoLog,"Imprimir %d \n", valor);
+	log_info(archivoLog,"Imprimir Valor: %d\n", valor);
 	char* mensaje = string_new();
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
@@ -524,7 +524,7 @@ void imprimir(t_valor_variable valor){
 }
 
 void imprimirTexto(char* texto) {
-	log_info(archivoLog,"ImprimirTexto: %s \n", texto);
+	log_info(archivoLog,"Imprimir Texto: %s\n", texto);
 	char* mensaje = string_new();
 	string_append(&mensaje,"0004");
 	string_append(&mensaje,toStringInt(pcb.id));
@@ -541,9 +541,9 @@ void imprimirTexto(char* texto) {
 }
 
 void finalizar() {
-	log_info(archivoLog,"Finalizado \n");
+	log_info(archivoLog,"Finalizado! \n");
 	int tamanioStack = list_size(pcb.stack);
-	log_info(archivoLog,"remueve: %d \n", tamanioStack-1);
+	log_info(archivoLog,"Remueve: %d \n", tamanioStack-1);
 
 	if (tamanioStack >1){
 		Stack* stackActual = obtenerStack();
@@ -558,7 +558,7 @@ void finalizar() {
 		liberarPCB(pcb);
 		string_append(&mensaje,toStringInt(strlen(pcb_char)));
 		string_append(&mensaje,pcb_char);
-		log_info(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
+		log_debug(archivoLog,"\n\nLe mande al nucleo el PCB: %s\n\n", pcb_char);
 		free(pcb_char);
 		string_append(&mensaje,toStringInt(status));
 		string_append(&mensaje,"\0");
@@ -640,7 +640,7 @@ Pagina siguientePagina(Pagina pagina){
 
 void sumarEnLasVariables(Variable* var){
 	Stack* stackActual = obtenerStack();
-	log_info(archivoLog,"Agregando a la lista de variables: %c \n", var->id);
+	log_info(archivoLog,"Agregando a la lista de variables: %c\n", var->id);
 	if (('0'>=var->id)&&(var->id<='9')){
 		if (stackActual->args == NULL) stackActual->args= list_create();
 		list_add(stackActual->args,var);
@@ -700,7 +700,7 @@ void enviarMensajeUMCConsulta(int pag, int off, int size, int proceso){
 	string_append(&mensaje,offMje);
 	string_append(&mensaje,sizeMje);
 	string_append(&mensaje,"\0");
-	log_info(archivoLog,"Le envio a la UMC: %s", mensaje);
+	log_debug(archivoLog,"Le envio a la UMC: %s", mensaje);
 	send(umc,mensaje,string_length(mensaje),0);
 	free(procesoMje);
 	free(pagMje);
@@ -718,9 +718,9 @@ void enviarMensajeUMCAsignacion(int pag, int off, int size, int proceso, int val
 	char* offset=toStringInt(off);
 	char* tam=toStringInt(size);
 	string_append_with_format(&mensaje,"3%s%s%s%s\0",pid,pagina,offset,tam);
-	log_info(archivoLog,"Le envie a la UMC: %s , con el valor: %d",mensaje,valor);
+	log_debug(archivoLog,"Le envie a la UMC: %s , con el valor: %d",mensaje,valor);
 	send(umc,mensaje,string_length(mensaje),0);
-	send(umc,&valor_serializado,sizeof(int),0);  // AK HAY ALGO TURBIO
+	send(umc,&valor_serializado,sizeof(int),0);
 	free(mensaje);
 	free(pid);
 	free(pagina);
