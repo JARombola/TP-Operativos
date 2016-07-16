@@ -17,14 +17,15 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
     if (list_any_satisfy(tabla_de_paginas,(void*)paginaEncontrada)) {                //Esta "registrada", la pag (Existe)
 
         paginaBuscada=list_find(tlb,(void*)paginaEncontrada);
-        usleep(datosMemoria->retardo*1000);											//Acceso a tlb
+        if(datosMemoria->entradas_tlb){
+        	usleep(datosMemoria->retardo*1000);}											//Acceso a tlb
 
         if (paginaBuscada!=NULL){                                                    //Esta en la tlb, entonces saco y vuelvo a poner más abajo
-            log_info(archivoLog,"(Proceso %d | Pag %d) TLB HIT! ",proceso,pag);
+            if (datosMemoria->entradas_tlb) log_info(archivoLog,"(Proceso %d | Pag %d) TLB HIT! ",proceso,pag);
             list_remove_by_condition(tlb,(void*)paginaEncontrada);
         }
         else{
-            log_info(archivoLog,"(Proceso %d | Pag %d) TLB MISS! ",proceso,pag);
+        	if (datosMemoria->entradas_tlb) log_info(archivoLog,"(Proceso %d | Pag %d) TLB MISS! ",proceso,pag);
             paginaBuscada=list_find(tabla_de_paginas,(void*) paginaEncontrada);
             usleep(datosMemoria->retardo*1000);}										//Acceso a la tabla de paginas
 
@@ -36,10 +37,12 @@ int buscar(int proceso, int pag) {                //todo busqueda en la TLB
             }
 
         if(paginaBuscada->marco!=-666){
-			list_add(tlb, paginaBuscada);
-			if(list_size(tlb)>datosMemoria->entradas_tlb){                            //Actualizar tlb
-				list_remove(tlb,0);
-			}
+        	if (datosMemoria->entradas_tlb){
+				list_add(tlb, paginaBuscada);
+				if(list_size(tlb)>datosMemoria->entradas_tlb){                            //Actualizar tlb
+					list_remove(tlb,0);
+				}
+        	}
 			if(paginaBuscada!=NULL){
 				posicion=paginaBuscada->marco * datosMemoria->marco_size;
 				return posicion;}                                //devuelve la posicion dentro de la "memoria"
